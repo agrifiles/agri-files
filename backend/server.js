@@ -7,7 +7,10 @@ app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json()); // for parsing JSON
 
 const authRoutes = require('./routes/auth');
+const productsRouter = require('./routes/products');
 app.use('/auth', authRoutes);
+app.use('/products', productsRouter);
+
 
 // Test route to check DB connection
 app.get("/db-test", async (req, res) => {
