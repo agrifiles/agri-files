@@ -1,9 +1,13 @@
 const express = require("express");
 const pool = require("./db"); // Neon DB connection
+const cors = require("cors"); 
 const app = express();
-const PORT = 5005;
-
+const PORT = 5006;
+app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json()); // for parsing JSON
+
+const authRoutes = require('./routes/auth');
+app.use('/auth', authRoutes);
 
 // Test route to check DB connection
 app.get("/db-test", async (req, res) => {
