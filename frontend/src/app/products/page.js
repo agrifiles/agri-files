@@ -2,8 +2,12 @@
 import { useState,  useContext, useEffect } from 'react';
 import { useRouter,  } from 'next/navigation';
 import { LangContext } from '../layout';
+import Loader from '../components/loader';
+
 
 export default function InventoryPage() {
+  const [loading, setLoading] = useState(false);
+
   const { t } = useContext(LangContext);
   const router = useRouter();
   const [products, setProducts] = useState([]);
@@ -50,11 +54,14 @@ export default function InventoryPage() {
 
     const fetchProducts = async () => {
     try {
+      setLoading(true);
       const res = await fetch('http://localhost:5006/products/list');
       const data = await res.json();
       if (data.success) setProducts(data.products);
     } catch (err) {
       console.error('Failed to fetch products', err);
+    } finally {
+       setLoading(false);
     }
   };
 
@@ -64,80 +71,51 @@ export default function InventoryPage() {
   }, []);
 
   // Add / Update
-//   const handleSubmit = (e) => {
-//     e.preventDefault();
-//     if (editingIndex !== null) {
-//       const updated = [...products];
-//       updated[editingIndex] = form;
-//       setProducts(updated);
-//     } else {
-//       setProducts([...products, form]);
-//     }
-//     resetForm();
-//   };
-
-
 // const handleSubmit = async (e) => {
 //   e.preventDefault();
-
-//   try {
-//     const response = await fetch("http://localhost:5006/products/save", {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify(form), // send form data directly
-//     });
-
-//     const data = await response.json();
-
-//     if (response.ok && data.success) {
-//       alert(data.message || "Saved successfully!");
-
-//       // If it was an update
-//       if (form.product_id) {
-//         const updated = products.map((p) =>
-//           p.product_id === form.product_id ? { ...form } : p
-//         );
-//         setProducts(updated);
-//       } else {
-//         // If it was a new product
-//         setProducts([...products, { ...form, product_id: data.product_id }]);
-//       }
-
-//       resetForm();
-//     } else {
-//       alert(data.error || "Something went wrong while saving.");
-//     }
-//   } catch (error) {
-//     console.error("Error saving product:", error);
-//     alert("Server error while saving product.");
-//   }
-// };
-
-
-// const fetchProducts = async () => {
-//   const res = await fetch("http://localhost:5006/products/list");
+//     setLoading(true);
+//     try {
+//   const res = await fetch("http://localhost:5006/products/save", {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(form),
+//   })
 //   const data = await res.json();
-//   if (data.success) setProducts(data.products);
+//   if (data.success) {
+//     resetForm();
+//     fetchProducts(); // refresh table
+//   } else {
+//     alert("Error saving product");
+//   } } catch (err) {
+//     console.error(err);
+//   }
+//   finally {
+//       setLoading(false);
+//   }
 // };
 
 const handleSubmit = async (e) => {
   e.preventDefault();
-  const res = await fetch("http://localhost:5006/products/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(form),
-  });
-  const data = await res.json();
-  if (data.success) {
-    resetForm();
-    fetchProducts(); // refresh table
-  } else {
-    alert("Error saving product");
+  try {
+    setLoading(true);
+    const res = await fetch("http://localhost:5006/products/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    if (data.success) {
+      resetForm();
+      await fetchProducts(); // refresh table
+    } else {
+      alert("Error saving product");
+    }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
   }
 };
-
 
   // Edit existing
   const handleEdit = (index) => {
@@ -157,9 +135,10 @@ const handleSubmit = async (e) => {
   };
 
   return (
+  
     <div className="min-h-screen bg-gray-50 py-2  px-6 flex flex-col">
       {/* <h1 className="text-3xl font-bold text-cyan-700 mb-6">{t.products}</h1> */}
-
+ {loading && <Loader />}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left side – Product Table */}
         <div className="w-full lg:w-2/3 bg-white shadow-lg rounded-lg p-6 overflow-x-auto">

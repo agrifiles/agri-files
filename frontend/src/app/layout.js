@@ -97,7 +97,7 @@ export default function RootLayout({ children }) {
       // Logout handler
   const handleSettings = () => {
 
-    router.push('/graph'); // redirect to login
+    router.push('/settings'); // redirect to login
   };
 
 
@@ -122,8 +122,8 @@ export default function RootLayout({ children }) {
               <div className="bg-cyan-50 text-cyan-800 flex justify-between items-center px-6 py-2 border-b border-cyan-200 shadow-sm">
       {/* Left side: user info */}
     <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm font-medium">
-      <span className="bg-emerald-600 text-white px-3 py-2 rounded-full shadow-sm">
-        <strong>{t.businessName}:</strong> {user.business_name}
+      <span className="bg-emerald-600 font-extrabold text-xl text-white px-3 py-2 rounded-full shadow-sm">
+        <strong>{user.business_name}</strong> 
       </span>
       <span className="bg-yellow-600  text-white px-3 py-2 rounded-full shadow-sm">
         <strong>{t.taluka}:</strong> {user.taluka}

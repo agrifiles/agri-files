@@ -17,11 +17,30 @@ export default function NewFilePage() {
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
 
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
-    dripperSpacing: '', planeLateralQty: '',
+    dripperSpacing: '', planeLateralQty: '',fileDate: new Date().toISOString().split('T')[0]
   });
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 2));
+  // const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value
+
+    
+  //  });
+
+  const handleChange = (e) => {
+  const { name, value } = e.target;
+
+  setForm((prev) => {
+    const updatedForm = { ...prev, [name]: value };
+
+    // ✅ If the "village" field changes, also update "place"
+    if (name === "village") {
+      updatedForm.place = value;
+    }
+
+    return updatedForm;
+  });
+};
+
+  const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
   const goToStep = (n) => setStep(n);
 
@@ -34,7 +53,8 @@ export default function NewFilePage() {
   const steps = [
     { id: 1, title: t.stepOne || 'Step 1' },
     { id: 2, title: t.stepTwo || 'Step 2' },
-    { id: 3, title: t.stepTwo || 'Step 3' },
+    { id: 3, title: t.stepThree || 'Step 3' },
+    { id: 4, title: t.stepFour || 'Step 4' },
   ];
 
     const stageRef = useRef(null);
@@ -221,7 +241,7 @@ export default function NewFilePage() {
         {/* Step 1 */}
         {step === 1 && (
           <div className="grid grid-cols-2 gap-4">
-            
+
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.fyYear}</label>
               <select name="fyYear" value={form.fyYear} onChange={handleChange} className="input" required>
@@ -233,13 +253,8 @@ export default function NewFilePage() {
             </div>
 
             <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.selectCompany}</label>
-              <select name="company" value={form.company} onChange={handleChange} className="input" required>
-                <option value="">{t.selectCompany}</option>
-                <option value="Agri Solutions">Agri Solutions</option>
-                <option value="Green Fields">Green Fields</option>
-                <option value="FarmTech">FarmTech</option>
-              </select>
+              <label className="font-semibold mb-1">{t.farmerName}</label>
+              <input name="farmerName" value={form.farmerName} onChange={handleChange} className="input" required />
             </div>
 
             <div className="flex flex-col">
@@ -252,10 +267,6 @@ export default function NewFilePage() {
               <input name="farmerId" value={form.farmerId} onChange={handleChange} className="input" />
             </div>
 
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.farmerName}</label>
-              <input name="farmerName" value={form.farmerName} onChange={handleChange} className="input" required />
-            </div>
 
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.fatherName}</label>
@@ -267,29 +278,14 @@ export default function NewFilePage() {
               <input name="mobile" value={form.mobile} onChange={handleChange} className="input" />
             </div>
 
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.quotationNo}</label>
-              <input name="quotationNo" value={form.quotationNo} onChange={handleChange} className="input" />
+                        <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.aadhaarNo}</label>
+              <input name="aadhaarNo" value={form.aadhaarNo} onChange={handleChange} className="input" />
             </div>
 
             <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.quotationDate}</label>
-              <input type="date" name="quotationDate" value={form.quotationDate} onChange={handleChange} className="input" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.billNo}</label>
-              <input name="billNo" value={form.billNo} onChange={handleChange} className="input" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.billDate}</label>
-              <input type="date" name="billDate" value={form.billDate} onChange={handleChange} className="input" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.village}</label>
-              <input name="village" value={form.village} onChange={handleChange} className="input" />
+              <label className="font-semibold mb-1">{t.district}</label>
+              <input name="district" value={form.district} onChange={handleChange} className="input" />
             </div>
 
             <div className="flex flex-col">
@@ -298,8 +294,8 @@ export default function NewFilePage() {
             </div>
 
             <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.district}</label>
-              <input name="district" value={form.district} onChange={handleChange} className="input" />
+              <label className="font-semibold mb-1">{t.village}</label>
+              <input name="village" value={form.village} onChange={handleChange} className="input" />
             </div>
 
             <div className="flex flex-col">
@@ -312,6 +308,30 @@ export default function NewFilePage() {
               <input name="gutNo" value={form.gutNo} onChange={handleChange} className="input" />
             </div>
 
+
+          </div>
+        )}
+
+        {/* Step 2 */}
+        {step === 2 && (
+          <div className="grid grid-cols-2 gap-4">
+
+                        <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.selectCompany}</label>
+              <select name="company" value={form.company} onChange={handleChange} className="input" required>
+                <option value="">{t.selectCompany}</option>
+                <option value="Agri Solutions">Agri Solutions</option>
+                <option value="Green Fields">Green Fields</option>
+                <option value="FarmTech">FarmTech</option>
+              </select>
+            </div>
+            
+            <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.salesEngg}</label>
+              <input name="salesEngg" value={form.salesEngg} onChange={handleChange} className="input" required />
+            </div>
+
+
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.selectCrop}</label>
               <select name="cropName" value={form.cropName} onChange={handleChange} className="input">
@@ -321,15 +341,21 @@ export default function NewFilePage() {
                 <option value="Wheat">{t.wheat}</option>
               </select>
             </div>
-          </div>
-        )}
 
-        {/* Step 2 */}
-        {step === 2 && (
-          <div className="grid grid-cols-2 gap-4">
+
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.irrigationArea}</label>
               <input name="irrigationArea" value={form.irrigationArea} onChange={handleChange} className="input" required />
+            </div>
+
+              <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.pumpType}</label>
+              <select name="pumpType" value={form.pumpType} onChange={handleChange} className="input" required>
+                <option value="">{t.pumpType}</option>
+                <option value="electric">{t.electric}</option>
+                <option value="solar">{t.solar}</option>
+                <option value="diesel">{t.diesel}</option>
+              </select>
             </div>
 
             <div className="flex flex-col">
@@ -337,14 +363,26 @@ export default function NewFilePage() {
               <input name="lateralSpacing" value={form.lateralSpacing} onChange={handleChange} className="input" required />
             </div>
 
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.driplineProduct}</label>
-              <input name="driplineProduct" value={form.driplineProduct} onChange={handleChange} className="input" required />
+                                   <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.twoNozzelDistance}</label>
+              <input name="twoNozzelDistance" value={form.twoNozzelDistance} onChange={handleChange} className="input" />
             </div>
 
-            <div className="flex flex-col">
+
+            
+                                   <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.twoNozzelDistance}</label>
+              <input name="twoNozzelDistance" value={form.twoNozzelDistance} onChange={handleChange} className="input" />
+            </div>
+
+                        <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.dripperDischarge}</label>
               <input name="dripperDischarge" value={form.dripperDischarge} onChange={handleChange} className="input" required />
+            </div>
+
+            {/* <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.driplineProduct}</label>
+              <input name="driplineProduct" value={form.driplineProduct} onChange={handleChange} className="input" required />
             </div>
 
             <div className="flex flex-col">
@@ -361,14 +399,37 @@ export default function NewFilePage() {
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.planeLateralQty}</label>
               <input name="planeLateralQty" value={form.planeLateralQty} onChange={handleChange} className="input" required />
+            </div> */}
+
+
+
+
+                        <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.quotationNo}</label>
+              <input name="quotationNo" value={form.quotationNo} onChange={handleChange} className="input" />
             </div>
+
+            <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.quotationDate}</label>
+              <input type="date" name="quotationDate" value={form.quotationDate} onChange={handleChange} className="input" />
+            </div> 
+
+            {/* <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.billNo}</label>
+              <input name="billNo" value={form.billNo} onChange={handleChange} className="input" />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="font-semibold mb-1">{t.billDate}</label>
+              <input type="date" name="billDate" value={form.billDate} onChange={handleChange} className="input" />
+            </div> */}
           </div>
         )}
 
          {step === 3 && (
 
 
-    <div className="flex flex-col items-center p-4">
+    <div className="flex flex-col items-center p-1">
       <h2 className="text-2xl font-bold text-cyan-700 mb-4">{t.graphTitle}</h2>
 
       {/* Toolbar */}
@@ -386,7 +447,7 @@ export default function NewFilePage() {
       {/* Canvas */}
       <Stage
         width={900}
-        height={600}
+        height={416}
         ref={stageRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -508,24 +569,182 @@ export default function NewFilePage() {
 
         )}
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between mt-6">
-          {step > 1 && (
-            <button type="button" onClick={prevStep} className="px-6 py-2 bg-gray-300 rounded hover:bg-gray-400">
-              {t.previous}
-            </button>
-          )}
-          {step < 2 && (
-            <button type="button" onClick={nextStep} className="px-6 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600">
-              {t.next}
-            </button>
-          )}
-          {/* {step === 2 && (
-            <button type="submit" className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-              {t.submit}
-            </button>
-          )} */}
-        </div>
+{step === 4 && (
+  <div className="grid grid-cols-2 gap-4">
+
+    {/* Bill Information */}
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.billNo}</label>
+      <input
+        name="billNo"
+        value={form.billNo}
+        onChange={handleChange}
+        className="input"
+        required
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.billAmount}</label>
+      <input
+        type="number"
+        name="billAmount"
+        value={form.billAmount}
+        onChange={handleChange}
+        className="input"
+        required
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w1Name}</label>
+      <input
+        name="w1Name"
+        value={form.w1Name}
+        onChange={handleChange}
+        className="input"
+        required
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w1Village}</label>
+      <input
+        name="w1Village"
+        value={form.w1Village}
+        onChange={handleChange}
+        className="input"
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w1Taluka}</label>
+      <input
+        name="w1Taluka"
+        value={form.w1Taluka}
+        onChange={handleChange}
+        className="input"
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w1District}</label>
+      <input
+        name="w1District"
+        value={form.w1District}
+        onChange={handleChange}
+        className="input"
+      />
+    </div>
+
+
+    {/* <div className="col-span-2 border-t pt-4"></div> */}
+
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w2Name}</label>
+      <input
+        name="w2Name"
+        value={form.w2Name}
+        onChange={handleChange}
+        className="input"
+        required
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w2Village}</label>
+      <input
+        name="w2Village"
+        value={form.w2Village}
+        onChange={handleChange}
+        className="input"
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w2Taluka}</label>
+      <input
+        name="w2Taluka"
+        value={form.w2Taluka}
+        onChange={handleChange}
+        className="input"
+      />
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w2District}</label>
+      <input
+        name="w2District"
+        value={form.w2District}
+        onChange={handleChange}
+        className="input"
+      />
+    </div>
+
+    {/* Date and Place */}
+    {/* <div className="col-span-2 border-t pt-4"></div> */}
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.fileDate}</label>
+      <input
+        type="date"
+        name="fileDate"
+        value={form.fileDate}
+        onChange={handleChange}
+        className="input"
+        required
+      />
+    </div>
+
+<div className="flex flex-col">
+  <label className="font-semibold mb-1">{t.place}</label>
+  <input
+    name="place"
+    value={form.place}
+    onChange={handleChange}
+    className="input"
+  />
+</div>
+  </div>
+)}
+
+
+{/* Navigation Buttons */}
+<div className="flex justify-between mt-6">
+  {/* Previous button */}
+  {step > 1 && (
+    <button
+      type="button"
+      onClick={prevStep}
+      className="px-6 py-2 bg-gray-300 rounded hover:bg-gray-400"
+    >
+      {t.previous}
+    </button>
+  )}
+
+  {/* Next button (only for steps 1–3) */}
+  {step < 4 && (
+    <button
+      type="button"
+      onClick={nextStep}
+      className="px-6 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600"
+    >
+      {t.next}
+    </button>
+  )}
+
+  {/* Submit button (only for step 4) */}
+  {step === 4 && (
+    <button
+      type="submit"
+      className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+    >
+      {t.submit}
+    </button>
+  )}
+</div>
+
 
         <style jsx>{`
           .input {
