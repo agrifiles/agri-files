@@ -1,3 +1,4 @@
+'use client';
 // frontend/pages/forgot.js
 import { useState } from 'react';
 export default function Forgot(){
