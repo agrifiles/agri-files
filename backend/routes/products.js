@@ -54,14 +54,17 @@ router.post('/save', async (req, res) => {
       await pool.query(query, values);
       return res.json({ success: true, message: 'Product updated successfully' });
     } else {
-      // ➕ Add new product
+
+
+
+      // Add new product (store spare1)
       const query = `
         INSERT INTO products (
           description_of_good, hsn_code, batch_no, cml_no, size,
           qty, gov_rate, company_rate, selling_rate, unit_of_measure,
-          sgst, cgst, bis
+          sgst, cgst, bis, spare1
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
         RETURNING product_id
       `;
       const values = [
@@ -77,15 +80,25 @@ router.post('/save', async (req, res) => {
         unit,
         sgst,
         cgst,
-        bis
+        bis,
+        spare1 ?? null
       ];
       const out = await pool.query(query, values);
       return res.json({ success: true, message: 'Product added successfully', product_id: out.rows[0].product_id });
+    
+
     }
+
+
   } catch (err) {
     console.error('Product save error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
+
+
+
+
+
 });
 
 /**
@@ -94,7 +107,7 @@ router.post('/save', async (req, res) => {
 router.get("/list", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM products WHERE is_deleted = FALSE ORDER BY product_id DESC"
+              "SELECT * FROM products WHERE is_deleted = FALSE AND (spare1 = $1 OR spare1 = 'master_User') ORDER BY product_id DESC"
     );
     res.json({ success: true, products: result.rows });
   } catch (err) {
