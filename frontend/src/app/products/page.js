@@ -4,6 +4,22 @@ import { useRouter,  } from 'next/navigation';
 import { LangContext } from '../layout';
 import Loader from '../components/loader';
 
+//import { API_BASE_URL } from '../../lib/config';
+
+// 2) helper to get current user id from localStorage (robust)
+const getCurrentUserId = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    // try a few common keys
+    return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null;
+  } catch (e) {
+    return null;
+  }
+};
+
 
 export default function InventoryPage() {
   const [loading, setLoading] = useState(false);
@@ -13,7 +29,28 @@ export default function InventoryPage() {
   const [products, setProducts] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
 
-  const [form, setForm] = useState({
+const [form, setForm] = useState({
+  product_id: null,                 // <-- added
+    spare1: getCurrentUserId(),   
+  description_of_good: '',
+  hsn_code: '',
+  batchNo: '',
+  cmlNo: '',
+  size: '',
+  qty: '',
+  govRate: '',
+  companyRate: '',
+  sellingRate: '',
+  unit: '',
+  sgst: '',
+  cgst: '',
+  bis: '',
+});
+
+// 2) reset clears product_id too
+const resetForm = () => {
+  setForm({
+    product_id: null,
     description_of_good: '',
     hsn_code: '',
     batchNo: '',
@@ -28,81 +65,79 @@ export default function InventoryPage() {
     cgst: '',
     bis: '',
   });
+  setEditingIndex(null);
+};
 
-  // Reset form
-  const resetForm = () => {
-    setForm({
-      description: '',
-      hsn: '',
-      batchNo: '',
-      cmlNo: '',
-      size: '',
-      qty: '',
-      govRate: '',
-      companyRate: '',
-      sellingRate: '',
-      unit: '',
-      sgst: '',
-      cgst: '',
-      bis: '',
-    });
-    setEditingIndex(null);
-  };
+// 3) handleEdit must set product_id (so backend will update)
+const handleEdit = (index) => {
+  setEditingIndex(index);
+  const p = products[index] || {};
 
-  // Handle input
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  setForm({
+    product_id: p.product_id ?? null,    // <-- important!
+    description_of_good: p.description_of_good ?? p.description ?? '',
+    hsn_code: p.hsn_code ?? p.hsn ?? '',
+    batchNo: p.batch_no ?? p.batchNo ?? '',
+    cmlNo: p.cml_no ?? p.cmlNo ?? '',
+    size: p.size ?? '',
+    qty: p.qty ?? '',
+    govRate: p.gov_rate ?? p.govRate ?? '',
+    companyRate: p.company_rate ?? p.companyRate ?? '',
+    sellingRate: p.selling_rate ?? p.sellingRate ?? '',
+    unit: p.unit_of_measure ?? p.unit ?? '',
+    sgst: p.sgst ?? '',
+    cgst: p.cgst ?? '',
+    bis: p.bis ?? '',
+  });
+};
 
-    const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('http://localhost:5006/products/list');
-      const data = await res.json();
-      if (data.success) setProducts(data.products);
-    } catch (err) {
-      console.error('Failed to fetch products', err);
-    } finally {
-       setLoading(false);
-    }
-  };
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  setForm(prev => ({ ...prev, [name]: value }));
+};
+const fetchProducts = async () => {
+  try {
+    setLoading(true);
+
+    const uid = getCurrentUserId();
+    console.log("UID", uid);
+
+    const base = "https://agri-files.onrender.com/products/list";
+    const url = uid ? `${base}?user_id=${encodeURIComponent(uid)}` : base;
+
+    console.log("Final URL:", url);
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    console.log("fetchProducts", data);
+
+    if (data.success) setProducts(data.products);
+  } catch (err) {
+    console.error("Failed to fetch products", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Fetch on component mount
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  // Add / Update
-// const handleSubmit = async (e) => {
-//   e.preventDefault();
-//     setLoading(true);
-//     try {
-//   const res = await fetch("http://localhost:5006/products/save", {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(form),
-//   })
-//   const data = await res.json();
-//   if (data.success) {
-//     resetForm();
-//     fetchProducts(); // refresh table
-//   } else {
-//     alert("Error saving product");
-//   } } catch (err) {
-//     console.error(err);
-//   }
-//   finally {
-//       setLoading(false);
-//   }
-// };
+
 
 const handleSubmit = async (e) => {
   e.preventDefault();
   try {
     setLoading(true);
-    const res = await fetch("http://localhost:5006/products/save", {
+    const res = await fetch("https://agri-files.onrender.com/products/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
+    console.log("res", JSON.stringify(form))
     const data = await res.json();
     if (data.success) {
       resetForm();
@@ -117,17 +152,40 @@ const handleSubmit = async (e) => {
   }
 };
 
-  // Edit existing
-  const handleEdit = (index) => {
-    setEditingIndex(index);
-    setForm(products[index]);
-  };
+
 
   // Delete product
-  const handleDelete = (index) => {
-    const updated = products.filter((_, i) => i !== index);
-    setProducts(updated);
-  };
+const handleDelete = async (index) => {
+  const p = products[index];
+  if (!p || !p.product_id) {
+    setProducts(prev => prev.filter((_, i) => i !== index));
+    return;
+  }
+
+  if (!confirm(`Delete product "${p.description_of_good || p.description}"?`)) return;
+
+  // optimistic remove
+  const before = products;
+  setProducts(prev => prev.filter((_, i) => i !== index));
+
+  try {
+    const url = `https://agri-files.onrender.com/products/${encodeURIComponent(p.product_id)}`;
+    const res = await fetch(url, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (!(res.ok && data.success)) {
+      // rollback
+      setProducts(before);
+      alert(data?.error || data?.message || 'Failed to delete product');
+    }
+    // success -> you can optionally call fetchProducts() to refresh
+  } catch (err) {
+    console.error('Delete error', err);
+    setProducts(before); // rollback
+    alert('Server/network error while deleting');
+  }
+};
+
 
     // back to settings
   const handleBack = (index) => {
@@ -169,11 +227,12 @@ const handleSubmit = async (e) => {
                     className="hover:bg-gray-100 transition border-b"
                   >
                     <td className="px-3 py-2 text-center">{i + 1}</td>
-                    <td className="px-3 py-2">{p.description}</td>
+                    <td className="px-3 py-2">{p.description_of_good}</td>
                     <td className="px-3 py-2 text-center">{p.qty}</td>
-                    <td className="px-3 py-2 text-center">{p.unit}</td>
-                    <td className="px-3 py-2 text-center">{p.sellingRate}</td>
-                    <td className="px-3 py-2 text-center space-x-2">
+                    <td className="px-3 py-2 text-center">{p.unit_of_measure}</td>
+                    <td className="px-3 py-2 text-center">{p.selling_rate}</td>
+
+                    {/* <td className="px-3 py-2 text-center space-x-2">
                       <button
                         onClick={() => handleEdit(i)}
                         className="text-blue-600 hover:text-blue-800 font-semibold"
@@ -186,7 +245,46 @@ const handleSubmit = async (e) => {
                       >
                         {t.delete}
                       </button>
-                    </td>
+
+                    </td> */}
+
+                    <td className="px-3 py-2 text-center space-x-2">
+  {p.spare1 === "master_User" ? (
+    <>
+      <button
+        disabled
+        className="text-gray-400 cursor-not-allowed font-semibold"
+        title="Master User product cannot be edited"
+      >
+        {t.edit}
+      </button>
+      <button
+        disabled
+        className="text-gray-400 cursor-not-allowed font-semibold ml-2"
+        title="Master User product cannot be deleted"
+      >
+        {t.delete}
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        onClick={() => handleEdit(i)}
+        className="text-blue-600 hover:text-blue-800 font-semibold"
+      >
+        {t.edit}
+      </button>
+      <button
+        onClick={() => handleDelete(i)}
+        className="text-red-600 hover:text-red-800 font-semibold ml-2"
+      >
+        {t.delete}
+      </button>
+    </>
+  )}
+</td>
+
+
                   </tr>
                 ))
               )}
@@ -216,6 +314,7 @@ const handleSubmit = async (e) => {
           <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
             <div className="flex flex-col col-span-2">
               <label className="font-semibold mb-1">{t.description}</label>
+              
               <input name="description_of_good" value={form.description_of_good} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" required />
             </div>
 
@@ -280,15 +379,23 @@ const handleSubmit = async (e) => {
             </div>
 
             <div className="col-span-2 flex justify-between mt-4">
+
               <button type="submit" className="px-5 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700">
                 {editingIndex !== null ? t.update : t.add}
               </button>
+
               {editingIndex !== null && (
                 <button type="button" onClick={resetForm} className="px-5 py-1 bg-gray-300 rounded hover:bg-gray-400">
                   {t.cancel}
                 </button>
               )}
+
+
             </div>
+
+
+
+
           </form>
         </div>
       </div>

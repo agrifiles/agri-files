@@ -20,7 +20,7 @@ router.post('/save', async (req, res) => {
       sgst,
       cgst,
       bis,
-      spare1 
+        spare1 
     } = req.body;
 
     if (!description_of_good || !hsn_code) {
@@ -102,9 +102,7 @@ router.post('/save', async (req, res) => {
 
 });
 
-/**
- * ✅ Get all products
- */
+// routes/products.js  — robust GET /products/list
 router.get("/list", async (req, res) => {
   try {
     const userId = req.query.user_id ?? null;
@@ -140,8 +138,6 @@ router.get("/list", async (req, res) => {
     res.status(500).json({ success: false, error: "Database error fetching products." });
   }
 });
-
-
 
 /**
  * ✅ Soft Delete Product
