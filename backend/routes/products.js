@@ -101,17 +101,39 @@ router.post('/save', async (req, res) => {
 
 });
 
-/**
- * ✅ Get all products
- */
+// routes/products.js  — robust GET /products/list
 router.get("/list", async (req, res) => {
   try {
-    const result = await pool.query(
-              "SELECT * FROM products WHERE is_deleted = FALSE AND (spare1 = $1 OR spare1 = 'master_User') ORDER BY product_id DESC"
-    );
-    res.json({ success: true, products: result.rows });
+    const userId = req.query.user_id ?? null;
+    console.log('GET /products/list user_id=', userId);
+
+    if (userId) {
+      // use parameterized query and pass [userId] to pool.query
+      const q = `
+        SELECT *
+        FROM products
+        WHERE is_deleted = FALSE
+          AND (spare1 = $1 OR spare1 = 'master_User')
+        ORDER BY product_id DESC
+      `;
+      console.log('Query with param. Params:', [userId]);
+      const result = await pool.query(q, [userId]);   // <-- pass parameter here
+      return res.json({ success: true, products: result.rows });
+    } else {
+      // no user supplied -> return only master_User entries
+      const q = `
+        SELECT *
+        FROM products
+        WHERE is_deleted = FALSE
+          AND spare1 = 'master_User'
+        ORDER BY product_id DESC
+      `;
+      console.log('Query without param (master only)');
+      const result = await pool.query(q);
+      return res.json({ success: true, products: result.rows });
+    }
   } catch (err) {
-    console.error("Error fetching products:", err);
+    console.error("GET /products/list ERROR:", err && (err.stack || err));
     res.status(500).json({ success: false, error: "Database error fetching products." });
   }
 });
