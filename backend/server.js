@@ -8,9 +8,11 @@ app.use(express.json()); // for parsing JSON
 
 const authRoutes = require('./routes/auth');
 const productsRouter = require('./routes/products');
+const filesRouter = require('./routes/files'); 
+app.use('/api/files', filesRouter);  
 app.use('/auth', authRoutes);
 app.use('/products', productsRouter);
-
+//app.use('/api/files', filesRouter);  
 
 // Test route to check DB connection
 app.get("/db-test", async (req, res) => {
