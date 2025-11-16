@@ -56,7 +56,7 @@ function mapFormToDb(form = {}) {
 router.post('/', async (req, res) => {
   try {
     // If you have auth middleware, req.user.id can be used as owner_id
-    const userId = req.user?.id || null;
+    const userId = req.body.owner_id || null;
     const { title = null, form = {}, shapes = {} } = req.body;
     const mapped = mapFormToDb(form);
     const shapes_json = JSON.stringify(shapes || []);
