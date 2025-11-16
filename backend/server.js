@@ -3,27 +3,27 @@ const pool = require("./db"); // Neon DB connection
 const cors = require("cors"); 
 const app = express();
 const PORT = 5006;
-// app.use(cors({ origin: "http://localhost:3000" }));
-app.use(express.json()); // for parsing JSON
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://agri-files.onrender.com'  // add any other frontends you use
-];
+ app.use(cors({ origin: "http://localhost:3000" }));
+ app.use(express.json()); // for parsing JSON
+// const allowedOrigins = [
+//   'http://localhost:3000',
+//   'https://agri-files.onrender.com'  // add any other frontends you use
+// ];
 
-app.use(cors({
-  origin: function(origin, callback){
-    // allow requests with no origin (curl, mobile, server-to-server)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
-    return callback(new Error('CORS policy: origin not allowed'));
-  },
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','X-Requested-With','Accept'],
-  credentials: true, // if you use cookies/auth; otherwise set false
-}));
+// app.use(cors({
+//   origin: function(origin, callback){
+//     // allow requests with no origin (curl, mobile, server-to-server)
+//     if (!origin) return callback(null, true);
+//     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+//     return callback(new Error('CORS policy: origin not allowed'));
+//   },
+//   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+//   allowedHeaders: ['Content-Type','Authorization','X-Requested-With','Accept'],
+//   credentials: true, // if you use cookies/auth; otherwise set false
+// }));
 
 // ensure preflight requests are handled immediately
-app.options('*', cors());
+//app.options('*', cors());
 
 const authRoutes = require('./routes/auth');
 const productsRouter = require('./routes/products');
