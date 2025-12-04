@@ -4,7 +4,9 @@ const cors = require("cors");
 const app = express();
 const PORT = 5006;
  app.use(cors({ origin: "http://localhost:3000" }));
- app.use(express.json()); // for parsing JSON
+ app.use(express.json());
+ 
+ // for parsing JSON
 // const allowedOrigins = [
 //   'http://localhost:3000',
 //   'https://agri-files.onrender.com'  // add any other frontends you use
@@ -28,9 +30,13 @@ const PORT = 5006;
 const authRoutes = require('./routes/auth');
 const productsRouter = require('./routes/products');
 const filesRouter = require('./routes/files'); 
+const billsRouter = require('./routes/bills');
 app.use('/api/files', filesRouter);  
 app.use('/auth', authRoutes);
 app.use('/products', productsRouter);
+app.use('/api/bills', billsRouter);
+
+
 //app.use('/api/files', filesRouter);  
 
 // Test route to check DB connection
@@ -74,6 +80,8 @@ app.get("/all", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch data" });
   }
 });
+
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

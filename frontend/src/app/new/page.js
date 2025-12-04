@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, useContext} from 'react';
 import { LangContext } from '../layout';
 import { Stage, Layer, Rect, Circle, Line, Image, Transformer } from 'react-konva';
 import useImage from 'use-image';
-import { useRouter } from 'next/navigation'; // optional navigation
+import { useRouter, useSearchParams } from 'next/navigation'; // optional navigation
 import { getCurrentUserId, API_BASE } from '@/lib/utils';
+import Loader from '@/components/Loader';
 
 export default function NewFilePage() {
   // ---------- Localization ----------
@@ -18,7 +19,7 @@ export default function NewFilePage() {
   
   const [form, setForm] = useState({
     fyYear: '', company: '', applicationId: '', farmerId: '', farmerName: '', fatherName: '',
-    mobile: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
+    mobile: '', aadhaarNo: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
     dripperSpacing: '', planeLateralQty: '', fileDate: new Date().toISOString().split('T')[0],
@@ -78,6 +79,119 @@ export default function NewFilePage() {
   const [currentLine, setCurrentLine] = useState(null);
   const [lang, setLang] = useState('en');
 
+  const searchParams = useSearchParams();
+
+  // If `?id=...` present, load file for editing and populate form
+  useEffect(() => {
+    const id = searchParams?.get?.('id');
+    if (!id) return;
+
+    const loadFileForEdit = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/files/${id}`);
+        const text = await res.text();
+        let data = null;
+        try { data = JSON.parse(text); } catch (_) { data = null; }
+        if (!res.ok || !data?.success) {
+          console.error('Failed to load file for edit', res.status, text);
+          return;
+        }
+
+        const file = data.file;
+        // set internal saved id so saves use PUT
+        const returnedId = file.id ?? file.ID ?? file.file_id ?? null;
+        if (returnedId) setSavedFileId(returnedId);
+
+        // map DB fields to form fields
+        setForm((prev) => ({
+          ...prev,
+          fyYear: file.fy_year ?? prev.fyYear,
+          company: file.company ?? prev.company,
+          applicationId: file.application_id ?? prev.applicationId,
+          farmerId: file.farmer_id ?? prev.farmerId,
+          farmerName: file.farmer_name ?? prev.farmerName,
+          fatherName: file.father_name ?? prev.fatherName,
+          mobile: file.mobile ?? prev.mobile,
+          quotationNo: file.quotation_no ?? prev.quotationNo,
+          quotationDate: file.quotation_date ?? prev.quotationDate,
+          billNo: file.bill_no ?? prev.billNo,
+          aadhaarNo: file.aadhaar_no ?? prev.aadhaarNo,
+          billDate: file.bill_date ? new Date(file.bill_date).toISOString().split('T')[0] : prev.billDate,
+          village: file.village ?? prev.village,
+          taluka: file.taluka ?? prev.taluka,
+          district: file.district ?? prev.district,
+          area8A: file.area8a ?? prev.area8A,
+          gutNo: file.gut_no ?? prev.gutNo,
+          cropName: file.crop_name ?? prev.cropName,
+          irrigationArea: file.irrigation_area ?? prev.irrigationArea,
+          lateralSpacing: file.lateral_spacing ?? prev.lateralSpacing,
+          driplineProduct: file.dripline_product ?? prev.driplineProduct,
+          dripperDischarge: file.dripper_discharge ?? prev.dripperDischarge,
+          dripperSpacing: file.dripper_spacing ?? prev.dripperSpacing,
+          planeLateralQty: file.plane_lateral_qty ?? prev.planeLateralQty,
+          fileDate: file.file_date ? new Date(file.file_date).toISOString().split('T')[0] : prev.fileDate,
+          salesEngg: file.sales_engg ?? prev.salesEngg,
+          pumpType: file.pump_type ?? prev.pumpType,
+          twoNozzelDistance: file.two_nozzel_distance ?? prev.twoNozzelDistance,
+          w1Name: file.w1_name ?? prev.w1Name,
+          w1Village: file.w1_village ?? prev.w1Village,
+          w1Taluka: file.w1_taluka ?? prev.w1Taluka,
+          w1District: file.w1_district ?? prev.w1District,
+          w2Name: file.w2_name ?? prev.w2Name,
+          w2Village: file.w2_village ?? prev.w2Village,
+          w2Taluka: file.w2_taluka ?? prev.w2Taluka,
+          w2District: file.w2_district ?? prev.w2District,
+          place: file.place ?? prev.place,
+          billAmount: file.bill_amount ?? prev.billAmount
+        }));
+
+        // shapes - be tolerant to several stored formats (stringified JSON, already-parsed array, double-encoded, etc.)
+        try {
+          const raw = file.shapes_json;
+          let parsed = [];
+
+          if (!raw) {
+            parsed = [];
+          } else if (Array.isArray(raw)) {
+            parsed = raw;
+          } else if (typeof raw === 'object') {
+            // object but not array
+            parsed = Array.isArray(raw) ? raw : [];
+          } else if (typeof raw === 'string') {
+            // try normal parse
+            try {
+              parsed = JSON.parse(raw);
+            } catch (e1) {
+              // try double-encoded JSON
+              try {
+                parsed = JSON.parse(JSON.parse(raw));
+              } catch (e2) {
+                // last-ditch: replace single quotes with double quotes and try
+                try {
+                  parsed = JSON.parse(raw.replace(/'/g, '"'));
+                } catch (e3) {
+                  console.warn('Invalid shapes_json for file (raw):', id, raw);
+                  parsed = [];
+                }
+              }
+            }
+          } else {
+            parsed = [];
+          }
+
+          setShapes(Array.isArray(parsed) ? parsed : []);
+        } catch (e) {
+          console.warn('Failed to parse shapes_json for file', id, e);
+          setShapes([]);
+        }
+      } catch (err) {
+        console.error('loadFileForEdit err', err);
+      }
+    };
+
+    loadFileForEdit();
+  }, [searchParams]);
+
 // const submitForm = async (e) => {
 //     e.preventDefault();
 //     // build payload exactly as backend expects
@@ -126,7 +240,7 @@ export default function NewFilePage() {
   const resetForm = () => {
   setForm({
     fyYear: '', company: '', applicationId: '', farmerId: '', farmerName: '', fatherName: '',
-    mobile: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
+    mobile: '', aadhaarNo: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
     dripperSpacing: '', planeLateralQty: '',
@@ -174,10 +288,13 @@ const submitForm = async (e) => {
 
   try {
     setSaving(true);
-    const url = `${API_BASE}/api/files`;
+    // switch between create (POST) and update (PUT) depending on savedFileId
+    const isUpdate = !!savedFileId;
+    const url = isUpdate ? `${API_BASE}/api/files/${savedFileId}` : `${API_BASE}/api/files`;
+    const method = isUpdate ? 'PUT' : 'POST';
 
     const res = await fetch(url, {
-      method: 'POST', // always POST per your requirement
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
@@ -205,15 +322,12 @@ const submitForm = async (e) => {
     if (returnedId) {
       // store briefly or use to navigate to view/edit page
       setSavedFileId(returnedId);
-      console.log('Created file id:', returnedId);
+      console.log(isUpdate ? 'Updated file id:' : 'Created file id:', returnedId);
     }
 
-    // Success: clear everything and give feedback
-   // resetForm();
-    alert('Saved successfully' + (returnedId ? ` (id: ${returnedId})` : ''));
-
-    // Optional: navigate to list page (uncomment if you import useRouter)
-    // router.push('/files'); // or wherever your list page is
+    // Success: clear everything and navigate back to files list
+    resetForm();
+    router.push('/files');
   } catch (err) {
     console.error('Network/save error', err);
     alert('Network error while saving — see console for details.');
@@ -344,8 +458,11 @@ const submitForm = async (e) => {
     transformer.getLayer().batchDraw();
   }, [selectedId, shapes]);
 
+  const isEditing = Boolean(savedFileId || searchParams?.get?.('id'));
+
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 py-5 px-4">
+      {saving && <Loader fullScreen message={savedFileId ? (t.updating || 'Updating...') : (t.savingFile || 'Saving file...')} />}
       <form
         onSubmit={submitForm}
         className="w-full max-w-6xl bg-white shadow-lg rounded-lg p-8 space-y-6"
@@ -353,7 +470,18 @@ const submitForm = async (e) => {
 
 <div className="flex items-center justify-between mb-8">
   {/* Title on the left */}
-  <h2 className="text-2xl font-bold text-cyan-700">{t.newFile}</h2>
+  <div className="flex items-center gap-4">
+  <h2 className="text-2xl font-bold text-cyan-700">{isEditing ? (t.update || 'Update File') : t.newFile}</h2>
+
+    {/* Cancel button to go back to files list */}
+    <button
+      type="button"
+      onClick={() => router.push('/files')}
+      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+    >
+      {t.cancel || 'Cancel'}
+    </button>
+  </div>
 
   {/* Step Indicators on the right */}
   <div className="flex items-center space-x-6">
@@ -727,9 +855,23 @@ const submitForm = async (e) => {
         name="billNo"
         value={form.billNo}
         onChange={handleChange}
-        className="input"
-        required
+        className="input bg-gray-50 text-gray-500 opacity-70"
+        disabled
       />
+      <p className="text-xs text-gray-400 mt-1">Bill number is linked separately via Bills. Edit from Files &gt; Link Bill.</p>
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.billDate}</label>
+      <input
+        type="date"
+        name="billDate"
+        value={form.billDate}
+        onChange={handleChange}
+        className="input bg-gray-50 text-gray-500 opacity-70"
+        disabled
+      />
+      <p className="text-xs text-gray-400 mt-1">Bill date is linked separately via Bills.</p>
     </div>
 
     <div className="flex flex-col">
@@ -886,7 +1028,7 @@ const submitForm = async (e) => {
   {/* Submit button (only for step 4) */}
   {step === 4 && (
         <button type="submit" className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-    {saving ? (t.saving || 'Saving...') : (t.submit || 'Submit')}
+      {saving ? (t.saving || 'Saving...') : (savedFileId ? (t.update || 'Update') : (t.submit || 'Submit'))}
   </button>
     // <button
     //   type="submit"

@@ -2,7 +2,7 @@
 import { useState,  useContext, useEffect } from 'react';
 import { useRouter,  } from 'next/navigation';
 import { LangContext } from '../layout';
-import Loader from '../components/loader';
+import Loader from '@/components/Loader';
 import { getCurrentUserId , API_BASE} from '@/lib/utils';
 
 //import { API_BASE_URL } from '../../lib/config';
@@ -197,7 +197,7 @@ const handleDelete = async (index) => {
   
     <div className="min-h-screen bg-gray-50 py-2  px-6 flex flex-col">
       {/* <h1 className="text-3xl font-bold text-cyan-700 mb-6">{t.products}</h1> */}
- {loading && <Loader />}
+      {loading && <Loader message="Loading products..." size="lg" fullScreen={true} />}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left side – Product Table */}
         <div className="w-full lg:w-2/3 bg-white shadow-lg rounded-lg p-6 overflow-x-auto">

@@ -131,32 +131,63 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/files/:id/link-bill
+// Body: { bill_id }
 router.post('/:id/link-bill', async (req, res) => {
   try {
     const { id } = req.params;
     const { bill_id } = req.body;
-    if (!bill_id) return res.status(400).json({ success: false, error: 'bill_id required' });
+    
+    console.log('Link-bill request: fileId=', id, 'billId=', bill_id, 'type=', typeof bill_id);
+    
+    if (!bill_id) {
+      return res.status(400).json({ success: false, error: 'bill_id required' });
+    }
 
-    // Optional: verify both exist
-    const fRes = await pool.query('SELECT id FROM files WHERE id=$1', [id]);
-    if (!fRes.rows[0]) return res.status(404).json({ success: false, error: 'File not found' });
+    // Verify file exists
+    const fRes = await pool.query('SELECT id, bill_no, bill_date FROM files WHERE id=$1', [id]);
+    if (!fRes.rows[0]) {
+      console.log('File not found with id:', id);
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+    const fileRow = fRes.rows[0];
 
-    const bRes = await pool.query('SELECT bill_id, status FROM bills WHERE bill_id=$1 OR id=$1', [bill_id]);
-    if (!bRes.rows[0]) return res.status(404).json({ success: false, error: 'Bill not found' });
+    // Verify bill exists in bills table
+    const bRes = await pool.query(
+      `SELECT bill_id, bill_no, bill_date, farmer_name, farmer_mobile FROM bills WHERE bill_id=$1`,
+      [bill_id]
+    );
+    if (!bRes.rows[0]) {
+      console.log('Bill not found with bill_id:', bill_id);
+      return res.status(404).json({ success: false, error: 'Bill not found in bills table' });
+    }
+    const billRow = bRes.rows[0];
+    const actualBillId = billRow.bill_id;
 
-    // Update the file to link the bill and set status final
+    console.log('Found bill:', actualBillId, 'with details:', billRow);
+
+    // Update file: copy bill details (bill_no, bill_date), set status to final
+    // (files table links to bills via the bill_no field, not bill_id)
     const upd = await pool.query(
-      `UPDATE files SET bill_id=$1, status=$2, updated_at=now() WHERE id=$3 RETURNING *`,
-      [bill_id, 'final', id]
+      `UPDATE files SET bill_no=$1, bill_date=$2, status=$3, updated_at=now() WHERE id=$4 RETURNING *`,
+      [billRow.bill_no, billRow.bill_date, 'final', id]
     );
 
-    // Optionally also update bill status to final
-    await pool.query(`UPDATE bills SET status=$1, updated_at=now() WHERE bill_id=$2 OR id=$2`, ['final', bill_id]);
+    if (!upd.rows[0]) {
+      console.log('Failed to update file');
+      return res.status(500).json({ success: false, error: 'Failed to update file' });
+    }
 
+    // Also update bill: set file_id and status to final (this creates the bidirectional link)
+    await pool.query(
+      `UPDATE bills SET file_id=$1, status=$2, updated_at=now() WHERE bill_id=$3`,
+      [id, 'final', actualBillId]
+    );
+
+    console.log('Successfully linked bill', actualBillId, 'to file', id);
     return res.json({ success: true, file: upd.rows[0] });
   } catch (err) {
-    console.error('link-bill err', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
+    console.error('link-bill err:', err);
+    return res.status(500).json({ success: false, error: 'Server error', details: err.message });
   }
 });
 

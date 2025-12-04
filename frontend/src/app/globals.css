@@ -19,6 +19,45 @@
   }
 }
 
+/* Print Styles for Bill */
+@media print {
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Hide the print button container */
+  #print-buttons {
+    display: none !important;
+  }
+  
+  /* Show the main content container */
+  body > div {
+    background: white !important;
+  }
+  
+  /* Ensure the A4 page shows correctly */
+  div[style*="width: 210mm"] {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
