@@ -3,6 +3,7 @@ import { useState,  useContext, useEffect } from 'react';
 import { useRouter,  } from 'next/navigation';
 import { LangContext } from '../layout';
 import Loader from '../components/loader';
+import { API_BASE } from '../../lib/utils';
 
 //import { API_BASE_URL } from '../../lib/config';
 
@@ -102,7 +103,7 @@ const fetchProducts = async () => {
     const uid = getCurrentUserId();
     console.log("UID", uid);
 
-    const base = "https://agri-files.onrender.com/products/list";
+    const base = `${API_BASE}/products/list`;
     const url = uid ? `${base}?user_id=${encodeURIComponent(uid)}` : base;
 
     console.log("Final URL:", url);
@@ -132,7 +133,7 @@ const handleSubmit = async (e) => {
   e.preventDefault();
   try {
     setLoading(true);
-    const res = await fetch("https://agri-files.onrender.com/products/save", {
+    const res = await fetch(`${API_BASE}/products/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -169,7 +170,7 @@ const handleDelete = async (index) => {
   setProducts(prev => prev.filter((_, i) => i !== index));
 
   try {
-    const url = `https://agri-files.onrender.com/products/${encodeURIComponent(p.product_id)}`;
+    const url = `${API_BASE}/products/${encodeURIComponent(p.product_id)}`;
     const res = await fetch(url, { method: 'DELETE' });
     const data = await res.json();
 

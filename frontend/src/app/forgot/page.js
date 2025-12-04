@@ -1,13 +1,15 @@
 'use client';
 // frontend/pages/forgot.js
 import { useState } from 'react';
+import {API_BASE} from '../lib/utils'
+
 export default function Forgot(){
   const [target,setTarget] = useState('');
   const [msg,setMsg] = useState('');
   async function requestOtp(e){
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5006/auth/forgot', {
+      const res = await fetch(`${API_BASE}/auth/forgot`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ target })
       });

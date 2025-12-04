@@ -4,22 +4,28 @@ import { useState, useRef, useEffect, useContext} from 'react';
 import { LangContext } from '../layout';
 import { Stage, Layer, Rect, Circle, Line, Image, Transformer } from 'react-konva';
 import useImage from 'use-image';
+import { useRouter } from 'next/navigation'; // optional navigation
+import { getCurrentUserId, API_BASE } from '@/lib/utils';
 
 export default function NewFilePage() {
   // ---------- Localization ----------
   const { t } = useContext(LangContext);
-
-
+  const router = useRouter();
   const [step, setStep] = useState(1);
+  const [savedFileId, setSavedFileId] = useState(null); // store returned id
+  const [saving, setSaving] = useState(false);
+
+  
   const [form, setForm] = useState({
     fyYear: '', company: '', applicationId: '', farmerId: '', farmerName: '', fatherName: '',
     mobile: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
-
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
-    dripperSpacing: '', planeLateralQty: '',fileDate: new Date().toISOString().split('T')[0]
+    dripperSpacing: '', planeLateralQty: '', fileDate: new Date().toISOString().split('T')[0],
+    // optional other fields referenced in UI
+    salesEngg: '', pumpType: '', twoNozzelDistance: '', w1Name: '', w1Village: '', w1Taluka: '', w1District: '',
+    w2Name: '', w2Village: '', w2Taluka: '', w2District: '', place: '', billAmount: ''
   });
-
   // const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value
 
     
@@ -39,16 +45,16 @@ export default function NewFilePage() {
     return updatedForm;
   });
 };
-
+// console.log(getCurrentUserId())
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
   const goToStep = (n) => setStep(n);
 
-  const submitForm = (e) => {
-    e.preventDefault();
-    console.log('Form submitted', form);
-    alert(t.formSubmitted || 'Form submitted successfully!');
-  };
+  // const submitForm = (e) => {
+  //   e.preventDefault();
+  //   console.log('Form submitted', form);
+  //   alert(t.formSubmitted || 'Form submitted successfully!');
+  // };
 
   const steps = [
     { id: 1, title: t.stepOne || 'Step 1' },
@@ -72,8 +78,150 @@ export default function NewFilePage() {
   const [currentLine, setCurrentLine] = useState(null);
   const [lang, setLang] = useState('en');
 
+// const submitForm = async (e) => {
+//     e.preventDefault();
+//     // build payload exactly as backend expects
+//     const payload = {
+//       title: `${form.farmerName || 'File'} - ${form.fileDate}`,
+//       form,
+//       shapes
+//     };
 
+//     try {
+//       setSaving(true);
+//       let res, data;
+//       if (savedFileId) {
+//         // update existing
+//         res = await fetch(`/api/files/${savedFileId}`, {
+//           method: 'PUT',
+//           headers: { 'Content-Type': 'application/json' },
+//           body: JSON.stringify(payload)
+//         });
+//         data = await res.json();
+//         if (!res.ok || !data.success) throw new Error(data.error || 'Update failed');
+//         alert(t.fileUpdated || 'File updated successfully');
+//       } else {
+//         // create new
+//         res = await fetch('/api/files', {
+//           method: 'POST',
+//           headers: { 'Content-Type': 'application/json' },
+//           body: JSON.stringify(payload)
+//         });
+//         data = await res.json();
+//         if (!res.ok || !data.success) throw new Error(data.error || 'Save failed');
+//         setSavedFileId(data.file.id || data.file.ID || data.file.id); // adapt to returned shape
+//         alert(t.fileSaved || `Saved (id: ${data.file.id})`);
+//       }
+//       // optional: navigate to view page
+//       // router.push(`/files/${data.file.id}`);
+//     } catch (err) {
+//       console.error('save file err', err);
+//       alert((err && err.message) || t.saveFailed || 'Save failed');
+//     } finally {
+//       setSaving(false);
+//     }
+//   };
   // ---------- Add Shapes ----------
+ 
+  const resetForm = () => {
+  setForm({
+    fyYear: '', company: '', applicationId: '', farmerId: '', farmerName: '', fatherName: '',
+    mobile: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
+    taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
+    irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
+    dripperSpacing: '', planeLateralQty: '',
+    fileDate: new Date().toISOString().split('T')[0],
+    salesEngg: '', pumpType: '', twoNozzelDistance: '',
+    w1Name: '', w1Village: '', w1Taluka: '', w1District: '',
+    w2Name: '', w2Village: '', w2Taluka: '', w2District: '',
+    place: '', billAmount: ''
+  });
+
+  setShapes([]);       // clear canvas
+  setStep(1);          // go back to step 1
+  setSavedFileId(null); // reset file id, so next SAVE is fresh POST
+};
+
+
+ 
+
+// const DEFAULT_API_BASE = API_BASE// use your deployed backend
+// const API_BASE = (typeof window !== 'undefined' && (process?.env?.NEXT_PUBLIC_API_BASE)) 
+//   ? process.env.NEXT_PUBLIC_API_BASE 
+//   : DEFAULT_API_BASE;
+
+const submitForm = async (e) => {
+  e.preventDefault();
+
+
+  if (saving) return; // prevent double submit
+    const owner_id = getCurrentUserId();
+
+// console.log("owner", owner_id)
+
+  const payload = {
+    owner_id,                         
+    title: `${form.farmerName || 'File'} - ${form.fileDate}`,
+    form,
+    shapes
+  };
+
+  // const payload = {
+  //   title: `${form.farmerName || 'File'} - ${form.fileDate}`,
+  //   form,
+  //   shapes
+  // };
+
+  try {
+    setSaving(true);
+    const url = `${API_BASE}/api/files`;
+
+    const res = await fetch(url, {
+      method: 'POST', // always POST per your requirement
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch (err) { data = null; }
+
+    if (!res.ok) {
+      console.error('Server returned non-OK status', res.status, res.statusText);
+      console.error('Response body:', text);
+      alert(`Save failed: ${res.status} ${res.statusText}\nSee console for details.`);
+      return;
+    }
+
+    // server returned OK - expect JSON with { success: true, file: {...} }
+    if (!data || !data.success) {
+      console.error('Unexpected server response', data ?? text);
+      alert('Save failed: server did not return the expected data. See console.');
+      return;
+    }
+
+    // Optional: capture returned id for later linking/navigation
+    const returnedId = data.file?.id ?? data.file?.ID ?? data.file?.file_id ?? null;
+    if (returnedId) {
+      // store briefly or use to navigate to view/edit page
+      setSavedFileId(returnedId);
+      console.log('Created file id:', returnedId);
+    }
+
+    // Success: clear everything and give feedback
+   // resetForm();
+    alert('Saved successfully' + (returnedId ? ` (id: ${returnedId})` : ''));
+
+    // Optional: navigate to list page (uncomment if you import useRouter)
+    // router.push('/files'); // or wherever your list page is
+  } catch (err) {
+    console.error('Network/save error', err);
+    alert('Network error while saving — see console for details.');
+  } finally {
+    setSaving(false);
+  }
+};
+ 
   const addShape = (type) => {
     if (type.includes('pipe')) {
       setTool(type);
@@ -732,16 +880,20 @@ export default function NewFilePage() {
     >
       {t.next}
     </button>
+
   )}
 
   {/* Submit button (only for step 4) */}
   {step === 4 && (
-    <button
-      type="submit"
-      className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-    >
-      {t.submit}
-    </button>
+        <button type="submit" className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+    {saving ? (t.saving || 'Saving...') : (t.submit || 'Submit')}
+  </button>
+    // <button
+    //   type="submit"
+    //   className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+    // >
+    //   {t.submit}
+    // </button>
   )}
 </div>
 
@@ -757,4 +909,264 @@ export default function NewFilePage() {
       </form>
     </div>
   );
+ 
+
+// return (
+//     <div className="min-h-screen flex flex-col items-center bg-gray-50 py-5 px-4">
+//       <form
+//         onSubmit={submitForm}
+//         className="w-full max-w-6xl bg-white shadow-lg rounded-lg p-8 space-y-6"
+//       >
+//         {/* top header and steps */}
+//         <div className="flex items-center justify-between mb-8">
+//           <h2 className="text-2xl font-bold text-cyan-700">{t.newFile}</h2>
+//           <div className="flex items-center space-x-6">
+//             {steps.map((s) => (
+//               <div
+//                 key={s.id}
+//                 className="flex flex-col items-center cursor-pointer"
+//                 onClick={() => goToStep(s.id)}
+//               >
+//                 <div
+//                   className={`w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-lg shadow-md transition-all ${
+//                     step === s.id
+//                       ? 'bg-cyan-600 scale-110'
+//                       : 'bg-gray-300 hover:bg-cyan-400 hover:scale-105'
+//                   }`}
+//                 >
+//                   {s.id}
+//                 </div>
+//                 <p className={`mt-2 text-sm font-medium ${step === s.id ? 'text-cyan-700' : 'text-gray-500'}`}>
+//                   {/* optional title */}
+//                 </p>
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+
+//         {/* Step 1 */}
+//         {step === 1 && (
+//           <div className="grid grid-cols-2 gap-4">
+//             {/* ... all your input fields unchanged ... */}
+//             <div className="flex flex-col">
+//               <label className="font-semibold mb-1">{t.fyYear}</label>
+//               <select name="fyYear" value={form.fyYear} onChange={handleChange} className="input" required>
+//                 <option value="">{t.fyYear}</option>
+//                 <option value="2025-26">2025-26</option>
+//                 <option value="2024-25">2024-25</option>
+//                 <option value="2023-24">2023-24</option>
+//               </select>
+//             </div>
+//             {/* farmerName etc... (copy remaining fields exactly from your component) */}
+//             <div className="flex flex-col">
+//               <label className="font-semibold mb-1">{t.farmerName}</label>
+//               <input name="farmerName" value={form.farmerName} onChange={handleChange} className="input" required />
+//             </div>
+//             {/* rest of fields... */}
+//           </div>
+//         )}
+
+//         {/* Step 2 */}
+//         {step === 2 && (
+//           <div className="grid grid-cols-2 gap-4">
+//             {/* ... */}
+//             <div className="flex flex-col">
+//               <label className="font-semibold mb-1">{t.selectCompany}</label>
+//               <select name="company" value={form.company} onChange={handleChange} className="input" required>
+//                 <option value="">{t.selectCompany}</option>
+//                 <option value="Agri Solutions">Agri Solutions</option>
+//                 <option value="Green Fields">Green Fields</option>
+//                 <option value="FarmTech">FarmTech</option>
+//               </select>
+//             </div>
+//             {/* other inputs... */}
+//           </div>
+//         )}
+
+//         {/* Step 3: Canvas */}
+//         {step === 3 && (
+//           <div className="flex flex-col items-center p-1">
+//             <h2 className="text-2xl font-bold text-cyan-700 mb-4">{t.graphTitle}</h2>
+
+//             <div className="flex flex-wrap justify-center gap-2 mb-4">
+//               <button type="button" onClick={() => addShape('well')} className="px-3 py-1 bg-blue-500 text-white rounded">{t.well}</button>
+//               <button type="button" onClick={() => addShape('main_pipe')} className="px-3 py-1 bg-orange-500 text-white rounded">{t.mainPipe}</button>
+//               <button type="button" onClick={() => addShape('lateral_pipe')} className="px-3 py-1 bg-sky-500 text-white rounded">{t.lateralPipe}</button>
+//               <button type="button" onClick={() => addShape('border')} className="px-3 py-1 bg-green-600 text-white rounded">{t.border}</button>
+//               <button type="button" onClick={() => addShape('valve_image')} className="px-3 py-1 bg-purple-500 text-white rounded">{t.valve}</button>
+//               <button type="button" onClick={() => addShape('filter_image')} className="px-3 py-1 bg-teal-600 text-white rounded">{t.filter}</button>
+//               <button type="button" onClick={() => addShape('flush_image')} className="px-3 py-1  bg-sky-600 text-white rounded">{t.flush}</button>
+//               <button type="button" onClick={handleDelete} className="px-3 py-1 bg-red-600 text-white rounded">{t.delete}</button>
+//             </div>
+
+//             <Stage
+//               width={900}
+//               height={416}
+//               ref={stageRef}
+//               onMouseDown={handleMouseDown}
+//               onMouseMove={handleMouseMove}
+//               onMouseUp={handleMouseUp}
+//               style={{
+//                 border: '2px solid #ccc',
+//                 backgroundSize: '20px 20px',
+//                 backgroundImage:
+//                   'linear-gradient(to right, #eee 1px, transparent 1px), linear-gradient(to bottom, #eee 1px, transparent 1px)',
+//                 cursor: tool?.includes('pipe') ? 'crosshair' : 'default',
+//               }}
+//             >
+//               <Layer>
+//                 {shapes.map((s) => {
+//                   const common = {
+//                     id: s.id,
+//                     draggable: !s.type.includes('pipe'),
+//                     onClick: () => setSelectedId(s.id),
+//                     onDragEnd: (e) => handleDragEnd(s.id, e),
+//                     onTransformEnd: (e) => handleTransformEnd(s.id, e.target),
+//                     hitStrokeWidth: 20,
+//                   };
+
+//                   if (s.type === 'well')
+//                     return (
+//                       <Circle
+//                         key={s.id}
+//                         {...common}
+//                         x={s.x}
+//                         y={s.y}
+//                         radius={s.radius}
+//                         stroke="blue"
+//                         strokeWidth={2}
+//                         fillEnabled={false}
+//                       />
+//                     );
+
+//                   if (s.type === 'border')
+//                     return (
+//                       <Rect
+//                         key={s.id}
+//                         {...common}
+//                         x={s.x}
+//                         y={s.y}
+//                         width={s.width}
+//                         height={s.height}
+//                         stroke="green"
+//                         strokeWidth={2}
+//                         fillEnabled={false}
+//                       />
+//                     );
+
+//                   if (s.type === 'main_pipe' || s.type === 'lateral_pipe')
+//                     return (
+//                       <Line
+//                         key={s.id}
+//                         {...common}
+//                         points={s.points}
+//                         stroke={s.stroke}
+//                         strokeWidth={s.strokeWidth}
+//                         dash={s.dash}
+//                       />
+//                     );
+
+//                   if (s.type === 'valve_image')
+//                     return (
+//                       <Image
+//                         key={s.id}
+//                         {...common}
+//                         x={s.x}
+//                         y={s.y}
+//                         width={s.width}
+//                         height={s.height}
+//                         image={valveImg}
+//                       />
+//                     );
+
+//                   if (s.type === 'filter_image')
+//                     return (
+//                       <Image
+//                         key={s.id}
+//                         {...common}
+//                         x={s.x}
+//                         y={s.y}
+//                         width={s.width}
+//                         height={s.height}
+//                         image={filterImg}
+//                       />
+//                     );
+
+//                   if (s.type === 'flush_image')
+//                     return (
+//                       <Image
+//                         key={s.id}
+//                         {...common}
+//                         x={s.x}
+//                         y={s.y}
+//                         width={s.width}
+//                         height={s.height}
+//                         image={flushImg}
+//                       />
+//                     );
+
+//                   return null;
+//                 })}
+
+//                 <Transformer ref={trRef} rotateEnabled={true} anchorSize={8} borderStroke="black" borderDash={[4, 4]} />
+//               </Layer>
+//             </Stage>
+//           </div>
+//         )}
+
+//         {/* Step 4 */}
+//         {step === 4 && (
+//           <div className="grid grid-cols-2 gap-4">
+//             {/* Bill info fields (unchanged) */}
+//             <div className="flex flex-col">
+//               <label className="font-semibold mb-1">{t.billNo}</label>
+//               <input name="billNo" value={form.billNo} onChange={handleChange} className="input" required />
+//             </div>
+//             <div className="flex flex-col">
+//               <label className="font-semibold mb-1">{t.billAmount}</label>
+//               <input type="number" name="billAmount" value={form.billAmount} onChange={handleChange} className="input" required />
+//             </div>
+//             {/* rest of W1/W2 and date/place */}
+//             <div className="flex flex-col">
+//               <label className="font-semibold mb-1">{t.fileDate}</label>
+//               <input type="date" name="fileDate" value={form.fileDate} onChange={handleChange} className="input" required />
+//             </div>
+//             <div className="flex flex-col">
+//               <label className="font-semibold mb-1">{t.place}</label>
+//               <input name="place" value={form.place} onChange={handleChange} className="input" />
+//             </div>
+//           </div>
+//         )}
+
+//         {/* Navigation Buttons */}
+//         <div className="flex justify-between mt-6">
+//           {step > 1 && (
+//             <button type="button" onClick={prevStep} className="px-6 py-2 bg-gray-300 rounded hover:bg-gray-400">
+//               {t.previous}
+//             </button>
+//           )}
+//           {step < 4 && (
+//             <button type="button" onClick={nextStep} className="px-6 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600">
+//               {t.next}
+//             </button>
+//           )}
+//           {step === 4 && (
+//             <button type="submit" className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+//               {saving ? (t.saving || 'Saving...') : (t.submit || 'Submit')}
+//             </button>
+//           )}
+//         </div>
+
+//         <style jsx>{`
+//           .input {
+//             border: 1px solid #e5e7eb;
+//             padding: 10px;
+//             border-radius: 6px;
+//             width: 100%;
+//           }
+//         `}</style>
+//       </form>
+//     </div>
+//   )
+
 }

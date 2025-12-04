@@ -20,7 +20,7 @@ const sections = [
     title: t.bills,
     description: t.descBills,
     buttonText: t.btnBills,
-    route: '/billing',
+    route: '/bill',
   },
     // You can add more sections later
     // { title: 'Inventory', description: 'Manage stock', buttonText: 'Go to Inventory', route: '/inventory' }

@@ -188,6 +188,8 @@ router.get('/', async (req, res) => {
       idx++;
     }
 
+    console.log("route",ownerId , status, q )
+
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
     // count total
