@@ -1,5 +1,49 @@
 'use client';
-import { Stage, Layer, Circle, Rect, Line } from 'react-konva';
+import { Stage, Layer, Circle, Rect, Line, Image as KonvaImage } from 'react-konva';
+import { useEffect, useState } from 'react';
+import useImage from 'use-image';
+
+function ValveImage({ data }) {
+  const [image] = useImage('/valve.png');
+  return (
+    <KonvaImage
+      x={data.x}
+      y={data.y}
+      width={data.width}
+      height={data.height}
+      image={image}
+      rotation={data.rotation || 0}
+    />
+  );
+}
+
+function FilterImage({ data }) {
+  const [image] = useImage('/screen_filter.png');
+  return (
+    <KonvaImage
+      x={data.x}
+      y={data.y}
+      width={data.width}
+      height={data.height}
+      image={image}
+      rotation={data.rotation || 0}
+    />
+  );
+}
+
+function FlushImage({ data }) {
+  const [image] = useImage('/flush_valve.png');
+  return (
+    <KonvaImage
+      x={data.x}
+      y={data.y}
+      width={data.width}
+      height={data.height}
+      image={image}
+      rotation={data.rotation || 0}
+    />
+  );
+}
 
 export default function FarmMapCanvas({ shapes }) {
   if (!shapes || shapes.length === 0) {
@@ -18,11 +62,11 @@ export default function FarmMapCanvas({ shapes }) {
 
   return (
     <Stage
-      width={720}
-      height={520}
-      scaleX={0.8}
-      scaleY={0.8}
-      style={{ background: 'white', margin: '0 auto' }}
+      width={900}
+      height={600}
+      scaleX={0.73}
+      scaleY={0.73}
+      style={{ background: 'white', maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
     >
       <Layer>
         {shapes.map((s) => {
@@ -63,6 +107,15 @@ export default function FarmMapCanvas({ shapes }) {
                 dash={s.dash || []}
               />
             );
+
+          if (s.type === 'valve_image')
+            return <ValveImage key={s.id} data={s} />;
+
+          if (s.type === 'filter_image')
+            return <FilterImage key={s.id} data={s} />;
+
+          if (s.type === 'flush_image')
+            return <FlushImage key={s.id} data={s} />;
 
           return null;
         })}

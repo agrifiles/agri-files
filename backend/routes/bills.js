@@ -18,12 +18,13 @@ async function ensureBillsCols() {
 
 router.get('/ping', (req, res) => res.json({ ok: true, msg: 'bills router alive' }));
 
-// GET /api/bills?owner_id=..&status=..&unlinked=1
+// GET /api/bills?owner_id=..&status=..&unlinked=1&file_id=..
 router.get('/', async (req, res) => {
   try {
     const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
     const status = req.query.status || null;
     const unlinked = req.query.unlinked === '1' || req.query.unlinked === 'true';
+    const fileId = req.query.file_id ? parseInt(req.query.file_id, 10) : null;
     const limit = parseInt(req.query.limit || '100', 10);
     const offset = parseInt(req.query.offset || '0', 10);
 
@@ -41,6 +42,10 @@ router.get('/', async (req, res) => {
     }
     if (unlinked) {
       where.push(`file_id IS NULL`);
+    }
+    if (fileId) {
+      where.push(`file_id = $${idx++}`);
+      params.push(fileId);
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
