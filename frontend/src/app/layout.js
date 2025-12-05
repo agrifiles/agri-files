@@ -105,9 +105,9 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <LangContext.Provider value={{ lang, t, toggleLang }}>
-          <div className="flex flex-col min-h-screen">
-            {/* Header */}
-            <header className="bg-cyan-600 text-white p-4 flex justify-between items-center shadow-md">
+          <div className="flex flex-col h-screen overflow-hidden">
+            {/* Header - Fixed */}
+            <header className="bg-cyan-600 text-white p-4 flex justify-between items-center shadow-md flex-shrink-0">
               <h1 className="text-xl font-bold">Agri Files App</h1>
               <button
                 className="bg-white text-cyan-600 px-3 py-1 rounded hover:bg-gray-100 transition"
@@ -117,9 +117,9 @@ export default function RootLayout({ children }) {
               </button>
             </header>
 
-            {/* ✅ Sub-header (auto-updates after login/logout) */}
+            {/* ✅ Sub-header (auto-updates after login/logout) - Fixed */}
             {user && (
-              <div className="bg-cyan-50 text-cyan-800 flex justify-between items-center px-6 py-2 border-b border-cyan-200 shadow-sm">
+              <div className="bg-cyan-50 text-cyan-800 flex justify-between items-center px-6 py-2 border-b border-cyan-200 shadow-sm flex-shrink-0">
       {/* Left side: user info */}
     <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm font-medium">
       <span className="bg-emerald-600 font-extrabold text-xl text-white px-3 py-2 rounded-full shadow-sm">
@@ -158,11 +158,11 @@ export default function RootLayout({ children }) {
               </div>
             )}
 
-            {/* Main content */}
-            <main className="flex-grow">{children}</main>
+            {/* Main content - Scrollable */}
+            <main className="flex-grow overflow-y-auto">{children}</main>
 
-            {/* Footer */}
-            <footer className="bg-gray-200 text-gray-700 text-center p-4">
+            {/* Footer - Fixed at bottom */}
+            <footer className="bg-gray-200 text-gray-700 text-center p-4 flex-shrink-0">
               © 2025 Agri Files. All rights reserved.
             </footer>
           </div>

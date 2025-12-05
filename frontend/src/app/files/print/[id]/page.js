@@ -14,6 +14,7 @@ export default function FilePrintPage({ params }) {
   const [routeId, setRouteId] = useState(null);
   const [shapes, setShapes] = useState([]);
   const [canvasImage, setCanvasImage] = useState(null);
+  const [billData, setBillData] = useState(null);
 
   useEffect(() => {
     // Add styles to the page
@@ -29,6 +30,14 @@ export default function FilePrintPage({ params }) {
         border: 2px solid #000;
         border-radius: 2px;
         box-shadow: 0 0 0 1px #000, 0 4px 20px rgba(0,0,0,0.15);
+      }
+      #farm-map-canvas canvas {
+        max-width: 100% !important;
+        max-height: 100% !important;
+        //width: auto !important;
+        height: auto !important;
+        display: block;
+        margin: 0 auto;
       }
       .row { display: flex; gap: 12px; align-items: center; }
       .col { flex: 1; }
@@ -81,6 +90,33 @@ export default function FilePrintPage({ params }) {
           } catch (err) {
             console.error('Error parsing shapes_json:', err);
             setShapes([]);
+          }
+        }
+
+        // Fetch linked bill (same logic as bill print page)
+        // The bills table has file_id column that links to files.id
+        if (fileData.id) {
+          try {
+            // First, query bills to find if there's a bill linked to this file
+            const billListRes = await fetch(`${API}/api/bills?file_id=${fileData.id}`);
+            const billListResult = await billListRes.json();
+            
+            if (billListResult.success && billListResult.bills && billListResult.bills.length > 0) {
+              // Found a linked bill, now fetch the full bill with items by ID
+              const linkedBillId = billListResult.bills[0].bill_id;
+              
+              const billRes = await fetch(`${API}/api/bills/${linkedBillId}`);
+              const billData = await billRes.json();
+              
+              if (billData.success && billData.bill) {
+                setBillData(billData.bill);
+                console.log('Bill data loaded:', billData.bill);
+              }
+            } else {
+              console.log('No bill linked to file:', fileData.id);
+            }
+          } catch (err) {
+            console.error('Error fetching bill:', err);
           }
         }
       } catch (error) {
@@ -424,31 +460,129 @@ export default function FilePrintPage({ params }) {
         </section>
 
         
-        {/* Page 5 - Terms & Conditions */}
+        {/* Page 6 - Bill Invoice */}
         <section className="sheet">
-          <div>
-            <h2 className="center">Last test page</h2>
+          {billData ? (
+            <div style={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {/* Bill Header */}
+              <div style={{ borderBottom: '2px solid #000', padding: '16px', background: '#f9fafb' }}>
+                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>AGRIFILES</h1>
+                  <p style={{ fontSize: '10px', color: '#374151', margin: 0 }}>Agricultural Solutions & Support Services</p>
+                </div>
+                <div style={{ textAlign: 'center', fontSize: '10px', color: '#374151' }}>
+                  <div>Address: Plot No. XYZ, Agricultural Complex, Pune - 411005</div>
+                  <div>GST No: 27AABCT1234H1Z0 | Phone: +91-9876543210</div>
+                </div>
+              </div>
 
-            <ol style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
-              <li>योजना अंतर्गत दिलेल्या साधनांचा उपयोग केवळ नमूद केलेल्या प्रकारसाठी करावा.</li>
-              <li>उत्पादनाची प्रतिष्ठा व व्यवहार नियमांनुसार ठेवावी.</li>
-              <li>अनुदान मिळाल्यानंतर १२ महिन्यांपर्यंत तपासणीसाठी अधिकारी भेट देऊ शकतात.</li>
-              <li>या पत्रातील चुकीची माहिती आढळल्यास अनुदान रद्द केले जाऊ शकते.</li>
-              <li>सर्व कागदपत्रे योग्य प्रकारे सुरक्षित ठेवावी.</li>
-            </ol>
+              {/* Bill Title */}
+              <div style={{ textAlign: 'center', padding: '12px', borderBottom: '1px solid #d1d5db', background: '#f9fafb' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>TAX INVOICE / BILL</h2>
+              </div>
 
-            <div className="signature">
-              <div className="sig-box">सत्यवटीचे नाव<br />(नाम व पद)</div>
-              <div className="sig-box">तपासण अधिकारी<br />(नाम व पद)</div>
-              <div className="sig-box">प्राधिकृत स्वाक्षरी</div>
-            </div>
+              {/* Bill Info */}
+              <div style={{ padding: '16px', borderBottom: '2px solid #d1d5db', display: 'flex', gap: '24px', fontSize: '11px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>BILL DETAILS</div>
+                  <div><strong>Bill No:</strong> {billData.bill_no || 'N/A'}</div>
+                  <div><strong>Bill Date:</strong> {billData.bill_date || 'N/A'}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>SOLD TO</div>
+                  <div><strong>Name:</strong> {file.farmer_name || 'N/A'}</div>
+                  <div><strong>Mobile:</strong> {file.mobile || 'N/A'}</div>
+                  <div><strong>Village:</strong> {file.village || 'N/A'}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>STATUS</div>
+                  <div><strong>Status:</strong> {billData.status || 'DRAFT'}</div>
+                  <div><strong>Crop:</strong> {file.crop_name || 'N/A'}</div>
+                </div>
+              </div>
 
-            <div style={{ marginTop: 30 }}>
-              <div className="box small">
-                <strong>Status:</strong> {file.status || 'N/A'}
+              {/* Items Table */}
+              <div style={{ padding: '16px', flex: 1 }}>
+                <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#111', color: 'white' }}>
+                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'left' }}>Sr</th>
+                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'left' }}>Description</th>
+                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'center' }}>HSN</th>
+                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'right' }}>Qty</th>
+                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'right' }}>Rate</th>
+                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'center' }}>GST%</th>
+                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'right' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {billData.items && billData.items.length > 0 ? (
+                      billData.items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'center' }}>{idx + 1}</td>
+                          <td style={{ border: '1px solid #d1d5db', padding: '6px' }}>{item.description || 'N/A'}</td>
+                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'center' }}>{item.hsn || 'N/A'}</td>
+                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right' }}>{Number(item.qty || 0).toFixed(2)}</td>
+                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right' }}>₹ {Number(item.sales_rate || 0).toFixed(2)}</td>
+                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'center' }}>{Number(item.gst_percent || 0).toFixed(1)}%</td>
+                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>₹ {Number(item.amount || 0).toFixed(2)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" style={{ border: '1px solid #d1d5db', padding: '24px', textAlign: 'center', color: '#6b7280' }}>No items</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {/* Totals */}
+                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ width: '50%' }}>
+                    <table style={{ width: '100%', fontSize: '11px' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #d1d5db' }}>
+                          <td style={{ padding: '8px', fontWeight: 'bold' }}>Taxable Amount:</td>
+                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>₹ {Number(billData.taxable_amount || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #d1d5db' }}>
+                          <td style={{ padding: '8px', fontWeight: 'bold' }}>Total GST:</td>
+                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>₹ {Number(billData.total_gst || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr style={{ background: '#111', color: 'white' }}>
+                          <td style={{ padding: '12px', fontWeight: 'bold' }}>TOTAL AMOUNT:</td>
+                          <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '14px' }}>₹ {Number(billData.final_amount || 0).toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <div style={{ borderTop: '2px solid #111', padding: '12px', textAlign: 'center', fontSize: '10px', color: '#6b7280' }}>
+                Thank you for your business | This is a computer-generated document
               </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ fontSize: '48px' }}>⚠️</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}>No Bill Linked</h2>
+              <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
+                This file does not have a linked bill.<br />
+                Please link a bill to this file first before printing.
+              </p>
+              <div className="box" style={{ marginTop: '16px', padding: '12px', background: '#fef3c7' }}>
+                <strong>Instructions:</strong>
+                <ol style={{ margin: '8px 0 0 20px', fontSize: '12px' }}>
+                  <li>Go back to the files list</li>
+                  <li>Click "Link Bill" for this file</li>
+                  <li>Select or create a bill</li>
+                  <li>Return here to print with bill details</li>
+                </ol>
+              </div>
+            </div>
+          )}
         </section>
         </div>
       </div>
