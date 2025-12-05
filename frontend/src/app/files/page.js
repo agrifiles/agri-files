@@ -255,6 +255,13 @@ export default function FilesPage() {
                     </button>
 
                     <button
+                      onClick={() => router.push(`/files/print/${id}`)}
+                      className="text-green-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-green-800 text-sm font-medium"
+                    >
+                      Print
+                    </button>
+
+                    <button
                       onClick={() => deleteFile(id)}
                       className="text-red-600 rounded-full border px-3 py-0 hover:text-red-900 hover:cursor-pointer text-sm font-medium"
                     >
