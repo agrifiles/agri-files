@@ -3,7 +3,7 @@
 import { useState, useContext } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LangContext } from '../layout';
-import {API_BASE} from '../lib/utils'
+import {API_BASE} from '@/lib/utils'
 
 
 export default function VerifyOtpPage() {
