@@ -4,6 +4,7 @@ import { useRouter,  } from 'next/navigation';
 import { LangContext } from '../layout';
 import Loader from '@/components/Loader';
 import { getCurrentUserId , API_BASE} from '@/lib/utils';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 //import { API_BASE_URL } from '../../lib/config';
 
@@ -22,7 +23,7 @@ import { getCurrentUserId , API_BASE} from '@/lib/utils';
 // };
 
 
-export default function InventoryPage() {
+function InventoryPageContent() {
   const [loading, setLoading] = useState(false);
 
   const { t } = useContext(LangContext);
@@ -195,211 +196,320 @@ const handleDelete = async (index) => {
 
   return (
   
-    <div className="min-h-screen bg-gray-50 py-2  px-6 flex flex-col">
-      {/* <h1 className="text-3xl font-bold text-cyan-700 mb-6">{t.products}</h1> */}
+    <div className="p-6 max-w-7xl mx-auto">
       {loading && <Loader message="Loading products..." size="lg" fullScreen={true} />}
-      <div className="flex flex-col lg:flex-row gap-6">
+      
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold leading-normal text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-600">
+          🛍️ {t.productList}
+        </h1>
+        <button
+          onClick={handleBack}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 hover:cursor-pointer transition font-semibold"
+        >
+          ← {t.back || 'Back'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left side – Product Table */}
-        <div className="w-full lg:w-2/3 bg-white shadow-lg rounded-lg p-6 overflow-x-auto">
-          <h2 className="text-xl font-semibold mb-4 text-cyan-700">{t.productList}</h2>
-
-          <table className="min-w-full border border-gray-200 text-sm">
-            <thead className="bg-cyan-600 text-white">
-              <tr>
-                <th className="px-3 py-2 border">#</th>
-                <th className="px-3 py-2 border">{t.description}</th>
-                <th className="px-3 py-2 border">{t.qty}</th>
-                <th className="px-3 py-2 border">{t.unit}</th>
-                <th className="px-3 py-2 border">{t.sellingRate}</th>
-                <th className="px-3 py-2 border">{t.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
+        <div className="lg:col-span-2">
+          <div className="overflow-hidden rounded-xl shadow-lg border-2 border-green-200">
+            <table className="min-w-full bg-white">
+              {/* Table Head */}
+              <thead className="bg-gradient-to-r from-green-600 to-emerald-600 text-white">
                 <tr>
-                  <td colSpan="6" className="text-center py-4 text-gray-500">
-                    {t.noProducts}
-                  </td>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">#</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t.description}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t.qty}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t.unit}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t.sellingRate}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">{t.actions}</th>
                 </tr>
-              ) : (
-                products.map((p, i) => (
-                  <tr
-                    key={i}
-                    className="hover:bg-gray-100 transition border-b"
-                  >
-                    <td className="px-3 py-2 text-center">{i + 1}</td>
-                    <td className="px-3 py-2">{p.description_of_good}</td>
-                    <td className="px-3 py-2 text-center">{p.qty}</td>
-                    <td className="px-3 py-2 text-center">{p.unit_of_measure}</td>
-                    <td className="px-3 py-2 text-center">{p.selling_rate}</td>
-
-                    {/* <td className="px-3 py-2 text-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(i)}
-                        className="text-blue-600 hover:text-blue-800 font-semibold"
-                      >
-                        {t.edit}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(i)}
-                        className="text-red-600 hover:text-red-800 font-semibold"
-                      >
-                        {t.delete}
-                      </button>
-
-                    </td> */}
-
-                    <td className="px-3 py-2 text-center space-x-2">
-  {p.spare1 === "master_User" ? (
-    <>
-      <button
-        disabled
-        className="text-gray-400 cursor-not-allowed font-semibold"
-        title="Master User product cannot be edited"
-      >
-        {t.edit}
-      </button>
-      <button
-        disabled
-        className="text-gray-400 cursor-not-allowed font-semibold ml-2"
-        title="Master User product cannot be deleted"
-      >
-        {t.delete}
-      </button>
-    </>
-  ) : (
-    <>
-      <button
-        onClick={() => handleEdit(i)}
-        className="text-blue-600 hover:text-blue-800 font-semibold"
-      >
-        {t.edit}
-      </button>
-      <button
-        onClick={() => handleDelete(i)}
-        className="text-red-600 hover:text-red-800 font-semibold ml-2"
-      >
-        {t.delete}
-      </button>
-    </>
-  )}
-</td>
-
-
+              </thead>
+              
+              {/* Table Body */}
+              <tbody className="divide-y divide-gray-200">
+                {products.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-8 text-gray-500 font-medium">
+                      {t.noProducts}
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  products.map((p, i) => (
+                    <tr
+                      key={i}
+                      className={`hover:bg-green-50 transition ${
+                        i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-700">{i + 1}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{p.description_of_good}</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-700">{p.qty}</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-700">{p.unit_of_measure}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-800">₹{p.selling_rate}</td>
+                      
+                      <td className="px-4 py-3 flex gap-2">
+                        {p.spare1 === "master_User" ? (
+                          <>
+                            <button
+                              disabled
+                              className="text-gray-400 cursor-not-allowed text-sm font-medium"
+                              title="Master User product cannot be edited"
+                            >
+                              {t.edit}
+                            </button>
+                            <button
+                              disabled
+                              className="text-gray-400 cursor-not-allowed text-sm font-medium"
+                              title="Master User product cannot be deleted"
+                            >
+                              {t.delete}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleEdit(i)}
+                              className="text-blue-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-blue-800 text-sm font-medium"
+                            >
+                              {t.edit}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(i)}
+                              className="text-red-600 rounded-full border px-3 py-0 hover:text-red-900 hover:cursor-pointer text-sm font-medium"
+                            >
+                              {t.delete}
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Right side – Product Form */}
-        <div className="w-full lg:w-1/3 bg-white shadow-lg rounded-lg p-6">
+        <div className="lg:col-span-1">
+          <div className="bg-white shadow-lg rounded-xl border-2 border-green-200 p-5">
+            <h2 className="text-xl font-bold text-green-700 mb-5">
+              {editingIndex !== null ? t.editProduct : t.addProduct}
+            </h2>
 
-<div className="flex items-center justify-between ">          <h2 className="text-xl font-semibold text-cyan-700">
-            {editingIndex !== null ? t.editProduct : t.addProduct}
-          </h2>
-          
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Section 1: Basic Details */}
+              <div className="border-b-2 border-green-100 pb-4">
+                <h3 className="font-bold text-green-600 mb-3 text-sm">📋 Basic Details</h3>
+                <div className="space-y-2.5">
+                  <div className="flex flex-col">
+                    <label className="font-semibold text-sm text-gray-700 mb-1">{t.description}</label>
+                    <input 
+                      name="description_of_good" 
+                      value={form.description_of_good} 
+                      onChange={handleChange} 
+                      className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                      required 
+                    />
+                  </div>
 
-                          <button
-                  onClick={handleBack}
-                  className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 transition text-sm m-2.5"
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.hsn}</label>
+                      <input 
+                        name="hsn_code" 
+                        value={form.hsn_code} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.batchNo}</label>
+                      <input 
+                        name="batchNo" 
+                        value={form.batchNo} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.cmlNo}</label>
+                      <input 
+                        name="cmlNo" 
+                        value={form.cmlNo} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.size}</label>
+                      <input 
+                        name="size" 
+                        value={form.size} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Pricing & Taxes */}
+              <div className="border-b-2 border-green-100 pb-4">
+                <h3 className="font-bold text-green-600 mb-3 text-sm">💰 Pricing & Taxes</h3>
+                <div className="space-y-3">
+                  {/* Row 1: Qty, GovRate, CompanyRate */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.qty}</label>
+                      <input 
+                        name="qty" 
+                        type="number"
+                        step="0.01"
+                        value={form.qty} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.govRate}</label>
+                      <input 
+                        name="govRate" 
+                        type="number"
+                        step="0.01"
+                        value={form.govRate} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.companyRate}</label>
+                      <input 
+                        name="companyRate" 
+                        type="number"
+                        step="0.01"
+                        value={form.companyRate} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 2: SellingRate, Unit, BIS */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.sellingRate}</label>
+                      <input 
+                        name="sellingRate" 
+                        type="number"
+                        step="0.01"
+                        value={form.sellingRate} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.unit}</label>
+                      <input 
+                        name="unit" 
+                        value={form.unit} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.bis}</label>
+                      <input 
+                        name="bis" 
+                        value={form.bis} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: SGST %, CGST % */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.sgst} %</label>
+                      <input 
+                        name="sgst" 
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={form.sgst} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="font-semibold text-xs text-gray-700 mb-1">{t.cgst} %</label>
+                      <input 
+                        name="cgst" 
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={form.cgst} 
+                        onChange={handleChange} 
+                        className="border-2 border-green-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-3">
+                <button 
+                  type="submit" 
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-lg hover:from-green-700 hover:to-emerald-700 transition shadow-md text-sm"
                 >
-                  {t.back || 'Back to Settings'}
+                  {editingIndex !== null ? t.update : t.add}
                 </button>
 
-        </div>
-
-                
-
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col col-span-2">
-              <label className="font-semibold mb-1">{t.description}</label>
-              
-              <input name="description_of_good" value={form.description_of_good} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" required />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.hsn}</label>
-              <input name="hsn_code" value={form.hsn_code} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.batchNo}</label>
-              <input name="batchNo" value={form.batchNo} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.cmlNo}</label>
-              <input name="cmlNo" value={form.cmlNo} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.size}</label>
-              <input name="size" value={form.size} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.qty}</label>
-              <input name="qty" value={form.qty} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.govRate}</label>
-              <input name="govRate" value={form.govRate} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.companyRate}</label>
-              <input name="companyRate" value={form.companyRate} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.sellingRate}</label>
-              <input name="sellingRate" value={form.sellingRate} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.unit}</label>
-              <input name="unit" value={form.unit} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.sgst}</label>
-              <input name="sgst" value={form.sgst} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.cgst}</label>
-              <input name="cgst" value={form.cgst} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="flex flex-col col-span-2">
-              <label className="font-semibold mb-1">{t.bis}</label>
-              <input name="bis" value={form.bis} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
-
-            <div className="col-span-2 flex justify-between mt-4">
-
-              <button type="submit" className="px-5 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700">
-                {editingIndex !== null ? t.update : t.add}
-              </button>
-
-              {editingIndex !== null && (
-                <button type="button" onClick={resetForm} className="px-5 py-1 bg-gray-300 rounded hover:bg-gray-400">
-                  {t.cancel}
-                </button>
-              )}
-
-
-            </div>
-
-
-
-
-          </form>
+                {editingIndex !== null && (
+                  <button 
+                    type="button" 
+                    onClick={resetForm} 
+                    className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 font-bold rounded-lg hover:bg-gray-400 transition text-sm"
+                  >
+                    {t.cancel}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function InventoryPage() {
+  return (
+    <ProtectedRoute>
+      <InventoryPageContent />
+    </ProtectedRoute>
   );
 }

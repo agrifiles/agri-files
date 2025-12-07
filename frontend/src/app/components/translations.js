@@ -2,6 +2,7 @@
 
 const translations = {
   en: {
+
     // General
     register: "Register",
     login: "Login",
@@ -167,9 +168,39 @@ place: "Place",
   "edit": "Edit",
   "delete": "Delete",
   "actions": "Actions",
-  "noProducts": "No products available"
+  "noProducts": "No products available",
 
+  // Home page welcome section
+  "welcomeTitle": "Welcome to",
+  "welcomeBrand": "AgriFiles",
+  "welcomeSubtitle": "Your comprehensive agricultural management solution",
+  "farmManagement": "Goverment Schemes",
+  "farmManagementDesc": "Implemet the Goverment Schemes",
+  "billTracking": "Bill Tracking",
+  "billTrackingDesc": "Create and manage bills with ease",
+  "productInventory": "Product Inventory",
+  "productInventoryDesc": "Keep track of your products and supplies",
+  "getStarted": "Get started today and streamline your agricultural operations",
+
+    "fillNewFile": "Fill New File",
+  "fillNewFileSubtitle": "Start a fresh agricultural file with all your farm details and records",
+  "fillNewFileFeatureFarmer": "Farmer & Farm Details",
+  "fillNewFileFeatureIrrigation": "Irrigation & Equipment Setup",
+  "fillNewFileFeatureDrip": "Drip System Configuration",
+  "fillNewFileFeatureQuotation": "Quotation & Bills",
+  "fillNewFileFeatureLayout": "Field Layout Mapping"
+,
+
+    "seeExistingFiles": "See Existing Files",
+  "existingSubtitle": "Access, view, and manage all your existing agricultural records",
+
+  "existingFeatureViewFiles": "View All Farm Files",
+  "existingFeatureBills": "Browse Bills & Quotations",
+  "existingFeatureEdit": "Edit Existing Records",
+  "existingFeatureExport": "Print & Export Data",
+  "existingFeatureMaps": "View Field Maps"
  },
+
 
   mr: {
     // General
@@ -227,7 +258,7 @@ place: "Place",
     verify : "Tapasa",
 
 fillNewFile: "नवीन फाईल भरा",
-seeExistingFiles: "विद्यमान फाईली पहा",
+seeExistingFiles: "आधिच्या फाईली पहा",
 status: "स्थिती",
 
 // NEW
@@ -302,19 +333,19 @@ place: "ठिकाण",
         export: 'माहिती निर्यात करा (कन्सोल)',
 
 //settings
-     products: 'प्रोडक्टस',
-       descProducts: 'नवीन समाविष्ट करा ! ',
-       btnProduct : 'प्रोडक्टस बघा !',
+     products: 'साहित्य',
+       descProducts: 'नवीन समाविष्ट करा ',
+       btnProduct : 'प्रोडक्टस बघा',
      bills: 'बिल',
-       descBills: 'बिल पहा ! ',
-       btnBills : 'बिला वर जा !',
+       descBills: 'बिल पहा ',
+       btnBills : 'बिला वर जा',
 
        //products
 
-         "products": "उत्पादने",
-  "productList": "उत्पादन यादी",
-  "addProduct": "उत्पादन जोडा",
-  "editProduct": "उत्पादन संपादा",
+         "products": "साहित्य",
+  "productList": "साहित्य यादी",
+  "addProduct": "साहित्य जोडा",
+  "editProduct": "साहित्य संपादा",
   "description": "वस्तूचे वर्णन",
   "hsn": "HSN कोड",
   "batchNo": "बॅच क्रमांक",
@@ -334,7 +365,35 @@ place: "ठिकाण",
   "edit": "संपादा",
   "delete": "हटवा",
   "actions": "क्रिया",
-  "noProducts": "उत्पादने उपलब्ध नाहीत"
+  "noProducts": "उत्पादने उपलब्ध नाहीत",
+
+  // Home page welcome section
+  "welcomeTitle": "अ‍ॅग्रीफाइल्स ",
+  "welcomeBrand": "मध्ये आपले स्वागत आहे",
+  "welcomeSubtitle": "तुमचा कृषी व्यवस्थापन उपाय!",
+  "farmManagement": "सरकारी योजना",
+  "farmManagementDesc": "सरकारी योजनांची अंमलबजावणी",
+  "billTracking": "बिल ट्रॅकिंग",
+  "billTrackingDesc": "सहजतेने बिल तयार करा आणि व्यवस्थापित करा",
+  "productInventory": "उत्पादन इन्व्हेंटरी",
+  "productInventoryDesc": "आपल्या उत्पादन आणि पूरवठ्याचे नोंद ठेवा",
+  "getStarted": "आज सुरुवात करा आणि आपल्या कृषी कार्यक्रम सुव्यवस्थित करा",
+  fillNewFile: "नवीन फाईल भरा",
+fillNewFileSubtitle: "आपल्या शेताची सर्व माहिती आणि नोंदींसह नवीन कृषी फाईल सुरू करा",
+fillNewFileFeatureFarmer: "शेतकरी व शेताची माहिती",
+fillNewFileFeatureIrrigation: "सिंचन व उपकरणांची मांडणी",
+fillNewFileFeatureDrip: "ड्रिप प्रणाली कॉन्फिगरेशन",
+fillNewFileFeatureQuotation: "कोटेशन व बीले",
+fillNewFileFeatureLayout: "शेत लेआउट मॅपिंग",
+
+  "seeExistingFiles": "विद्यमान फाईल्स पहा",
+  "existingSubtitle": "आपल्या सर्व विद्यमान कृषी नोंदी पाहा, व्यवस्थापित करा आणि ऍक्सेस करा",
+
+  "existingFeatureViewFiles": "सर्व शेत फाईल्स पहा",
+  "existingFeatureBills": "बिले व कोटेशन ब्राउझ करा",
+  "existingFeatureEdit": "विद्यमान नोंदी संपादित करा",
+  "existingFeatureExport": "डेटा प्रिंट व एक्सपोर्ट करा",
+  "existingFeatureMaps": "शेत नकाशे पहा"
 
   },
 };

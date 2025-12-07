@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE, getCurrentUserId } from '@/lib/utils';
 import Loader from '@/components/Loader';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export default function BillsListPage() {
+function BillsListPageContent() {
   const API = API_BASE;
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -179,7 +180,13 @@ return (
       </table>
     </div>
   </div>
-);
+  );
+}
 
-
+export default function BillsListPage() {
+  return (
+    <ProtectedRoute>
+      <BillsListPageContent />
+    </ProtectedRoute>
+  );
 }

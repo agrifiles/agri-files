@@ -3,8 +3,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE } from '@/lib/utils';
 import Loader from '@/components/Loader';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export default function NewBillPage() {
+function NewBillPageContent() {
   const API = API_BASE;
   const router = useRouter();
 
@@ -443,4 +444,12 @@ return (
     {isSaving && <Loader message="Saving bill..." size="lg" fullScreen={true} />}
   </div>
 );
+}
+
+export default function NewBillPage() {
+  return (
+    <ProtectedRoute>
+      <NewBillPageContent />
+    </ProtectedRoute>
+  );
 }
