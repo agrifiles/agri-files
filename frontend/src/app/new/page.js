@@ -5,12 +5,13 @@ import { LangContext } from '../layout';
 import { Stage, Layer, Rect, Circle, Line, Image, Transformer } from 'react-konva';
 import useImage from 'use-image';
 import { useRouter, useSearchParams } from 'next/navigation'; // optional navigation
-import { getCurrentUserId, API_BASE } from '@/lib/utils';
+import { getCurrentUserId, getCurrentUser, API_BASE } from '@/lib/utils';
 import Loader from '@/components/Loader';
+import { districtsEn, districtsMr } from '@/lib/districts';
 
 export default function NewFilePage() {
   // ---------- Localization ----------
-  const { t } = useContext(LangContext);
+  const { t, lang } = useContext(LangContext);
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [savedFileId, setSavedFileId] = useState(null); // store returned id
@@ -25,7 +26,9 @@ export default function NewFilePage() {
     dripperSpacing: '', planeLateralQty: '', fileDate: new Date().toISOString().split('T')[0],
     // optional other fields referenced in UI
     salesEngg: '', pumpType: '', twoNozzelDistance: '', w1Name: '', w1Village: '', w1Taluka: '', w1District: '',
-    w2Name: '', w2Village: '', w2Taluka: '', w2District: '', place: '', billAmount: ''
+    w2Name: '', w2Village: '', w2Taluka: '', w2District: '', place: '', billAmount: '',
+    // engineer details (auto-populated from company selection)
+    engineerDesignation: '', engineerMobile: ''
   });
   // const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value
 
@@ -37,6 +40,50 @@ export default function NewFilePage() {
 
   setForm((prev) => {
     const updatedForm = { ...prev, [name]: value };
+
+    // ✅ If the "company" field changes, auto-populate engineer details only if they exist
+    if (name === "company") {
+      const selectedCompany = companies.find(c => c.company_name === value);
+      if (selectedCompany && selectedCompany.engineer_name) {
+        // Only populate if engineer_name exists
+        updatedForm.salesEngg = selectedCompany.engineer_name;
+        updatedForm.engineerDesignation = selectedCompany.designation || '';
+        updatedForm.engineerMobile = selectedCompany.mobile || '';
+      } else {
+        // Clear fields if no engineer name exists
+        console.log("No engineer found for selected company");
+        updatedForm.salesEngg = '';
+        updatedForm.engineerDesignation = '';
+        updatedForm.engineerMobile = '';
+      }
+    }
+
+    // ✅ If "district" changes, populate talukas and reset taluka
+    if (name === "district") {
+      const selectedDistrict = districts.find(d => d.name === value);
+      if (selectedDistrict) {
+        setTalukas(selectedDistrict.tahasil);
+        updatedForm.taluka = ''; // reset taluka
+      }
+    }
+
+    // ✅ If "w1District" changes, populate w1Talukas and reset w1Taluka
+    if (name === "w1District") {
+      const selectedDistrict = districts.find(d => d.name === value);
+      if (selectedDistrict) {
+        setW1Talukas(selectedDistrict.tahasil);
+        updatedForm.w1Taluka = ''; // reset taluka
+      }
+    }
+
+    // ✅ If "w2District" changes, populate w2Talukas and reset w2Taluka
+    if (name === "w2District") {
+      const selectedDistrict = districts.find(d => d.name === value);
+      if (selectedDistrict) {
+        setW2Talukas(selectedDistrict.tahasil);
+        updatedForm.w2Taluka = ''; // reset taluka
+      }
+    }
 
     // ✅ If the "village" field changes, also update "place"
     if (name === "village") {
@@ -77,9 +124,68 @@ export default function NewFilePage() {
   const [tool, setTool] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentLine, setCurrentLine] = useState(null);
-  const [lang, setLang] = useState('en');
+  const [companies, setCompanies] = useState([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  
+  // Districts and Talukas state - will be set based on language
+  const [districts, setDistricts] = useState([]);
+  const [talukas, setTalukas] = useState([]);
+  const [w1Talukas, setW1Talukas] = useState([]);
+  const [w2Talukas, setW2Talukas] = useState([]);
 
   const searchParams = useSearchParams();
+
+  // Load districts based on selected language
+  useEffect(() => {
+    if (lang === 'mr') {
+      setDistricts(districtsMr);
+    } else {
+      setDistricts(districtsEn);
+    }
+  }, [lang]);
+
+  // Fetch companies on mount
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoadingCompanies(true);
+        const res = await fetch(`${API_BASE}/api/files/companies/list`);
+        const data = await res.json();
+        console.log('Fetched companies:', data);
+        if (data.success && data.companies) {
+          setCompanies(data.companies);
+        }
+      } catch (err) {
+        console.error('Failed to fetch companies:', err);
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+    fetchCompanies();
+  }, []);
+
+  // Set default district and taluka from user data (for main, w1, and w2)
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user?.district) {
+      setForm((prev) => ({
+        ...prev,
+        district: user.district,
+        taluka: user?.taluka || '',
+        w1District: user.district,
+        w1Taluka: user?.taluka || '',
+        w2District: user.district,
+        w2Taluka: user?.taluka || ''
+      }));
+      // Auto-populate talukas for the default district (for all three)
+      const selectedDistrict = districts.find(d => d.name === user.district);
+      if (selectedDistrict) {
+        setTalukas(selectedDistrict.tahasil);
+        setW1Talukas(selectedDistrict.tahasil);
+        setW2Talukas(selectedDistrict.tahasil);
+      }
+    }
+  }, [districts]); // Run when districts data is loaded
 
   // If `?id=...` present, load file for editing and populate form
   useEffect(() => {
@@ -248,7 +354,8 @@ export default function NewFilePage() {
     salesEngg: '', pumpType: '', twoNozzelDistance: '',
     w1Name: '', w1Village: '', w1Taluka: '', w1District: '',
     w2Name: '', w2Village: '', w2Taluka: '', w2District: '',
-    place: '', billAmount: ''
+    place: '', billAmount: '',
+    engineerDesignation: '', engineerMobile: ''
   });
 
   setShapes([]);       // clear canvas
@@ -561,12 +668,22 @@ const submitForm = async (e) => {
 
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.district}</label>
-              <input name="district" value={form.district} onChange={handleChange} className="input" />
+              <select name="district" value={form.district} onChange={handleChange} className="input" required>
+                <option value="">{t.district}</option>
+                {districts.map(d => (
+                  <option key={d.name} value={d.name}>{d.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.taluka}</label>
-              <input name="taluka" value={form.taluka} onChange={handleChange} className="input" />
+              <select name="taluka" value={form.taluka} onChange={handleChange} className="input" required>
+                <option value="">Select Taluka</option>
+                {talukas.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex flex-col">
@@ -594,11 +711,13 @@ const submitForm = async (e) => {
 
                         <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.selectCompany}</label>
-              <select name="company" value={form.company} onChange={handleChange} className="input" required>
-                <option value="">{t.selectCompany}</option>
-                <option value="Agri Solutions">Agri Solutions</option>
-                <option value="Green Fields">Green Fields</option>
-                <option value="FarmTech">FarmTech</option>
+              <select name="company" value={form.company} onChange={handleChange} className="input" required disabled={loadingCompanies}>
+                <option value="">{loadingCompanies ? 'Loading...' : t.selectCompany}</option>
+                {companies.map((comp) => (
+                  <option key={comp.company_id} value={comp.company_name}>
+                    {comp.company_name}
+                  </option>
+                ))}
               </select>
             </div>
             
@@ -881,9 +1000,10 @@ const submitForm = async (e) => {
         name="billAmount"
         value={form.billAmount}
         onChange={handleChange}
-        className="input"
-        required
+        className="input bg-gray-50 text-gray-500 opacity-70"
+        disabled
       />
+      <p className="text-xs text-gray-400 mt-1">Bill amount is linked separately via Bills. Edit from Files &gt; Link Bill.</p>
     </div>
 
     <div className="flex flex-col">
@@ -908,23 +1028,33 @@ const submitForm = async (e) => {
     </div>
 
     <div className="flex flex-col">
-      <label className="font-semibold mb-1">{t.w1Taluka}</label>
-      <input
-        name="w1Taluka"
-        value={form.w1Taluka}
-        onChange={handleChange}
-        className="input"
-      />
-    </div>
-
-    <div className="flex flex-col">
       <label className="font-semibold mb-1">{t.w1District}</label>
-      <input
+      <select
         name="w1District"
         value={form.w1District}
         onChange={handleChange}
         className="input"
-      />
+      >
+        <option value="">{t.w1District}</option>
+        {districts.map(d => (
+          <option key={d.name} value={d.name}>{d.name}</option>
+        ))}
+      </select>
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w1Taluka}</label>
+      <select
+        name="w1Taluka"
+        value={form.w1Taluka}
+        onChange={handleChange}
+        className="input"
+      >
+        <option value="">Select Taluka</option>
+        {w1Talukas.map(t => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
     </div>
 
 
@@ -953,23 +1083,33 @@ const submitForm = async (e) => {
     </div>
 
     <div className="flex flex-col">
-      <label className="font-semibold mb-1">{t.w2Taluka}</label>
-      <input
-        name="w2Taluka"
-        value={form.w2Taluka}
-        onChange={handleChange}
-        className="input"
-      />
-    </div>
-
-    <div className="flex flex-col">
       <label className="font-semibold mb-1">{t.w2District}</label>
-      <input
+      <select
         name="w2District"
         value={form.w2District}
         onChange={handleChange}
         className="input"
-      />
+      >
+        <option value="">{t.w2District}</option>
+        {districts.map(d => (
+          <option key={d.name} value={d.name}>{d.name}</option>
+        ))}
+      </select>
+    </div>
+
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.w2Taluka}</label>
+      <select
+        name="w2Taluka"
+        value={form.w2Taluka}
+        onChange={handleChange}
+        className="input"
+      >
+        <option value="">Select Taluka</option>
+        {w2Talukas.map(t => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
     </div>
 
     {/* Date and Place */}

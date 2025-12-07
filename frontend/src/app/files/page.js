@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {API_BASE} from '../../lib/utils';
+import { API_BASE, getCurrentUserId } from '../../lib/utils';
 import Loader from '@/components/Loader';
 
 export default function FilesPage() {
@@ -54,7 +54,7 @@ export default function FilesPage() {
       try { fJson = JSON.parse(fText); } catch (_) {}
       const filesList = fJson?.files || [];
 
-      const bRes = await fetch(`${API}/api/bills`);
+      const bRes = await fetch(`${API}/api/bills?owner_id=${ownerId}`);
       const bText = await bRes.text();
       let bJson = null;
       try { bJson = JSON.parse(bText); } catch (_) {}

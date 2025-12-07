@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE } from '@/lib/utils';
+import { API_BASE, getCurrentUserId } from '@/lib/utils';
 import Loader from '@/components/Loader';
 
 export default function BillsListPage() {
@@ -47,7 +47,9 @@ export default function BillsListPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/bills`);
+      const ownerId = getCurrentUserId();
+      const queryParams = ownerId ? `?owner_id=${ownerId}` : '';
+      const res = await fetch(`${API}/api/bills${queryParams}`);
       const text = await res.text();
       const data = JSON.parse(text || '{}');
       setBills(data.bills || []);
