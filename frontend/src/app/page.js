@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LangContext } from './layout';
-import {API_BASE} from '../lib/utils'
+import { API_BASE, getCurrentUser } from '../lib/utils'
 
 export default function LoginPage() {
   const { t } = useContext(LangContext);
@@ -12,6 +12,15 @@ export default function LoginPage() {
   const [form, setForm] = useState({ username: '', password: '' });
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      // User is already logged in, redirect to dashboard
+      router.push('/dashboard');
+    }
+  }, [router]);
 
   const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 

@@ -87,14 +87,15 @@
 
 'use client';
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LangContext } from '../layout';
 import { API_BASE } from '@/lib/utils';
+import { districtsEn, districtsMr } from '@/lib/districts';
 
 
 export default function RegisterPage() {
-  const { t } = useContext(LangContext);
+  const { t, lang } = useContext(LangContext);
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -116,9 +117,31 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [districts, setDistricts] = useState([]);
+  const [talukas, setTalukas] = useState([]);
 
-  const handle = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  // Load districts based on language
+  useEffect(() => {
+    if (lang === 'mr') {
+      setDistricts(districtsMr);
+    } else {
+      setDistricts(districtsEn);
+    }
+  }, [lang]);
+
+  const handle = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+
+    // ✅ If district changes, populate talukas
+    if (name === 'district') {
+      const selectedDistrict = districts.find(d => d.name === value);
+      if (selectedDistrict) {
+        setTalukas(selectedDistrict.tahasil);
+        setForm(prev => ({ ...prev, taluka: '' })); // reset taluka
+      }
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -154,8 +177,21 @@ export default function RegisterPage() {
           <input name="business_name" onChange={handle} value={form.business_name} placeholder={t.businessName} className="input" required />
           <input name="email" onChange={handle} value={form.email} placeholder={t.email} className="input" required />
           <input name="mobile" onChange={handle} value={form.mobile} placeholder={t.mobile + ' (10-digit)'} className="input" required />
-          <input name="district" onChange={handle} value={form.district} placeholder={t.district} className="input" required />
-          <input name="taluka" onChange={handle} value={form.taluka} placeholder={t.taluka} className="input" required />
+          
+          <select name="district" onChange={handle} value={form.district} className="input" required>
+            <option value="">{t.district}</option>
+            {districts.map(d => (
+              <option key={d.name} value={d.name}>{d.name}</option>
+            ))}
+          </select>
+
+          <select name="taluka" onChange={handle} value={form.taluka} className="input" required>
+            <option value="">Select Taluka</option>
+            {talukas.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+
           <input name="gst_no" onChange={handle} value={form.gst_no} placeholder={t.gstNo} className="input" required />
           <input name="gst_state" onChange={handle} value={form.gst_state} placeholder={t.gstState} className="input" required />
           <input name="password" type="password" onChange={handle} value={form.password} placeholder={t.password} className="input col-span-2" required />

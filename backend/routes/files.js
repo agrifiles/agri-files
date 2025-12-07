@@ -269,6 +269,18 @@ router.get('/:id', async (req, res) => {
 //     // const ownerCheck = await pool.query('SELECT owner_id FROM files WHERE id=$1',[id]);
 //     // if (!ownerCheck.rows[0] || ownerCheck.rows[0].owner_id !== req.user?.id) return res.status(403).json({success:false, error:'Forbidden'});
 
+// GET /api/files/companies/list
+// Fetch all companies with engineer details from company_oem table
+router.get('/companies/list', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT company_id, company_name, engineer_name, designation, mobile FROM company_oem ORDER BY company_name');
+    return res.json({ success: true, companies: rows });
+  } catch (err) {
+    console.error('fetch companies err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 //     await pool.query('DELETE FROM files WHERE id=$1', [id]);
 //     return res.json({ success: true });
 //   } catch (err) {
