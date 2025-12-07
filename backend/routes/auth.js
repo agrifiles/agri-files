@@ -241,6 +241,71 @@ router.get('/db-test', async (req, res) => {
   }
 });
 
+// GET USER PROFILE
+router.get('/profile/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
 
+    const result = await pool.query(
+      `SELECT id, name, business_name, email, mobile, short_address, 
+              district, taluka, bank_name, account_name, account_number, 
+              ifsc, gst_no, gst_state, is_verified 
+       FROM users WHERE id=$1`,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json({ user: result.rows[0] });
+  } catch (err) {
+    console.error('GET PROFILE ERR', err);
+    res.status(500).json({ error: 'Server error while fetching profile' });
+  }
+});
+
+// UPDATE USER PROFILE
+router.put('/profile/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name, business_name, email, mobile, short_address,
+      district, taluka, bank_name, account_name, account_number,
+      ifsc, gst_no, gst_state
+    } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Update user profile
+    const result = await pool.query(
+      `UPDATE users 
+       SET name=$1, business_name=$2, email=$3, mobile=$4, short_address=$5,
+           district=$6, taluka=$7, bank_name=$8, account_name=$9, account_number=$10,
+           ifsc=$11, gst_no=$12, gst_state=$13
+       WHERE id=$14
+       RETURNING id, name, business_name, email, mobile, short_address,
+                 district, taluka, bank_name, account_name, account_number,
+                 ifsc, gst_no, gst_state`,
+      [name, business_name, email, mobile, short_address, district, taluka,
+       bank_name, account_name, account_number, ifsc, gst_no, gst_state, id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json({ user: result.rows[0], message: 'Profile updated successfully' });
+  } catch (err) {
+    console.error('UPDATE PROFILE ERR', err);
+    res.status(500).json({ error: 'Server error while updating profile' });
+  }
+});
 
 module.exports = router;

@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE } from '@/lib/utils';
 import dynamic from 'next/dynamic';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Dynamic import for farm map canvas to avoid SSR issues
 const FarmMapCanvas = dynamic(() => import('./FarmMapCanvas'), { ssr: false });
 
-export default function FilePrintPage({ params }) {
+function FilePrintPageContent({ params }) {
   const API = API_BASE;
   const router = useRouter();
   const [file, setFile] = useState(null);
@@ -606,5 +607,13 @@ export default function FilePrintPage({ params }) {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function FilePrintPage({ params }) {
+  return (
+    <ProtectedRoute>
+      <FilePrintPageContent params={params} />
+    </ProtectedRoute>
   );
 }

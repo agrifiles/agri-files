@@ -8,8 +8,9 @@ import { useRouter, useSearchParams } from 'next/navigation'; // optional naviga
 import { getCurrentUserId, getCurrentUser, API_BASE } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import { districtsEn, districtsMr } from '@/lib/districts';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export default function NewFilePage() {
+function NewFilePageContent() {
   // ---------- Localization ----------
   const { t, lang } = useContext(LangContext);
   const router = useRouter();
@@ -1451,4 +1452,12 @@ const submitForm = async (e) => {
 //     </div>
 //   )
 
+}
+
+export default function NewFilePage() {
+  return (
+    <ProtectedRoute>
+      <NewFilePageContent />
+    </ProtectedRoute>
+  );
 }

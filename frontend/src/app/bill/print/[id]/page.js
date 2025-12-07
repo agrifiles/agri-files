@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { API_BASE } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Convert number to words (Indian English)
 function numberToWords(num) {
@@ -25,7 +26,7 @@ function numberToWords(num) {
   return convert(Math.floor(num));
 }
 
-export default function BillPrint({ params }) {
+function BillPrintContent({ params }) {
     const router = useRouter();
   const API = API_BASE;
   const [bill, setBill] = useState(null);
@@ -441,5 +442,13 @@ export default function BillPrint({ params }) {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function BillPrint({ params }) {
+  return (
+    <ProtectedRoute>
+      <BillPrintContent params={params} />
+    </ProtectedRoute>
   );
 }

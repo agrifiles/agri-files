@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE } from '@/lib/utils';
 import Loader from '@/components/Loader';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export default function BillFormPage({ params }) {
+function BillFormPageContent({ params }) {
   const API = API_BASE;
   const router = useRouter();
 
@@ -513,5 +514,13 @@ export default function BillFormPage({ params }) {
 
       {isSaving && <Loader message="Saving bill..." size="lg" fullScreen={true} />}
     </div>
+  );
+}
+
+export default function BillFormPage({ params }) {
+  return (
+    <ProtectedRoute>
+      <BillFormPageContent params={params} />
+    </ProtectedRoute>
   );
 }

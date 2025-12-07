@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE, getCurrentUserId } from '../../lib/utils';
 import Loader from '@/components/Loader';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export default function FilesPage() {
+function FilesPageContent() {
   const router = useRouter();
 
   const API = API_BASE 
@@ -322,5 +323,13 @@ export default function FilesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FilesPage() {
+  return (
+    <ProtectedRoute>
+      <FilesPageContent />
+    </ProtectedRoute>
   );
 }

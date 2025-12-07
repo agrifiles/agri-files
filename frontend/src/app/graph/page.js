@@ -5,8 +5,9 @@ import { useState, useRef, useEffect, useContext } from 'react';
 import { Stage, Layer, Rect, Circle, Line, Image, Transformer } from 'react-konva';
 import useImage from 'use-image';
 import { LangContext } from '../layout';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export default function FarmLayoutTool() {
+function FarmLayoutToolContent() {
   const stageRef = useRef(null);
   const trRef = useRef(null);
 
@@ -286,5 +287,13 @@ export default function FarmLayoutTool() {
         {t.export}
       </button>
     </div>
+  );
+}
+
+export default function FarmLayoutTool() {
+  return (
+    <ProtectedRoute>
+      <FarmLayoutToolContent />
+    </ProtectedRoute>
   );
 }
