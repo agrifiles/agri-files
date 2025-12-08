@@ -29,6 +29,7 @@ function NewBillPageContent() {
   // bill header
   const [billNo, setBillNo] = useState('');
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lastFetchedMonthYear, setLastFetchedMonthYear] = useState(''); // track to avoid duplicate calls
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [status, setStatus] = useState('draft');
@@ -41,6 +42,50 @@ function NewBillPageContent() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 const [searchTerm, setSearchTerm] = useState('');
 const [filteredProducts, setFilteredProducts] = useState([]);
+
+  // Fetch next bill number from backend
+  const fetchNextBillNo = async (dateStr) => {
+    if (!userId) return;
+    
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1; // 1-12
+    const year = date.getFullYear();
+    const monthYearKey = `${year}-${month}`;
+    
+    // Skip if already fetched for this month/year
+    if (monthYearKey === lastFetchedMonthYear) return;
+    
+    try {
+      const res = await fetch(`${API}/api/bills/next-bill-no?owner_id=${userId}&month=${month}&year=${year}`);
+      const data = await res.json();
+      if (data.success && data.bill_no) {
+        setBillNo(data.bill_no);
+        setLastFetchedMonthYear(monthYearKey);
+      }
+    } catch (err) {
+      console.error('Failed to fetch next bill number:', err);
+    }
+  };
+
+  // Handle bill date change - only fetch if month/year changed
+  const handleBillDateChange = (newDate) => {
+    const oldDate = new Date(billDate);
+    const newDateObj = new Date(newDate);
+    
+    setBillDate(newDate);
+    
+    // Check if month or year changed
+    if (oldDate.getMonth() !== newDateObj.getMonth() || oldDate.getFullYear() !== newDateObj.getFullYear()) {
+      fetchNextBillNo(newDate);
+    }
+  };
+
+  // Fetch next bill number on mount
+  useEffect(() => {
+    if (userId && billDate) {
+      fetchNextBillNo(billDate);
+    }
+  }, [userId]);
   // load products
   const loadProducts = async () => {
     setLoadingProducts(true);
@@ -209,10 +254,10 @@ return (
         <div>
           <label className="block text-sm font-medium text-gray-700">Bill No</label>
           <input
-            className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-gray-50"
+            className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
             value={billNo}
-            onChange={(e) => setBillNo(e.target.value)}
-            placeholder="Auto / enter"
+            disabled
+            placeholder="Auto-generated"
           />
         </div>
 
@@ -222,7 +267,7 @@ return (
             type="date"
             className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-white"
             value={billDate}
-            onChange={(e) => setBillDate(e.target.value)}
+            onChange={(e) => handleBillDateChange(e.target.value)}
           />
         </div>
 

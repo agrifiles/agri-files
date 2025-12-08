@@ -18,6 +18,56 @@ async function ensureBillsCols() {
 
 router.get('/ping', (req, res) => res.json({ ok: true, msg: 'bills router alive' }));
 
+// GET /api/bills/next-bill-no?owner_id=..&month=..&year=..
+// Returns the next bill number for the given owner and month/year
+router.get('/next-bill-no', async (req, res) => {
+  try {
+    const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
+    const month = parseInt(req.query.month, 10); // 1-12
+    const year = parseInt(req.query.year, 10);   // e.g., 2025
+
+    if (!ownerId || !month || !year) {
+      return res.status(400).json({ success: false, error: 'owner_id, month, and year are required' });
+    }
+
+    // Month names for bill number format
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const monthStr = monthNames[month - 1];
+    const prefix = `${year}${monthStr}_`; // e.g., "2025DEC_"
+
+    // Find the latest bill_no for this owner with matching prefix
+    const sql = `
+      SELECT bill_no FROM bills 
+      WHERE owner_id = $1 
+        AND bill_no LIKE $2
+      ORDER BY bill_no DESC
+      LIMIT 1
+    `;
+    const { rows } = await pool.query(sql, [ownerId, `${prefix}%`]);
+
+    let nextSeq = 1;
+    if (rows.length > 0 && rows[0].bill_no) {
+      // Extract sequence from bill_no like "2025DEC_05"
+      const lastBillNo = rows[0].bill_no;
+      const parts = lastBillNo.split('_');
+      if (parts.length >= 2) {
+        const lastSeq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(lastSeq)) {
+          nextSeq = lastSeq + 1;
+        }
+      }
+    }
+
+    // Format: 2025DEC_01, 2025DEC_02, etc.
+    const nextBillNo = `${prefix}${String(nextSeq).padStart(2, '0')}`;
+
+    return res.json({ success: true, bill_no: nextBillNo, sequence: nextSeq });
+  } catch (err) {
+    console.error('get next-bill-no err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // GET /api/bills?owner_id=..&status=..&unlinked=1&file_id=..
 router.get('/', async (req, res) => {
   try {
