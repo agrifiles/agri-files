@@ -3,7 +3,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LangContext } from './layout';
-import { API_BASE, getCurrentUser } from '../lib/utils'
+import { API_BASE, getCurrentUser, setCurrentUser } from '../lib/utils'
 
 export default function LoginPage() {
   const { t } = useContext(LangContext);
@@ -36,8 +36,8 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to login');
 
-      // save user info for dashboard
-localStorage.setItem("user", JSON.stringify(data.user));
+      // save user info for dashboard via util
+      setCurrentUser(data.user);
 
 // redirect to dashboard
 router.push("/dashboard");

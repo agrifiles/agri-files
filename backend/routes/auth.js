@@ -161,11 +161,17 @@ router.post('/login', async (req, res) => {
         email: user.email,
         mobile: user.mobile,
         business_name: user.business_name,
-                district: user.district,
+        district: user.district,
         taluka: user.taluka,
         gst_no: user.gst_no,
         gst_state: user.gst_state,
-        is_verified: user.is_verified
+        is_verified: user.is_verified,
+                short_address: user.short_address,
+                        bank_name: user.bank_name,
+        account_name: user.account_name,
+        account_number: user.account_number,
+                ifsc: user.ifsc,
+                is_active: user.is_active
       }
     });
   } catch (err) {

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { API_BASE } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { getCurrentUser } from '@/lib/utils';
 
 // Dynamic import for farm map canvas to avoid SSR issues
 const FarmMapCanvas = dynamic(() => import('./FarmMapCanvas'), { ssr: false });
@@ -16,95 +17,217 @@ function FilePrintPageContent({ params }) {
   const [shapes, setShapes] = useState([]);
   const [canvasImage, setCanvasImage] = useState(null);
   const [billData, setBillData] = useState(null);
+  const [userData, setUserData] = useState(null);
 
-  useEffect(() => {
-    // Add styles to the page
-    const style = document.createElement('style');
-    style.textContent = `
-      .sheet {
+  // Format date to readable DD/MM/YYYY (removes timestamp)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr; // fallback if invalid
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Convert ASCII digits to Devanagari numerals
+  const toDevanagariDigits = (value) => {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    const map = {
+      '0': '\u0966',
+      '1': '\u0967',
+      '2': '\u0968',
+      '3': '\u0969',
+      '4': '\u096A',
+      '5': '\u096B',
+      '6': '\u096C',
+      '7': '\u096D',
+      '8': '\u096E',
+      '9': '\u096F',
+    };
+    return str.replace(/[0-9]/g, (d) => map[d] || d);
+  };
+
+  const handlePrint = () => {
+    if (!file) return;
+    
+    const printWindow = window.open('', '_blank', 'width=900,height=1200');
+
+    if (!printWindow) {
+      alert('Please disable popup blocker and try again');
+      return;
+    }
+
+    // Capture canvas as image before printing
+    const canvasElement = document.querySelector('#farm-map-canvas canvas');
+    let canvasDataUrl = '';
+    
+    if (canvasElement) {
+      try {
+        canvasDataUrl = canvasElement.toDataURL('image/png');
+      } catch (err) {
+        console.error('Error capturing canvas:', err);
+      }
+    }
+
+    const fileElement = document.getElementById('file-content');
+    const clonedFile = fileElement.cloneNode(true);
+
+    // Replace canvas with image in clone
+    const canvasContainer = clonedFile.querySelector('#farm-map-canvas');
+    if (canvasContainer && canvasDataUrl) {
+      canvasContainer.innerHTML = `<img src="${canvasDataUrl}" style="width: 100%; height: 100%; object-fit: contain; display: block;" />`;
+    }
+
+    // Function to copy all computed styles as inline styles
+    const copyComputedStyles = (source, target) => {
+      const computed = window.getComputedStyle(source);
+      let cssText = '';
+      for (let i = 0; i < computed.length; i++) {
+        const prop = computed[i];
+        cssText += `${prop}:${computed.getPropertyValue(prop)};`;
+      }
+      target.style.cssText = cssText;
+
+      // Recursively copy styles to children
+      for (let i = 0; i < source.children.length; i++) {
+        if (target.children[i]) {
+          copyComputedStyles(source.children[i], target.children[i]);
+        }
+      }
+    };
+
+    // Apply all computed styles as inline styles
+    copyComputedStyles(fileElement, clonedFile);
+
+    // Override styles on each sheet to ensure proper A4 sizing
+    const sheets = clonedFile.querySelectorAll('.sheet');
+    sheets.forEach((sheet) => {
+      sheet.style.cssText = `
         width: 210mm;
+        height: 297mm;
         min-height: 297mm;
-        padding: 12mm;
-        box-sizing: border-box;
-        position: relative;
+        max-height: 297mm;
+        margin: 15px 15px;
+        padding: 10mm;
         background: white;
-        border: 2px solid #000;
-        border-radius: 2px;
-        box-shadow: 0 0 0 1px #000, 0 4px 20px rgba(0,0,0,0.15);
-      }
-      #farm-map-canvas canvas {
-        max-width: 100% !important;
-        max-height: 100% !important;
-        //width: auto !important;
-        height: auto !important;
-        display: block;
-        margin: 0 auto;
-      }
-      .row { display: flex; gap: 12px; align-items: center; }
-      .col { flex: 1; }
-      .left {
-      display: flex; 
-      justify-content: flex-start; /* Align fully to left */ 
-      flex-direction: column; /* Emblem on top, text below */
-      gap:3px;
-      }
-      .left-box {
-      text-align: left;
-      margin-top: 157px;
-      margin-left: -39px;
-      height: 83px;
-      }
-      .right-box {
-       text-align: right;
-       margin-top: 149px;
-      }
-      .center { text-align: center; }
-      .right-box { text-align: right; }
-      h1 { font-size: 18px; margin: 4px 0; }
-      h2 { font-size: 14px; margin: 4px 0; }
-      .left-box { text-align: left; }
-      h1 { font-size: 18px; margin: 4px 0; }
-      h2 { font-size: 14px; margin: 4px 0; }
-      .small { font-size: 11px; }
-      .box { border: 1px solid #000; padding: 6px; }
-      .image-box { border: 1px solid #000; width: 120px; height: 90px; display: inline-block; box-sizing: border-box; background: #fff; }
-      .emblem-box {
-       width: 94px;
-       height: 121px; /* More balanced box */
-       border: 1px solid #000;
-       display: flex;
-       justify-content: center; 
-       align-items: center;
-       padding: 11px;
-       background: #fff;
-       margin:auto;
-      }
-      .emblem-img{
-       max-width: 100%;
-       height:100%
-       object-fit: contain; /* Prevent stretching, best for emblem */
-       }
-      .small {
-       width: 102px; /* Same width as emblem box for alignment */
-       text-align: center; /* Center the text */
-       line-height: 1.2;
-       display: flex;
-       flex-direction: column;
-       align-items: center;
-       margin:auto;
-      }
-      .field { margin: 6px 0; display: flex; gap: 8px; align-items: center; }
-      .label { width: 140px; font-weight: 700; }
-      .value { flex: 1; border-bottom: 1px solid #000; padding: 2px 6px; min-height: 20px; }
-      table { width: 100%; border-collapse: collapse; font-size: 12px; }
-      table th, table td { border: 1px solid #000; padding: 6px; }
-      .signature { margin-top: 18px; display: flex; justify-content: space-between; gap: 12px; }
-      .sig-box { width: 30%; border-top: 1px solid #000; padding-top: 6px; text-align: center; font-size: 12px; }
-      .doc-ref { font-size: 11px; margin-top: 6px; color: #222; }
+        font-size: 11px;
+        box-sizing: border-box;
+        overflow: hidden;
+        page-break-after: always;
+        page-break-inside: avoid;
+        border: 4px solid black;
+      `;
+    });
+    // Remove page-break-after from last sheet
+    if (sheets.length > 0) {
+      sheets[sheets.length - 1].style.pageBreakAfter = 'auto';
+    }
+
+    // Override the file-content container
+    clonedFile.style.cssText = `
+      margin: 0 auto;
+      padding: 0;
+      display: block;
+      width: 210mm;
     `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
+
+    // Generate filename
+    const farmerName = file?.farmer_name || 'Farmer';
+    const fileId = file?.id || 'File';
+    const fileName = `${farmerName}_File_${fileId}`.replace(/[^a-zA-Z0-9\u0900-\u097F_-]/g, '_');
+
+    const htmlContent =  `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${fileName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      display: flex;
+  justify-content: center;
+  align-items: flex-start; /* keep from vertical shifting */
+  padding: 0;
+  margin: 0;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Preview in browser (center the physical A4 page) */
+    #file-content { width: 210mm; margin: 0 auto; }
+
+    .sheet {
+      width: 210mm;
+      height: 297mm;
+      background: white;
+      border: 4px solid black;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      box-sizing: border-box;
+    }
+
+    /* Real print settings */
+    /* Printer margin off; we create inner whitespace via padding */
+    @page { size: A4 portrait; margin: 0; }
+
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      html, body { margin: 0; padding: 0; background: white; }
+
+      #file-content { margin: 0; padding: 0; width: auto; }
+
+      .sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        border: 4px solid black !important;
+        padding: 8mm !important;   /* UNIFORM inner space around border */
+        page-break-after: always !important;
+        box-sizing: border-box !important;
+      }
+
+      .sheet:last-child {
+        page-break-after: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${clonedFile.outerHTML}
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 300);
+    };
+    window.onafterprint = function() {
+      window.close();
+    };
+    window.addEventListener('focus', function() {
+      setTimeout(function() {
+        window.close();
+      }, 500);
+    });
+  </script>
+</body>
+</html>`;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   useEffect(() => {
     (async () => {
@@ -121,6 +244,7 @@ function FilePrintPageContent({ params }) {
         const res = await fetch(`${API}/api/files/${routeId}`);
         const data = await res.json();
         const fileData = data.file || data;
+        console.log('Fetched file data:', fileData);
         setFile(fileData);
         
         // Parse shapes_json if it exists
@@ -136,18 +260,14 @@ function FilePrintPageContent({ params }) {
           }
         }
 
-        // Fetch linked bill (same logic as bill print page)
-        // The bills table has file_id column that links to files.id
+        // Fetch linked bill
         if (fileData.id) {
           try {
-            // First, query bills to find if there's a bill linked to this file
             const billListRes = await fetch(`${API}/api/bills?file_id=${fileData.id}`);
             const billListResult = await billListRes.json();
             
             if (billListResult.success && billListResult.bills && billListResult.bills.length > 0) {
-              // Found a linked bill, now fetch the full bill with items by ID
               const linkedBillId = billListResult.bills[0].bill_id;
-              
               const billRes = await fetch(`${API}/api/bills/${linkedBillId}`);
               const billData = await billRes.json();
               
@@ -155,12 +275,19 @@ function FilePrintPageContent({ params }) {
                 setBillData(billData.bill);
                 console.log('Bill data loaded:', billData.bill);
               }
-            } else {
-              console.log('No bill linked to file:', fileData.id);
             }
           } catch (err) {
             console.error('Error fetching bill:', err);
           }
+        }
+
+        // Load user details from utils (if available)
+        try {
+          const details = await getCurrentUser();
+          setUserData(details || null);
+          console.log('Loaded user details:', details);
+        } catch (e) {
+          console.warn('Could not load user details:', e);
         }
       } catch (error) {
         console.error('Error fetching file:', error);
@@ -169,195 +296,6 @@ function FilePrintPageContent({ params }) {
     
     fetchFile();
   }, [routeId, API]);
-
-  const handlePrint = () => {
-    if (!file) return;
-    
-    // Capture canvas as image before printing
-    const canvasElement = document.querySelector('#farm-map-canvas canvas');
-    let canvasDataUrl = '';
-    
-    if (canvasElement) {
-      try {
-        canvasDataUrl = canvasElement.toDataURL('image/png');
-      } catch (err) {
-        console.error('Error capturing canvas:', err);
-      }
-    }
-    
-    const printWindow = window.open('', '_blank', 'width=900,height=1200');
-    
-    // Clone the content but replace canvas with image
-    const contentClone = document.getElementById('file-content').cloneNode(true);
-    const canvasContainer = contentClone.querySelector('#farm-map-canvas');
-    
-    if (canvasContainer && canvasDataUrl) {
-      canvasContainer.innerHTML = `<img src="${canvasDataUrl}" style="width: 100%; height: 100%; object-fit: contain; display: block;" />`;
-    }
-    
-    const fileHTML = contentClone.innerHTML;
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="mr">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>File ${file.id}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet" />
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: 'Noto Sans Devanagari', 'Segoe UI', Roboto, Arial, sans-serif;
-            background: white;
-            color: #111;
-            padding: 20px;
-          }
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-          @media print {
-            body {
-              padding: 0;
-              margin: 0;
-            }
-            * {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .no-print {
-              display: none !important;
-            }
-            img {
-                max-width: 100%;
-                 max-height: 100%;
-             }
-          }
-          .sheet {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 12mm;
-            page-break-after: always;
-            box-sizing: border-box;
-            position: relative;
-            background: white;
-            border: 1px solid #333;
-          }
-          @media screen {
-            .sheet {
-              box-shadow: 0 0 0 1px #000, 0 4px 20px rgba(0,0,0,0.15);
-              border: 2px solid #000;
-              border-radius: 2px;
-              margin-bottom: 0;
-            }
-          }
-          @media print {
-            .sheet {
-              border: 1px solid #000;
-            }
-          }
-          .row { display: flex; gap: 12px; align-items: center; }
-          .col { flex: 1; }
-          .left { 
-           text-align: left;
-           display: flex; 
-           justify-content: flex-start; /* Align fully to left */ 
-           flex-direction: column; /* Emblem on top, text below */
-           gap:3px;
-           }
-          .center { text-align: center; }
-          .right { text-align: right; }
-          h1 { font-size: 18px; margin: 4px 0; }
-          h2 { font-size: 14px; margin: 4px 0; }
-          .small { 
-          font-size: 11px;
-          width: 102px; /* Same width as emblem box for alignment */
-          text-align: center; /* Center the text */
-          line-height: 1.2;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-           }
-          .box { 
-          border: 1px solid #000; 
-          padding: 6px; 
-          }
-          .image-box { 
-          border: 1px solid #000; 
-          width: 120px; 
-          height: 90px; 
-          display: inline-block; 
-          box-sizing: border-box; 
-          background: #fff; 
-          }
-          .left-box {
-          text-align: left;
-          margin-top: 157px;
-          margin-left: -39px;
-          height: 83px;
-        }
-          .right-box {
-          text-align: right;
-          margin-top: 149px;
-        }
-          .emblem-box { 
-          width: 25mm;
-          height: 38mm;
-          border: 1px solid #000;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 1.5mm;
-          background: #fff;
-          box-sizing: border-box;
-          page-break-inside: avoid;
-          margin: auto;
-          }
-          .emblem-img{
-            max-width:100%;
-            height:100%;
-            object-fit: contain; /* Prevent stretching, best for emblem */
-            display: block;
-          }
-          .field { margin: 6px 0; display: flex; gap: 8px; align-items: center; }
-          .label { width: 140px; font-weight: 700; }
-          .value { flex: 1; border-bottom: 1px solid #000; padding: 2px 6px; min-height: 20px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          table th, table td { border: 1px solid #000; padding: 6px; }
-          .signature { margin-top: 18px; display: flex; justify-content: space-between; gap: 12px; }
-          .sig-box { width: 30%; border-top: 1px solid #000; padding-top: 6px; text-align: center; font-size: 12px; }
-          .doc-ref { font-size: 11px; margin-top: 6px; color: #222; }
-        </style>
-      </head>
-      <body>
-        ${fileHTML}
-        <script>
-          window.onload = () => {
-            window.print();
-          };
-          window.onafterprint = () => {
-            window.close();
-          };
-          window.onfocus = () => {
-            setTimeout(() => {
-              window.close();
-            }, 200);
-          };
-          setTimeout(() => {
-            window.close();
-          }, 20000);
-        </script>
-      </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-  };
 
   if (!file) {
     return (
@@ -368,307 +306,484 @@ function FilePrintPageContent({ params }) {
   }
 
   return (
-    <div className="bg-white min-h-screen py-12 pb-24">
-      <div className="max-w-[210mm] mx-auto px-4">
-        <div id="file-content" className="space-y-8">
+    <div className="bg-gray-100 min-h-screen" style={{ backgroundColor: "#f5f5f5", padding: "20px 0" }}>
+      <div id="file-content" className="w-screen px-6">
         {/* Page 1 - Application Header */}
-        <section className="sheet">
-          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          {/* div */}           
-           <div className="left-box">
-              <div style={{ textAlign: 'left' }}>
-                <div className="box small">
-                  <div>APPLICATION ID</div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{file.id}</div>
+        <div
+          className="sheet mx-auto bg-white shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "5mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
+          {/* Header Row */}
+                      <div className='text-center' >
+                          <h1 className="text-xl font-black mb-1">प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत</h1>
+              <h1 className="text-xl font-black mb-1">केंद्र पुरस्कृत सिंचन योजना</h1>
+              <h5 className="text-sm font-semibold mb-2">प्रति थेंब अधिक पीक (PER DROP MORE CROP)</h5>
+              <hr className="border-black my-2" />
+                            <h2 className="text-4xl font-black">अनुदान मागणी प्रस्ताव</h2>
+              <h2 className="text-lg m-3 font-black">सन {toDevanagariDigits(file.fy_year || '')}</h2>
+               </div>
+          <div className="flex justify-between items-start">
+            {/* Left Box */}
+            <div className="text-left" >
+              <div className="p-2 text-center text-xs mb-1" style={{minWidth: "220px"}}>
+                <div className='p-2 text-md font-bold border border-black'>APPLICATION ID</div>
+                <div className=" p-2 text-xl border border-black border-t-0 font-bold">{file.application_id}</div>
+              </div>
+              {/* <div className="border border-black p-2 text-center text-xs">
+                <div className="font-bold">FMR-{file.id}</div>
+              </div> */}
+            </div>
+
+            {/* Center */}
+
+            <div className="text-center flex-2">
+
+
+              
+              {/* Emblem */}
+              <div className="flex flex-col items-center mt-4">
+                <div className="p-2 mt-5 w-60 h-74 flex items-center justify-center bg-white">
+                  <img src="/emblem1.png" alt="Indian Emblem" className=" object-contain" />
                 </div>
-                <div style={{ height: 3 }} />
-                <div className="box small">
-                  <div></div>
-                  <div style={{ fontWeight: 700 }}>FMR-{file.id}</div>
-                </div>
+
               </div>
             </div>
-            <div className="center" style={{ flex: 2 }}>
-              <h1>प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत</h1>
-              <h1>केंद्र पुरस्कृत सिंचन योजना</h1>
-              <h5>प्रति थेंब अधिक पीक (PER DROP MORE CROP)</h5>
-              <hr style={{ margin: "12px -158px", marginLeft: "-121px" }} />
-              <h2><strong>अनुदान मागणी प्रस्ताव</strong></h2>
-              <h2><strong>सन २०२५-२०२६</strong></h2>
-            <div className="left">
-              <div className="emblem-box" aria-hidden="true">
-                <img src="/emblem1.png" alt="Indian Emblem"/>
-              </div>
-               <div className="small">
-                <h2>महाराष्ट्र शासन</h2>
-                <h2>कृषि विभाग</h2> 
-                </div>
-            </div>              
-            </div>
-            <div className="right-box">
-              <div style={{ textAlign: 'right' }}>
-                <div className="box small">
-                  <div>APPLICATION ID</div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{file.id}</div>
-                </div>
-                <div style={{ height: 3 }} />
-                <div className="box small">
-                  <div></div>
-                  <div style={{ fontWeight: 700 }}>FMR-{file.id}</div>
-                </div>
+
+            {/* Right Box */}
+            <div className="text-right">
+              <div className="p-2 text-center text-xs mb-1" style={{minWidth: "220px"}}>
+                <div className='p-2 text-md font-bold border border-black'>FARMER ID</div>
+                <div className=" p-2 text-xl border border-black border-t-0 font-bold">{file.farmer_id}</div>
               </div>
             </div>
           </div>
-          <div className="box">
-            <div className="field">
-              <div className="label">शेतकऱ्याचे नाव:</div>
-              <div className="value">श्री/श्रीमती {file.farmer_name || 'N/A'}</div>
-            </div>
+                          <div className="text-center mt-2">
+                  <h2 className="text-2xl m-2 font-bold">महाराष्ट्र शासन</h2>
+                  <h2 className="text-xl font-bold">कृषि विभाग</h2>
+                  <h2 className="text-lg font-bold">तालुका कृषी अधिकारी </h2>
+                  <div className="flex-1  border-black px-2 py-1 font-bold text-xl"> {file.taluka || 'N/A'} जिल्हा: {file.district || 'N/A'}</div>
+                </div>
 
-            <div className="field">
-              <div className="label">गाव / तालुका:</div>
-              <div className="value">गाव: {file.village || 'N/A'} , तालुका: {file.taluka || 'N/A'} , जिल्हा: {file.district || 'N/A'}</div>
-            </div>
-
-            <div className="field">
-              <div className="label">मोबाईल क्रमांक:</div>
-              <div className="value">{file.mobile || 'N/A'}</div>
-            </div>
-
-            <div className="field">
-              <div className="label">पीक प्रकार:</div>
-              <div className="value">{file.crop_name || 'N/A'}</div>
-            </div>
-
-            <div className="field">
-              <div className="label">कंपनी:</div>
-              <div className="value">{file.company || 'N/A'}</div>
+          {/* Farmer Identity Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-2 gap-1">
+              <div className="flex gap-1 items-center col-span-2">
+                <div className=" text-lg  w-35">शेतकऱ्याचे नाव :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">श्री/श्रीमती {file.farmer_name || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className=" text-lg w-35">आधार क्रमांक :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.aadhaar_no || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center ">
+                <div className="text-lg  w-35">मोबाईल क्रमांक :</div>
+                <div className="flex-1  font-bold text-base border-b border-black px-2 py-1">{file.mobile || 'N/A'}</div>
+              </div>
             </div>
           </div>
 
-          <div style={{ height: 12 }} />
+          {/* Address Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-3 gap-1">
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-10">गाव :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.village || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-15 ">तालुका :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.taluka || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-13 ">जिल्हा :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.district || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
 
-          <div className="small doc-ref">File Date: {file.file_date || 'N/A'} | FY: {file.fy_year || 'N/A'}</div>
-        </section>
+          {/* Land Details Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-2 gap-1">
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-30">८अ क्षेत्रफळ :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.area_8a || 'N/A'} हेक्टर</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-30">गट/सर्व्हे क्रमांक :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.gut_no || file.survey_no || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-30">सिंचन क्षेत्र :</div>
+
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.irrigation_area || 'N/A'} हेक्टर </div>
+
+              </div>
+                            <div className="flex gap-1 items-center">
+                
+                <div className="text-lg w-30">पीक प्रकार:</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.crop_name || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+          {/* Company Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="flex gap-1 items-center">
+              <div className="text-lg w-35">कंपनीचे नाव :</div>
+              <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.company || 'N/A'}</div>
+            </div>
+          </div>
+
+          {/* Owner Details (from user data) */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-1 gap-1">
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-35">वितरकाचे नाव :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{userData?.business_name || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center col-span-2">
+                <div className="text-lg w-35">पत्ता:</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{userData?.short_address}, {userData?.taluka}, {userData?.district}, मो नं: {userData?.mobile || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-xs text-gray-700 mt-7">AgriFiles - 8055554030, 7057878572</div>
+        </div>
 
         {/* Page 2 - Signature Page */}
-        <section className="sheet">
-          <div className="center">
-            <h2>अनुरोधकर्त्याचे स्वाक्षरी पृष्ठ</h2>
+        <div
+          className="sheet mx-auto bg-white my-2 shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "10mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
+          <div className="text-center m-0">
+           
+                        <h2 className="text-lg font-bold m-0"> परिशिष्ट - ७</h2>
+
+            <h2 className="text-base font-bold">शेतकऱ्याने द्यावयाचे हमीपत्र </h2>
           </div>
 
-          <div style={{ marginTop: 10 }}>
-            <div className="box small">
-              खालील घोषणांना मी/आम्ही संमती देतो:
-              <ol style={{ margin: '8px 0 0 20px' }}>
-                <li>मी/आम्ही वरील सर्व माहिती खरी आहे.</li>
-                <li>मी/आम्ही अनुदान नियम व अटी मान्य करतो/करतो.</li>
-                <li>कोणतीही चुकीची माहिती आढळल्यास मला/आम्हाला जबाबदार धरले जाईल.</li>
+          <div className="mt-1">
+            <div className="p-1 text-xs leading-relaxed">
+              <p className="mb-1">
+                मी / आम्ही श्री/सौ <span className="font-bold">{file.farmer_name || '________'}</span> गाव <span className="font-bold">{file.village || '________'}</span> तालुका <span className="font-bold">{file.taluka || '________'}</span> जिल्हा <span className="font-bold">{file.district || '________'}</span>
+                {' '}दिनांक <span className="font-bold">{formatDate(file.file_date) || '________'}</span> रोजी सर्वे/गट <span className="font-bold">{file.gut_no || file.survey_no || '________'}</span> मधील <span className="font-bold">{file.area8a || '________'}</span> हेक्टर क्षेत्रावर <span className="font-bold">{ file.crop_name || '________'}</span> पिकांसाठी ठिबक/तुषार सिंचन अनुदानासाठी अर्ज केला आहे. मला आपणाकडून पूर्वसंमती मिळाली असून त्यानुसार मी ठिबक/तुषार संच बसविला आहे व अनुदानासाठी प्रस्ताव सादर करत आहे.
+              </p>
+
+              <ol className="list-decimal ml-2 space-y-2">
+                <li>
+                  मी खालील कागदपत्रे सोबत जोडली आहेत व ती सर्व माहिती कागदपत्रांशी सुसंगत आहे:
+                  <ul className="list-disc ml-9 mt-1 space-y-1">
+                    <li>शेतकर्‍याचे स्वयंघोषणापत्र</li>
+                    <li>७/१२ उतारा (मालकी हक्कासाठी)</li>
+                    <li>८अ उतारा (एकूण क्षेत्र)</li>
+                    <li>कंपनी प्रतिनिधीने तयार केलेला सूक्ष्म सिंचन आराखडा व प्रमाणपत्र</li>
+                    <li>बिलाची मूळ प्रत (Tax Invoice)</li>
+                  </ul>
+                </li>
+                <li>सदर ठिबक/तुषार सिंचनासाठी आवश्यक सिंचन सुविधा माझ्याकडे उपलब्ध आहे.</li>
+                <li>ऊर्जा साधने <span className="font-bold">{file.pump_type || '________'}</span> पंप माझ्याकडे असून अधिकृत विद्युत जोडणीची सुविधा उपलब्ध आहे.</li>
+                <li>ज्या क्षेत्रासाठी ठिबक/ तुषार सिंचनचा अर्ज केला आहे त्या क्षेत्रावर यापूर्वीच्या सात वर्षांमध्ये मी शासनाच्या कोणत्याही योजनेतून ठिबक तुषार संचाच्या अनुदानाचा लाभ घेतलेले नाही.</li>
+                <li>या क्षेत्रासाठी ठिबक/तुषार संचाच्या अनुदानाची मागणी केली आहे. त्यासह मी एकूण <span className="font-bold">{file.irrigation_area || '________'}</span>  हेक्टर क्षेत्र पेक्षा जास्त क्षेत्रासाठी तसेच माझे एकूण जमिनी धारणे पैकी ८ अ नुसार जास्त क्षेत्रासाठी अनुदानाचा लाभ घेतलेला नाही.</li>
+
+                <li>संयुक्त ७/१२ मध्ये इतर खातेदाराकडून भविष्यात वाद निर्माण झाल्यास त्याची जबाबदारी माझी राहील.</li>
+
+                <li>बिलामध्ये नमूद केलेले साहित्य मला प्राप्त झाले असून ते योग्य दर्जाचे असल्याची खात्री करून ते स्वीकारले असून त्याबद्दल माझी काही हरकत नाही.</li>
+
+                <li>उत्पादक कंपनी / वितरक यांनी मराठी भाषेतील संघ देखभाल मार्गदर्शक पुस्तिका (Operational & Maintanace Manual) मला उपलब्ध करून देण्यात आली या मार्गदर्शक पुस्तके मध्ये नमूद सूचनांचे मी पालन करेल. </li>
+                <li>अनुदान ठिबक/तुषार संचाच्या प्राप्त झाल्यावर पुढील पाच वर्षापर्यंत संच सुव्यवस्थेत व वापरात ठेवण्याचे असून त्याची अथवा त्यातील कोणत्याही भागाची विक्री करणार नाही.</li>
+
+
+                <li>ठिबक तुषार सिंचन संचाच्या उत्पादक कंपनीच्या इंजिनियरने करून द्यावयाच्या आराखड्‌यासाठी आवश्यक ती कागदपत्रे माहिती उदा. माती-पाणी परीक्षण अहवाल, विद्युत मोटर/ डिझेल इंजिन क्षमता, सिंचन सुविधांपासून ठिबक / तुषार संचाच्या अंतर, हेड, घ्यायचे/ घेत असलेले पीक, पाणी उपलब्धता इतर सर्व तांत्रिक बाबीची माहिती त्यांना उपलब्ध करून द्यायची जबाबदारी माझी असून त्यानुसार त्यांनी आराखडा तयार करून दिलेला आहे.
+</li>
+                <li>उत्पादक कंपनी किंवा त्याचे प्रतिनिधी सोबत विहित नमुन्यातील साध्या कागदावर करारनामा मी करून घेतला असून तो माझ्याकडे ठेवला आहे.</li>
+                <li>अंमल बजावणी यंत्रणेच्या अधिकार्‍यांना सदरचा संघ तपासणी करण्यासाठी माझी मुभा आहे. तपासणीसाठी कोणत्याही प्रकारचा अडथळा अथवा हरकत केल्यास मी अनुदान मिळण्यासाठी पात्र राहील / मिळालेले अनुदान वसूल करण्यात मी पात्र राहील याची मला जाणीव आहे.
+</li>
+                <li>प्रधानमंत्री कृषी सिंचन योजनेतून सूक्ष्म सिंचन घटकाचा लाभ मिळण्यासाठी मी सादर केलेली कागदपत्रे खरी आहेत. </li>
               </ol>
-            </div>
 
-            <div style={{ marginTop: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p className="mt-3">
+                वरील सर्व माहिती मी सत्य प्रतिज्ञेवर प्रमाणित करून देत आहे सदर माहिती खोटी आढळून आल्यास, भारतीय दंड संहिता अन्वये आणि किंवा संबंधित काय‌द्यानुसार माझ्यावर खटला भरला जाईल व त्यानुसार मी शिक्षेस पात्र राहील याची मला पूर्ण जाणीव आहे.
+              </p>
+
+              <p className="mt-2">तरी माझ्या अर्जाचा अनुदानासाठी विचार करावा ही विनंती.</p>
+
+              <div className="grid grid-cols-2 gap-6 mt-1">
                 <div>
-                  <div className="label small">दिनांक:</div>
-                  <div className="value small" style={{ border: 'none', borderBottom: '1px solid #000', width: 140 }}>{file.file_date || 'N/A'}</div>
+                <div>
+                  <div className="text-xs mt-3">दिनांक :  <span className="font-bold">  {formatDate(file.file_date) || '________'} </span></div>
                 </div>
-
-                <div style={{ textAlign: 'center' }}>
-                  <div className="image-box" aria-label="signature placeholder" />
-                  <div style={{ fontSize: 12, marginTop: 6 }}>स्वाक्षरी / हस्ताक्षर</div>
+                <div>
+                  <div className="text-md ">स्थळ :  <span className="font-bold"> {file.village || '________'}</span></div>
                 </div>
+              </div>
+              <div className="flex flex-col items-center justify-center">
+                <div className="text-md  mb-2">लाभार्थी शेतकऱ्याची स्वाक्षरी</div>
+                <div className="font-bold">{file.farmer_name || '________'}</div>
+                <div className="border border-black w-48 h-15 bg-white"></div>
+              </div>
+</div>
+    
 
-                <div style={{ textAlign: 'right' }}>
-                  <div className="label small">ठिकाण:</div>
-                  <div className="value small" style={{ border: 'none', borderBottom: '1px solid #000', width: 160 }}>{file.village || 'N/A'}</div>
+              <div className="mt-0">
+                <div className="text-sm font-bold mb-0">साक्षीदार -</div>
+                <div className="grid grid-cols-2 gap-1">
+                  <div>
+                    <div className=" py-1">१) <span className="font-bold"> {file?.w1_name || '________'}, </span>  स्वाक्षरी : '______________'</div>
+                    <div className="border-b border-black py-1 mt-2">पत्ता: <span className="font-bold"> {file?.w1_village || '________'}</span>, तालुका : <span className="font-bold">{file?.w1_taluka || '________'}</span> जिल्हा : <span className="font-bold">{file?.w1_district || '________'}</span></div>
+                  </div>
+                  <div>
+                    <div className=" py-1">२) <span className="font-bold"> {file?.w2_name || '________'}, </span>  स्वाक्षरी : '______________'</div>
+                    <div className="border-b border-black py-1 mt-2">पत्ता: <span className="font-bold">{file?.w2_village || '________'}</span>, तालुका : <span className="font-bold">{file?.w2_taluka || '________'}</span> जिल्हा : <span className="font-bold">{file?.w2_district || '________'}</span></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
         {/* Page 3 - Farm Map */}
-        <section className="sheet">
-          <div className="center">
-            <h2>शेती नकाशा / विहंगावलोकन</h2>
+        <div
+          className="sheet mx-auto bg-white my-6 shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "15mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
+          <div className="text-center">
+            <h2 className="text-lg font-bold">शेती नकाशा / विहंगावलोकन</h2>
           </div>
 
-          <div style={{ marginTop: 10 }}>
-            <div style={{ border: '1px solid #000', height: '190mm', padding: 8, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div id="farm-map-canvas" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="mt-4">
+            <div className="border border-black p-2 flex items-center justify-center" style={{ height: "190mm" }}>
+              <div id="farm-map-canvas" className="w-full h-full flex items-center justify-center">
                 <FarmMapCanvas shapes={shapes} />
               </div>
             </div>
           </div>
 
-          <div className="small" style={{ marginTop: 8 }}>नकाशावर उत्तरे-बिंदू, पाणी पुरवठा आणि शेतीच्या सीमारेषा स्पष्ट दाखवा.</div>
-        </section>
+          <div className="text-xs mt-3">नकाशावर उत्तरे-बिंदू, पाणी पुरवठा आणि शेतीच्या सीमारेषा स्पष्ट दाखवा.</div>
+        </div>
 
         {/* Page 4 - Completion Certificate */}
-        <section className="sheet">
-          <div>
-            <h2 className="center">पूर्णत्वाची घोषणपत्र</h2>
+        <div
+          className="sheet mx-auto bg-white my-6 shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "15mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
+          <h2 className="text-center text-lg font-bold">पूर्णत्वाची घोषणपत्र</h2>
 
-            <div className="box" style={{ marginTop: 12 }}>
-              <p className="small">मी/आम्ही खाली स्वाक्षर करणारे, वरील आराखडा व दस्तऐवज येथे सादर करतो/करतो. सर्व माहिती आणि संलग्न कागदपत्रे खरी व समर्थनीय आहेत.</p>
+          <div className="border border-black p-4 mt-4">
+            <p className="text-sm">मी/आम्ही खाली स्वाक्षर करणारे, वरील आराखडा व दस्तऐवज येथे सादर करतो/करतो. सर्व माहिती आणि संलग्न कागदपत्रे खरी व समर्थनीय आहेत.</p>
 
-              <div style={{ marginTop: 18 }}>
-                <div className="row">
-                  <div className="col">
-                    <div className="small">दिनांक:</div>
-                    <div className="value" style={{ border: 'none', borderBottom: '1px solid #000', width: 160 }}>{file.file_date || 'N/A'}</div>
-                  </div>
-
-                  <div className="col" style={{ textAlign: 'center' }}>
-                    <div className="small">विक्रेता / कंपनीचे नाव</div>
-                    <div className="value" style={{ border: 'none', borderBottom: '1px solid #000', width: 220 }}>{file.company || 'N/A'}</div>
-                  </div>
-
-                  <div className="col" style={{ textAlign: 'right' }}>
-                    <div className="small">स्वाक्षरी (प्रोप्रायटेअर / अधिकारी)</div>
-                    <div className="image-box" style={{ marginLeft: 'auto' }} />
-                  </div>
-                </div>
+            <div className="mt-6 flex justify-between items-end">
+              <div>
+                <div className="text-xs font-bold">दिनांक:</div>
+                <div className="border-b border-black w-40 py-1">{formatDate(file.file_date) || 'N/A'}</div>
               </div>
-            </div>
-
-            <div style={{ marginTop: 20 }}>
-              <h3 className="small" style={{ fontWeight: 700, marginBottom: 8 }}>बिल तपशील:</h3>
-              <div className="box">
-                <div className="field">
-                  <div className="label">बिल क्रमांक:</div>
-                  <div className="value">{file.bill_no || 'N/A'}</div>
-                </div>
-                <div className="field">
-                  <div className="label">बिल दिनांक:</div>
-                  <div className="value">{file.bill_date || 'N/A'}</div>
-                </div>
+              <div className="text-center">
+                <div className="text-xs font-bold mb-2">विक्रेता / कंपनीचे नाव</div>
+                <div className="border-b border-black w-56 py-1">{file.company || 'N/A'}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-bold mb-2">स्वाक्षरी (प्रोप्रायटेअर / अधिकारी)</div>
+                <div className="border border-black w-32 h-20 bg-white ml-auto"></div>
               </div>
             </div>
           </div>
-        </section>
+
+          <div className="mt-8">
+            <h3 className="text-sm font-bold mb-3">बिल तपशील:</h3>
+            <div className="border border-black p-4">
+              <div className="flex gap-2 items-center mb-2">
+                <div className="font-bold w-28">बिल क्रमांक:</div>
+                <div className="flex-1 border-b border-black px-2 py-1">{file.bill_no || 'N/A'}</div>
+              </div>
+              <div className="flex gap-2 items-center">
+                <div className="font-bold w-28">बिल दिनांक:</div>
+                <div className="flex-1 border-b border-black px-2 py-1">{formatDate(file.bill_date) || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Page 5 - Terms & Conditions */}
-        <section className="sheet">
-          <div>
-            <h2 className="center">नियम व अटी / मार्गदर्शक सूचना</h2>
+        <div
+          className="sheet mx-auto bg-white my-6 shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "15mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
+          <h2 className="text-center text-lg font-bold">नियम व अटी / मार्गदर्शक सूचना</h2>
 
-            <ol style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6 }}>
-              <li>योजना अंतर्गत दिलेल्या साधनांचा उपयोग केवळ नमूद केलेल्या प्रकारसाठी करावा.</li>
-              <li>उत्पादनाची प्रतिष्ठा व व्यवहार नियमांनुसार ठेवावी.</li>
-              <li>अनुदान मिळाल्यानंतर १२ महिन्यांपर्यंत तपासणीसाठी अधिकारी भेट देऊ शकतात.</li>
-              <li>या पत्रातील चुकीची माहिती आढळल्यास अनुदान रद्द केले जाऊ शकते.</li>
-              <li>सर्व कागदपत्रे योग्य प्रकारे सुरक्षित ठेवावी.</li>
-            </ol>
+          <ol className="list-decimal ml-6 mt-4 text-sm leading-relaxed space-y-2">
+            <li>योजना अंतर्गत दिलेल्या साधनांचा उपयोग केवळ नमूद केलेल्या प्रकारसाठी करावा.</li>
+            <li>उत्पादनाची प्रतिष्ठा व व्यवहार नियमांनुसार ठेवावी.</li>
+            <li>अनुदान मिळाल्यानंतर १२ महिन्यांपर्यंत तपासणीसाठी अधिकारी भेट देऊ शकतात.</li>
+            <li>या पत्रातील चुकीची माहिती आढळल्यास अनुदान रद्द केले जाऊ शकते.</li>
+            <li>सर्व कागदपत्रे योग्य प्रकारे सुरक्षित ठेवावी.</li>
+          </ol>
 
-            <div className="signature">
-              <div className="sig-box">सत्यवटीचे नाव<br />(नाम व पद)</div>
-              <div className="sig-box">तपासण अधिकारी<br />(नाम व पद)</div>
-              <div className="sig-box">प्राधिकृत स्वाक्षरी</div>
-            </div>
+          <div className="mt-12 flex justify-between gap-4">
+            <div className="w-1/3 border-t border-black pt-2 text-center text-sm">सत्यवटीचे नाव<br />(नाम व पद)</div>
+            <div className="w-1/3 border-t border-black pt-2 text-center text-sm">तपासण अधिकारी<br />(नाम व पद)</div>
+            <div className="w-1/3 border-t border-black pt-2 text-center text-sm">प्राधिकृत स्वाक्षरी</div>
+          </div>
 
-            <div style={{ marginTop: 30 }}>
-              <div className="box small">
-                <strong>Status:</strong> {file.status || 'N/A'}
-              </div>
+          <div className="mt-12">
+            <div className="border border-black p-3 text-sm bg-gray-50">
+              <strong>Status:</strong> {file.status || 'N/A'}
             </div>
           </div>
-        </section>
+        </div>
 
-        
         {/* Page 6 - Bill Invoice */}
-        <section className="sheet">
+        <div
+          className="sheet mx-auto bg-white shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "15mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
           {billData ? (
-            <div style={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div className="h-full flex flex-col">
               {/* Bill Header */}
-              <div style={{ borderBottom: '2px solid #000', padding: '16px', background: '#f9fafb' }}>
-                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>AGRIFILES</h1>
-                  <p style={{ fontSize: '10px', color: '#374151', margin: 0 }}>Agricultural Solutions & Support Services</p>
+              <div className="border-b-2 border-black p-4 bg-gray-100">
+                <div className="text-center mb-2">
+                  <h1 className="text-2xl font-black">AGRIFILES</h1>
+                  <p className="text-xs text-gray-700">Agricultural Solutions & Support Services</p>
                 </div>
-                <div style={{ textAlign: 'center', fontSize: '10px', color: '#374151' }}>
+                <div className="text-center text-xs text-gray-700">
                   <div>Address: Plot No. XYZ, Agricultural Complex, Pune - 411005</div>
                   <div>GST No: 27AABCT1234H1Z0 | Phone: +91-9876543210</div>
                 </div>
               </div>
 
               {/* Bill Title */}
-              <div style={{ textAlign: 'center', padding: '12px', borderBottom: '1px solid #d1d5db', background: '#f9fafb' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>TAX INVOICE / BILL</h2>
+              <div className="text-center py-3 border-b border-gray-400 bg-gray-50">
+                <h2 className="text-lg font-black">TAX INVOICE / BILL</h2>
               </div>
 
               {/* Bill Info */}
-              <div style={{ padding: '16px', borderBottom: '2px solid #d1d5db', display: 'flex', gap: '24px', fontSize: '11px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>BILL DETAILS</div>
+              <div className="p-4 border-b-2 border-gray-400 flex gap-6 text-xs">
+                <div className="flex-1">
+                  <div className="font-bold mb-2">BILL DETAILS</div>
                   <div><strong>Bill No:</strong> {billData.bill_no || 'N/A'}</div>
                   <div><strong>Bill Date:</strong> {billData.bill_date || 'N/A'}</div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>SOLD TO</div>
+                <div className="flex-1">
+                  <div className="font-bold mb-2">SOLD TO</div>
                   <div><strong>Name:</strong> {file.farmer_name || 'N/A'}</div>
                   <div><strong>Mobile:</strong> {file.mobile || 'N/A'}</div>
                   <div><strong>Village:</strong> {file.village || 'N/A'}</div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>STATUS</div>
+                <div className="flex-1">
+                  <div className="font-bold mb-2">STATUS</div>
                   <div><strong>Status:</strong> {billData.status || 'DRAFT'}</div>
                   <div><strong>Crop:</strong> {file.crop_name || 'N/A'}</div>
                 </div>
               </div>
 
               {/* Items Table */}
-              <div style={{ padding: '16px', flex: 1 }}>
-                <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
+              <div className="p-4 flex-1">
+                <table className="w-full border-collapse text-xs">
                   <thead>
-                    <tr style={{ background: '#111', color: 'white' }}>
-                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'left' }}>Sr</th>
-                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'left' }}>Description</th>
-                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'center' }}>HSN</th>
-                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'right' }}>Qty</th>
-                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'right' }}>Rate</th>
-                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'center' }}>GST%</th>
-                      <th style={{ border: '1px solid #111', padding: '8px', textAlign: 'right' }}>Amount</th>
+                    <tr className="bg-black text-white">
+                      <th className="border border-black p-2 text-left">Sr</th>
+                      <th className="border border-black p-2 text-left">Description</th>
+                      <th className="border border-black p-2 text-center">HSN</th>
+                      <th className="border border-black p-2 text-right">Qty</th>
+                      <th className="border border-black p-2 text-right">Rate</th>
+                      <th className="border border-black p-2 text-center">GST%</th>
+                      <th className="border border-black p-2 text-right">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {billData.items && billData.items.length > 0 ? (
                       billData.items.map((item, idx) => (
                         <tr key={idx}>
-                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'center' }}>{idx + 1}</td>
-                          <td style={{ border: '1px solid #d1d5db', padding: '6px' }}>{item.description || 'N/A'}</td>
-                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'center' }}>{item.hsn || 'N/A'}</td>
-                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right' }}>{Number(item.qty || 0).toFixed(2)}</td>
-                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right' }}>₹ {Number(item.sales_rate || 0).toFixed(2)}</td>
-                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'center' }}>{Number(item.gst_percent || 0).toFixed(1)}%</td>
-                          <td style={{ border: '1px solid #d1d5db', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>₹ {Number(item.amount || 0).toFixed(2)}</td>
+                          <td className="border border-gray-400 p-2 text-center">{idx + 1}</td>
+                          <td className="border border-gray-400 p-2">{item.description || 'N/A'}</td>
+                          <td className="border border-gray-400 p-2 text-center">{item.hsn || 'N/A'}</td>
+                          <td className="border border-gray-400 p-2 text-right">{Number(item.qty || 0).toFixed(2)}</td>
+                          <td className="border border-gray-400 p-2 text-right">₹ {Number(item.sales_rate || 0).toFixed(2)}</td>
+                          <td className="border border-gray-400 p-2 text-center">{Number(item.gst_percent || 0).toFixed(1)}%</td>
+                          <td className="border border-gray-400 p-2 text-right font-bold">₹ {Number(item.amount || 0).toFixed(2)}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="7" style={{ border: '1px solid #d1d5db', padding: '24px', textAlign: 'center', color: '#6b7280' }}>No items</td>
+                        <td colSpan="7" className="border border-gray-400 p-6 text-center text-gray-500">No items</td>
                       </tr>
                     )}
                   </tbody>
                 </table>
 
                 {/* Totals */}
-                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <div style={{ width: '50%' }}>
-                    <table style={{ width: '100%', fontSize: '11px' }}>
+                <div className="mt-4 flex justify-end">
+                  <div className="w-1/2">
+                    <table className="w-full text-sm">
                       <tbody>
-                        <tr style={{ borderBottom: '1px solid #d1d5db' }}>
-                          <td style={{ padding: '8px', fontWeight: 'bold' }}>Taxable Amount:</td>
-                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>₹ {Number(billData.taxable_amount || 0).toFixed(2)}</td>
+                        <tr className="border-b border-gray-400">
+                          <td className="p-2 font-bold">Taxable Amount:</td>
+                          <td className="p-2 text-right font-bold">₹ {Number(billData.taxable_amount || 0).toFixed(2)}</td>
                         </tr>
-                        <tr style={{ borderBottom: '1px solid #d1d5db' }}>
-                          <td style={{ padding: '8px', fontWeight: 'bold' }}>Total GST:</td>
-                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>₹ {Number(billData.total_gst || 0).toFixed(2)}</td>
+                        <tr className="border-b border-gray-400">
+                          <td className="p-2 font-bold">Total GST:</td>
+                          <td className="p-2 text-right font-bold">₹ {Number(billData.total_gst || 0).toFixed(2)}</td>
                         </tr>
-                        <tr style={{ background: '#111', color: 'white' }}>
-                          <td style={{ padding: '12px', fontWeight: 'bold' }}>TOTAL AMOUNT:</td>
-                          <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '14px' }}>₹ {Number(billData.final_amount || 0).toFixed(2)}</td>
+                        <tr className="bg-black text-white">
+                          <td className="p-3 font-bold">TOTAL AMOUNT:</td>
+                          <td className="p-3 text-right font-bold text-lg">₹ {Number(billData.final_amount || 0).toFixed(2)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -676,22 +791,22 @@ function FilePrintPageContent({ params }) {
                 </div>
               </div>
 
-              {/* Footer Note */}
-              <div style={{ borderTop: '2px solid #111', padding: '12px', textAlign: 'center', fontSize: '10px', color: '#6b7280' }}>
+              {/* Footer */}
+              <div className="border-t-2 border-black p-3 text-center text-xs text-gray-500">
                 Thank you for your business | This is a computer-generated document
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ fontSize: '48px' }}>⚠️</div>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}>No Bill Linked</h2>
-              <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
+            <div className="h-full flex items-center justify-center flex-col gap-4">
+              <div className="text-5xl">⚠️</div>
+              <h2 className="text-xl font-bold text-red-600">No Bill Linked</h2>
+              <p className="text-sm text-gray-500 text-center">
                 This file does not have a linked bill.<br />
                 Please link a bill to this file first before printing.
               </p>
-              <div className="box" style={{ marginTop: '16px', padding: '12px', background: '#fef3c7' }}>
+              <div className="border border-black p-4 bg-yellow-50 mt-4">
                 <strong>Instructions:</strong>
-                <ol style={{ margin: '8px 0 0 20px', fontSize: '12px' }}>
+                <ol className="list-decimal ml-5 text-sm mt-2">
                   <li>Go back to the files list</li>
                   <li>Click "Link Bill" for this file</li>
                   <li>Select or create a bill</li>
@@ -700,27 +815,23 @@ function FilePrintPageContent({ params }) {
               </div>
             </div>
           )}
-        </section>
         </div>
       </div>
 
       {/* Action Buttons - Bottom Fixed */}
-      <div className="no-print fixed bottom-0 left-0 right-0 bg-gradient-to-r from-white to-gray-50 border-t-2 border-gray-300 shadow-2xl backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-6 py-5 flex justify-between items-center">
-          <button
-            onClick={() => router.push('/files')}
-            className="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-8 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            ← Back to Files
-          </button>
-          <button
-            onClick={handlePrint}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-10 py-3 rounded-lg font-bold transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-          >
-            <span className="text-xl">🖨️</span>
-            Print File
-          </button>
-        </div>
+      <div className="no-print fixed bottom-6 right-6 flex gap-2" style={{ zIndex: 50 }}>
+        <button
+          onClick={handlePrint}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 font-semibold text-sm"
+        >
+          🖨️ Print File
+        </button>
+        <button
+          onClick={() => router.push("/files")}
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg shadow-lg hover:bg-gray-700 font-semibold text-sm"
+        >
+          ← Back
+        </button>
       </div>
     </div>
   );
