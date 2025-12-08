@@ -37,6 +37,8 @@ function BillFormPageContent({ params }) {
   // Bill header
   const [billNo, setBillNo] = useState('');
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lastFetchedMonthYear, setLastFetchedMonthYear] = useState(''); // track to avoid duplicate calls
+  const [originalBillNo, setOriginalBillNo] = useState(''); // store original bill_no for edit mode
   const [farmerName, setFarmerName] = useState('');
   const [farmerMobile, setFarmerMobile] = useState('');
   const [status, setStatus] = useState('draft');
@@ -48,6 +50,45 @@ function BillFormPageContent({ params }) {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
+
+  // Fetch next bill number from backend
+  const fetchNextBillNo = async (dateStr) => {
+    if (!userId) return;
+    
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1; // 1-12
+    const year = date.getFullYear();
+    const monthYearKey = `${year}-${month}`;
+    
+    // Skip if already fetched for this month/year
+    if (monthYearKey === lastFetchedMonthYear) return;
+    
+    try {
+      const res = await fetch(`${API}/api/bills/next-bill-no?owner_id=${userId}&month=${month}&year=${year}`);
+      const data = await res.json();
+      if (data.success && data.bill_no) {
+        setBillNo(data.bill_no);
+        setLastFetchedMonthYear(monthYearKey);
+      }
+    } catch (err) {
+      console.error('Failed to fetch next bill number:', err);
+    }
+  };
+
+  // Handle bill date change - only fetch new bill_no if month/year changed AND not in edit mode
+  const handleBillDateChange = (newDate) => {
+    const oldDate = new Date(billDate);
+    const newDateObj = new Date(newDate);
+    
+    setBillDate(newDate);
+
+    console
+    
+    // Only fetch new bill number if month or year changed (for both new and edit mode)
+    if (oldDate.getMonth() !== newDateObj.getMonth() || oldDate.getFullYear() !== newDateObj.getFullYear()) {
+      fetchNextBillNo(newDate);
+    }
+  };
 
   // Handle params (may be a Promise in newer Next versions)
   useEffect(() => {
@@ -93,10 +134,15 @@ function BillFormPageContent({ params }) {
       const res = await fetch(`${API}/api/bills/${routeId}`);
       const text = await res.text();
       const data = JSON.parse(text || '{}');
+      console.log('Fetched bill data:', data);
       if (data.bill) {
         const b = data.bill;
         setBillNo(b.bill_no || '');
-        setBillDate(b.bill_date || new Date().toISOString().split('T')[0]);
+        setOriginalBillNo(b.bill_no || ''); // Store original for reference
+        // Format date to YYYY-MM-DD for input[type="date"]
+        const rawDate = b.bill_date || new Date().toISOString();
+        const formattedDate = rawDate.split('T')[0]; // Extract YYYY-MM-DD part
+        setBillDate(formattedDate);
         setFarmerName(b.farmer_name || '');
         setFarmerMobile(b.farmer_mobile || '');
         setStatus(b.status || 'draft');
@@ -124,6 +170,10 @@ function BillFormPageContent({ params }) {
     if (isEditMode && routeId) {
       loadBill();
     } else if (!isEditMode) {
+      // For new bills, fetch next bill number
+      if (userId && billDate) {
+        fetchNextBillNo(billDate);
+      }
       setPageLoading(false);
     }
   }, [isEditMode, routeId]);
@@ -287,10 +337,10 @@ function BillFormPageContent({ params }) {
           <div>
             <label className="block text-sm font-medium text-gray-700">Bill No</label>
             <input
-              className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-gray-50"
+              className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
               value={billNo}
-              onChange={(e) => setBillNo(e.target.value)}
-              placeholder="Auto / enter"
+              disabled
+              placeholder="Auto-generated"
             />
           </div>
 
@@ -300,7 +350,7 @@ function BillFormPageContent({ params }) {
               type="date"
               className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-white"
               value={billDate}
-              onChange={(e) => setBillDate(e.target.value)}
+              onChange={(e) => handleBillDateChange(e.target.value)}
             />
           </div>
 

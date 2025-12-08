@@ -250,6 +250,10 @@ function BillPrintContent({ params }) {
   // Convert to array and sort by GST %
   const gstGroupsArray = Object.values(gstGroups).sort((a, b) => a.gstPercent - b.gstPercent);
   
+  // Determine bill type: TAX INVOICE if any item has GST > 0, else BILL OF SUPPLY
+  const hasGst = items.some(item => Number(item.gst_percent || 0) > 0);
+  const billType = hasGst ? 'TAX INVOICE' : 'BILL OF SUPPLY';
+  
   const amountInWords = numberToWords(Math.floor(finalAmount)) + ' rupees';
 
   return (
@@ -315,7 +319,7 @@ function BillPrintContent({ params }) {
 
       {/* BILL OF SUPPLY title */}
       <div className="border-b-2 border-t-2 border-black mt-2 py-1.5 text-center bg-white">
-        <div className="font-black text-2xl tracking-widest text-gray-900 mb-0.5">BILL OF SUPPLY</div>
+        <div className="font-black text-2xl tracking-widest text-gray-900 mb-0.5">{billType}</div>
         <div className="text-[8px] font-semibold text-gray-700">*COMPOSITION TAXABLE PERSON, NOT ELIGIBLE TO COLLECT TAX ON SUPPLIES*</div>
       </div>
 
@@ -509,7 +513,7 @@ function BillPrintContent({ params }) {
     </div>
 
     {/* Amount in words */}
-    <div className="px-1 py-0.5 border border-black my-1 py-2" style={{fontSize: "11px", position: "relative", zIndex: 1, background: "white"}}>
+    <div className="px-1 border border-black my-1 py-2" style={{fontSize: "11px", position: "relative", zIndex: 1}}>
       <span className="font-bold">AMOUNT IN WORDS - </span><span> {amountInWords.toUpperCase()} ONLY</span>
     </div>
 
@@ -527,7 +531,7 @@ function BillPrintContent({ params }) {
         <div className="h-16 flex-1" />
         <div className="text-[12px] border-t-2 border-black pt-1 text-center leading-normal font-bold">
           <div>सेल्स इंजिनियर </div>
-          <div className="text-[9px]"> {fileData?.company} ({fileData?.sales_engg || ""}) </div>
+          <div className="text-[9px]"> {fileData?.company} {fileData?.sales_engg ? `(${fileData?.sales_engg})` : ''} </div>
         </div>
       </div>
 
@@ -541,7 +545,7 @@ function BillPrintContent({ params }) {
     </div>
   </div>
 
-  {/* Print / Back buttons */}
+  {/* Print / Edit / Back buttons */}
   <div
     className="fixed bottom-6 right-6 flex gap-2"
     style={{ display: "flex", zIndex: 50 }}
@@ -551,6 +555,12 @@ function BillPrintContent({ params }) {
       className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 font-semibold text-sm"
     >
       🖨️ Print Bill
+    </button>
+    <button
+      onClick={() => router.push(`/bill/${bill.bill_id}`)}
+      className="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg hover:bg-yellow-600 font-semibold text-sm"
+    >
+      ✏️ Edit Bill
     </button>
     <button
       onClick={() => router.push("/bill")}
