@@ -183,9 +183,9 @@ export default function RootLayout({ children }) {
         )}
 
         <LangContext.Provider value={{ lang, t, toggleLang }}>
-          <div className="flex flex-col min-h-screen">
-            {/* Header - Fixed */}
-            <header className="bg-gradient-to-r from-green-200 to-white-300 text-green-900 p-4 flex justify-between items-center shadow-lg flex-shrink-0">
+          <div className="flex flex-col h-screen overflow-hidden">
+            {/* Header - Fixed at top */}
+            <header className="bg-gradient-to-r from-green-100 to-gray-100 text-green-900 p-4 flex justify-between items-center shadow-lg flex-shrink-0 sticky top-0 z-40">
               <div className="flex items-center gap-3">
                 <img src="/logo-icon.png" alt="Agri Files Icon" className="h-12 object-contain" />
                 <img src="/logo-text-shadow.png" alt="Agri Files" className="h-10 object-contain" />
@@ -200,7 +200,7 @@ export default function RootLayout({ children }) {
 
             {/* ✅ Sub-header (auto-updates after login/logout) - Fixed */}
             {user && (
-              <div className="bg-gradient-to-r from-green-700 to-emerald-700 text-white flex justify-between items-center px-6 py-3 border-b-2 border-green-900 shadow-md flex-shrink-0">
+              <div className="bg-gradient-to-r from-green-700 to-emerald-700 text-white flex justify-between items-center px-6 py-3 border-b-2 border-green-900 shadow-md flex-shrink-0 sticky top-[72px] z-40">
       {/* Left side: user info */}
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold">
       <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-full shadow-md">
@@ -251,11 +251,11 @@ export default function RootLayout({ children }) {
               </div>
             )}
 
-            {/* Main content - Grows to fill available space */}
-            <main className="flex-grow">{children}</main>
+            {/* Main content - Scrollable area */}
+            <main className="flex-grow overflow-y-auto">{children}</main>
 
-            {/* Footer - Naturally at bottom, scrolls with content */}
-            <footer className="bg-gray-200 text-gray-700 text-center p-4 flex-shrink-0 mt-auto">
+            {/* Footer - Fixed at bottom of scrollable area */}
+            <footer className="bg-gray-200 text-gray-700 text-center p-4 flex-shrink-0">
               © 2025 Agri Files. All rights reserved.
             </footer>
           </div>

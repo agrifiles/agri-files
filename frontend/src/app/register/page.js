@@ -281,7 +281,7 @@ export default function RegisterPage() {
               <select name="gst_state" onChange={handle} value={form.gst_state} className="input-enhanced-green" required>
                 <option value="">{t.gstState || 'Select GST State'}</option>
                 {states.map(state => (
-                  <option key={state.key} value={state.key}>{state.name}</option>
+                  <option key={state.key} value={`${state.key} - ${state.name}`}>{state.key} - {state.name}</option>
                 ))}
               </select>
               <input name="password" type="password" onChange={handle} value={form.password} placeholder={t.password} className="input-enhanced-green col-span-2" required />
