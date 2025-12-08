@@ -42,15 +42,57 @@ function FilePrintPageContent({ params }) {
       }
       .row { display: flex; gap: 12px; align-items: center; }
       .col { flex: 1; }
-      .left { text-align: left; }
+      .left {
+      display: flex; 
+      justify-content: flex-start; /* Align fully to left */ 
+      flex-direction: column; /* Emblem on top, text below */
+      gap:3px;
+      }
+      .left-box {
+      text-align: left;
+      margin-top: 157px;
+      margin-left: -39px;
+      height: 83px;
+      }
+      .right-box {
+       text-align: right;
+       margin-top: 149px;
+      }
       .center { text-align: center; }
-      .right { text-align: right; }
+      .right-box { text-align: right; }
+      h1 { font-size: 18px; margin: 4px 0; }
+      h2 { font-size: 14px; margin: 4px 0; }
+      .left-box { text-align: left; }
       h1 { font-size: 18px; margin: 4px 0; }
       h2 { font-size: 14px; margin: 4px 0; }
       .small { font-size: 11px; }
       .box { border: 1px solid #000; padding: 6px; }
       .image-box { border: 1px solid #000; width: 120px; height: 90px; display: inline-block; box-sizing: border-box; background: #fff; }
-      .emblem-box { width: 120px; height: 90px; border: 1px solid #000; display: inline-block; }
+      .emblem-box {
+       width: 94px;
+       height: 121px; /* More balanced box */
+       border: 1px solid #000;
+       display: flex;
+       justify-content: center; 
+       align-items: center;
+       padding: 11px;
+       background: #fff;
+       margin:auto;
+      }
+      .emblem-img{
+       max-width: 100%;
+       height:100%
+       object-fit: contain; /* Prevent stretching, best for emblem */
+       }
+      .small {
+       width: 102px; /* Same width as emblem box for alignment */
+       text-align: center; /* Center the text */
+       line-height: 1.2;
+       display: flex;
+       flex-direction: column;
+       align-items: center;
+       margin:auto;
+      }
       .field { margin: 6px 0; display: flex; gap: 8px; align-items: center; }
       .label { width: 140px; font-weight: 700; }
       .value { flex: 1; border-bottom: 1px solid #000; padding: 2px 6px; min-height: 20px; }
@@ -191,6 +233,10 @@ function FilePrintPageContent({ params }) {
             .no-print {
               display: none !important;
             }
+            img {
+                max-width: 100%;
+                 max-height: 100%;
+             }
           }
           .sheet {
             width: 210mm;
@@ -217,15 +263,67 @@ function FilePrintPageContent({ params }) {
           }
           .row { display: flex; gap: 12px; align-items: center; }
           .col { flex: 1; }
-          .left { text-align: left; }
+          .left { 
+           text-align: left;
+           display: flex; 
+           justify-content: flex-start; /* Align fully to left */ 
+           flex-direction: column; /* Emblem on top, text below */
+           gap:3px;
+           }
           .center { text-align: center; }
           .right { text-align: right; }
           h1 { font-size: 18px; margin: 4px 0; }
           h2 { font-size: 14px; margin: 4px 0; }
-          .small { font-size: 11px; }
-          .box { border: 1px solid #000; padding: 6px; }
-          .image-box { border: 1px solid #000; width: 120px; height: 90px; display: inline-block; box-sizing: border-box; background: #fff; }
-          .emblem-box { width: 120px; height: 90px; border: 1px solid #000; display: inline-block; }
+          .small { 
+          font-size: 11px;
+          width: 102px; /* Same width as emblem box for alignment */
+          text-align: center; /* Center the text */
+          line-height: 1.2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+           }
+          .box { 
+          border: 1px solid #000; 
+          padding: 6px; 
+          }
+          .image-box { 
+          border: 1px solid #000; 
+          width: 120px; 
+          height: 90px; 
+          display: inline-block; 
+          box-sizing: border-box; 
+          background: #fff; 
+          }
+          .left-box {
+          text-align: left;
+          margin-top: 157px;
+          margin-left: -39px;
+          height: 83px;
+        }
+          .right-box {
+          text-align: right;
+          margin-top: 149px;
+        }
+          .emblem-box { 
+          width: 25mm;
+          height: 38mm;
+          border: 1px solid #000;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 1.5mm;
+          background: #fff;
+          box-sizing: border-box;
+          page-break-inside: avoid;
+          margin: auto;
+          }
+          .emblem-img{
+            max-width:100%;
+            height:100%;
+            object-fit: contain; /* Prevent stretching, best for emblem */
+            display: block;
+          }
           .field { margin: 6px 0; display: flex; gap: 8px; align-items: center; }
           .label { width: 140px; font-weight: 700; }
           .value { flex: 1; border-bottom: 1px solid #000; padding: 2px 6px; min-height: 20px; }
@@ -276,33 +374,51 @@ function FilePrintPageContent({ params }) {
         {/* Page 1 - Application Header */}
         <section className="sheet">
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div className="left">
-              <div className="emblem-box" aria-hidden="true"></div>
+          {/* div */}           
+           <div className="left-box">
+              <div style={{ textAlign: 'left' }}>
+                <div className="box small">
+                  <div>APPLICATION ID</div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{file.id}</div>
+                </div>
+                <div style={{ height: 3 }} />
+                <div className="box small">
+                  <div></div>
+                  <div style={{ fontWeight: 700 }}>FMR-{file.id}</div>
+                </div>
+              </div>
             </div>
-
             <div className="center" style={{ flex: 2 }}>
-              <h1>अनुदान मागणी प्रस्ताव</h1>
-              <h2>पेर Drop More Crop — सत्र 2025-2026</h2>
-              <div className="small">महाराष्ट्र शासन — कृषि विभाग</div>
+              <h1>प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत</h1>
+              <h1>केंद्र पुरस्कृत सिंचन योजना</h1>
+              <h5>प्रति थेंब अधिक पीक (PER DROP MORE CROP)</h5>
+              <hr style={{ margin: "12px -158px", marginLeft: "-121px" }} />
+              <h2><strong>अनुदान मागणी प्रस्ताव</strong></h2>
+              <h2><strong>सन २०२५-२०२६</strong></h2>
+            <div className="left">
+              <div className="emblem-box" aria-hidden="true">
+                <img src="/emblem1.png" alt="Indian Emblem"/>
+              </div>
+               <div className="small">
+                <h2>महाराष्ट्र शासन</h2>
+                <h2>कृषि विभाग</h2> 
+                </div>
+            </div>              
             </div>
-
-            <div className="right">
+            <div className="right-box">
               <div style={{ textAlign: 'right' }}>
                 <div className="box small">
                   <div>APPLICATION ID</div>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{file.id}</div>
                 </div>
-                <div style={{ height: 8 }} />
+                <div style={{ height: 3 }} />
                 <div className="box small">
-                  <div>शेतकऱ्याचे ओळख क्रमांक</div>
+                  <div></div>
                   <div style={{ fontWeight: 700 }}>FMR-{file.id}</div>
                 </div>
               </div>
             </div>
           </div>
-
-          <hr style={{ margin: '12px 0' }} />
-
           <div className="box">
             <div className="field">
               <div className="label">शेतकऱ्याचे नाव:</div>
