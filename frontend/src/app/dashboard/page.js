@@ -58,8 +58,8 @@ function DashboardPageContent() {
     <div className="text-7xl mb-6 transform group-hover:scale-110 transition-transform">🌱</div>
 
     {/* Title */}
-    <h2 className="leading-normal text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-emerald-600 mb-3">
-      {t.fillNewFile}
+    <h2 className="leading-normal text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-emerald-600 mb-3">
+      {t.fillNewFile} (MAHADBT)
     </h2>
 
     {/* Subtitle */}
@@ -117,7 +117,7 @@ function DashboardPageContent() {
   <div className="relative z-10">
     <div className="text-7xl mb-6 transform group-hover:scale-110 transition-transform">📂</div>
 
-    <h2 className="leading-normal text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-600 mb-3">
+    <h2 className="leading-normal text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-600 mb-3">
       {t.seeExistingFiles}
     </h2>
 

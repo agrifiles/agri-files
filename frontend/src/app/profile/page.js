@@ -339,7 +339,7 @@ function ProfileContent() {
                     >
                       <option value="">Select State</option>
                       {states.map(state => (
-                        <option key={state.key} value={state.key}>{state.name}</option>
+                        <option key={state.key} value={`${state.key} - ${state.name}`}>{state.key} - {state.name}</option>
                       ))}
                     </select>
                   </div>

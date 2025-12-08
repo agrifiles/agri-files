@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { API_BASE } from '@/lib/utils';
+import { API_BASE, getCurrentUser } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -32,161 +32,129 @@ function BillPrintContent({ params }) {
   const [bill, setBill] = useState(null);
   const [fileData, setFileData] = useState(null);
   const [routeId, setRouteId] = useState(null);
+  const [userData, setUserData] = useState(null);
 
   const handlePrint = () => {
-    // Create a new window with just the bill content
     const printWindow = window.open('', '_blank', 'width=900,height=1200');
+
+    if (!printWindow) {
+      alert('Please disable popup blocker and try again');
+      return;
+    }
+
+    const billElement = document.getElementById('bill-content');
+    const clonedBill = billElement.cloneNode(true);
+
+    // Function to copy all computed styles as inline styles
+    const copyComputedStyles = (source, target) => {
+      const computed = window.getComputedStyle(source);
+      let cssText = '';
+      for (let i = 0; i < computed.length; i++) {
+        const prop = computed[i];
+        cssText += `${prop}:${computed.getPropertyValue(prop)};`;
+      }
+      target.style.cssText = cssText;
+
+      // Recursively copy styles to children
+      for (let i = 0; i < source.children.length; i++) {
+        if (target.children[i]) {
+          copyComputedStyles(source.children[i], target.children[i]);
+        }
+      }
+    };
+
+    // Apply all computed styles as inline styles
+    copyComputedStyles(billElement, clonedBill);
     
-    const billHTML = document.getElementById('bill-content').innerHTML;
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Bill ${bill.bill_no}</title>
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: 'Arial', sans-serif;
-            background: white;
-            color: black;
-            padding: 20px;
-          }
-          @page {
-            size: A4 portrait;
-            margin: 0;
-          }
-          @media print {
-            body {
-              padding: 0;
-              margin: 0;
-            }
-            * {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-          }
-          .bill-container {
-            width: 210mm;
-            height: 297mm;
-            margin: auto;
-            background: white;
-            padding: 0;
-          }
-          /* Copy all your bill styles here */
-          .border-b-2 { border-bottom: 2px solid #111; }
-          .border-b { border-bottom: 1px solid #ccc; }
-          .border-t-2 { border-top: 2px solid #111; }
-          .border { border: 1px solid #111; }
-          .bg-gray-50 { background-color: #f9fafb; }
-          .bg-gray-900 { background-color: #111; }
-          .text-white { color: white; }
-          .text-gray-900 { color: #111; }
-          .text-gray-700 { color: #374151; }
-          .text-gray-600 { color: #4b5563; }
-          .text-gray-500 { color: #6b7280; }
-          .text-gray-400 { color: #d1d5db; }
-          .text-center { text-align: center; }
-          .text-left { text-align: left; }
-          .text-right { text-align: right; }
-          .font-bold { font-weight: bold; }
-          .font-semibold { font-weight: 600; }
-          .text-xs { font-size: 0.75rem; }
-          .text-sm { font-size: 0.875rem; }
-          .text-lg { font-size: 1.125rem; }
-          .text-xl { font-size: 1.25rem; }
-          .text-2xl { font-size: 1.5rem; }
-          .text-3xl { font-size: 1.875rem; }
-          .p-3 { padding: 0.75rem; }
-          .p-4 { padding: 1rem; }
-          .p-6 { padding: 1.5rem; }
-          .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-          .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-          .py-0.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
-          .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-          .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-          .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-          .mb-1 { margin-bottom: 0.25rem; }
-          .mb-2 { margin-bottom: 0.5rem; }
-          .mb-3 { margin-bottom: 0.75rem; }
-          .mb-4 { margin-bottom: 1rem; }
-          .mb-6 { margin-bottom: 1.5rem; }
-          .mt-1 { margin-top: 0.25rem; }
-          .mt-2 { margin-top: 0.5rem; }
-          .mt-4 { margin-top: 1rem; }
-          .mt-6 { margin-top: 1.5rem; }
-          .gap-2 { gap: 0.5rem; }
-          .gap-4 { gap: 1rem; }
-          .gap-6 { gap: 1.5rem; }
-          .gap-8 { gap: 2rem; }
-          .grid { display: grid; }
-          .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-          .grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-          .flex { display: flex; }
-          .flex-col { flex-direction: column; }
-          .items-center { align-items: center; }
-          .items-start { align-items: flex-start; }
-          .items-end { align-items: flex-end; }
-          .justify-center { justify-content: center; }
-          .justify-between { justify-content: space-between; }
-          .justify-end { justify-content: flex-end; }
-          .table { display: table; width: 100%; }
-          .table-collapse { border-collapse: collapse; }
-          .th { font-weight: bold; padding: 0.5rem 0.75rem; text-align: left; }
-          .td { padding: 0.5rem 0.75rem; }
-          .hover\:bg-gray-50:hover { background-color: #f9fafb; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; }
-          th { background-color: #111; color: white; font-weight: bold; }
-          thead tr { background-color: #111; color: white; }
-          .rounded-lg { border-radius: 0.5rem; }
-          .rounded-xl { border-radius: 0.75rem; }
-          .space-y-0.5 > * + * { margin-top: 0.125rem; }
-          .space-y-1 > * + * { margin-top: 0.25rem; }
-          .capitalize { text-transform: capitalize; }
-          .min-w-full { min-width: 100%; }
-          .w-full { width: 100%; }
-          .h-12 { height: 3rem; }
-          .overflow-x-auto { overflow-x: auto; }
-          .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-          .rounded { border-radius: 0.25rem; }
-        </style>
-      </head>
-      <body>
-        <div class="bill-container">
-          ${billHTML}
-        </div>
-        <script>
-          (function(){
-            function closeWin(){
-              try{ window.close(); }catch(e){}
-            }
-            window.onload = function() {
-              try{ window.print(); }catch(e){}
-            };
-            if ('onafterprint' in window) {
-              window.onafterprint = closeWin;
-            } else {
-              // fallback: when window regains focus after print dialog closes
-              window.onfocus = function(){ setTimeout(closeWin, 200); };
-            }
-            // safety fallback: close after 20s in case events don't fire
-            setTimeout(closeWin, 20000);
-          })();
-        </script>
-      </body>
-      </html>
-    `);
-    
+    // Override the bill container to ensure proper A4 sizing and centering
+    clonedBill.style.cssText = `
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      padding: 8px;
+      background: white;
+      font-size: 11px;
+      box-sizing: border-box;
+    `;
+
+    // Generate filename from farmer name and bill number
+    const farmerName = fileData?.farmer_name || bill.farmer_name || 'Customer';
+    const billNo = bill.bill_no || 'Bill';
+    const fileName = `${farmerName}_${billNo}`.replace(/[^a-zA-Z0-9\u0900-\u097F_-]/g, '_');
+
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${fileName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      margin: 0; 
+      padding: 20px; 
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    #bill-content {
+      width: 210mm !important;
+      height: 297mm !important;
+      margin: 0 auto !important;
+      background: white !important;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    @page { size: A4 portrait; margin: 0; }
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      html, body { 
+        margin: 0; 
+        padding: 0; 
+        background: white;
+        display: block;
+      }
+      #bill-content {
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${clonedBill.outerHTML}
+  <script>
+    window.onload = function() { 
+      setTimeout(function() { 
+        window.print(); 
+      }, 300); 
+    };
+    // Auto close after print (whether printed or cancelled)
+    window.onafterprint = function() {
+      window.close();
+    };
+    // Fallback: close window if user cancels or after print dialog
+    window.addEventListener('focus', function() {
+      setTimeout(function() {
+        window.close();
+      }, 500);
+    });
+  </script>
+</body>
+</html>`;
+
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
+
+  // Fetch user data from localStorage using utility function
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setUserData(user);
+      console.log('User data loaded:', user);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -216,6 +184,7 @@ function BillPrintContent({ params }) {
         
         const billObj = billData.bill || null;
         setBill(billObj);
+        console.log('Bill data loaded for print:', billObj);
 
         // If bill is linked to a file, fetch file details
         if (billObj && billObj.file_id) {
@@ -225,6 +194,7 @@ function BillPrintContent({ params }) {
             const fileRespData = JSON.parse(fileText || '{}');
             if (mounted && fileRespData.success) {
               setFileData(fileRespData.file || null);
+              console.log('File data loaded for bill print:', fileRespData.file);
             }
           } catch (err) {
             console.error('Failed to fetch file data:', err);
@@ -259,189 +229,338 @@ function BillPrintContent({ params }) {
   totalGst = Math.round(totalGst * 100) / 100;
   const finalAmount = Math.round((taxableAmount + totalGst) * 100) / 100;
   
+  // Group items by GST percentage
+  const gstGroups = {};
+  items.forEach(item => {
+    const gstPercent = Number(item.gst_percent || 0);
+    const itemAmount = Number(item.amount || 0);
+    const gstAmount = (gstPercent / 100) * itemAmount;
+    
+    if (!gstGroups[gstPercent]) {
+      gstGroups[gstPercent] = {
+        gstPercent,
+        taxableAmount: 0,
+        gstAmount: 0
+      };
+    }
+    gstGroups[gstPercent].taxableAmount += itemAmount;
+    gstGroups[gstPercent].gstAmount += gstAmount;
+  });
+  
+  // Convert to array and sort by GST %
+  const gstGroupsArray = Object.values(gstGroups).sort((a, b) => a.gstPercent - b.gstPercent);
+  
   const amountInWords = numberToWords(Math.floor(finalAmount)) + ' rupees';
 
   return (
-    <div className="bg-gray-100 min-h-screen p-0 m-0" style={{ backgroundColor: '#f5f5f5', padding: '20px 0' }}>
-      {/* A4 Page */}
-      <div id="bill-content" className="mx-auto bg-white" style={{ width: '210mm', height: '297mm', margin: '20px auto', boxShadow: '0 0 10px rgba(0,0,0,0.1)' }}>
-        
-        {/* Header Section */}
-        <div className="border-b-2 border-gray-900 p-6 bg-gray-50">
-          <div className="text-center mb-2">
-            <h1 className="text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, serif' }}>AGRIFILES</h1>
-            <p className="text-xs text-gray-700 mt-1">Agricultural Solutions & Support Services</p>
+
+    <div
+  className="bg-gray-100 min-h-screen p-0 m-0"
+  style={{ backgroundColor: "#f5f5f5", padding: "20px 0" }}
+>
+  {/* A4 Page */}
+  <div
+    id="bill-content"
+    className="mx-auto bg-white"
+    style={{
+      width: "210mm",
+      height: "297mm",
+      margin: "20px auto",
+      boxShadow: "0 0 10px rgba(0,0,0,0.2)",
+      fontSize: "11px",
+      padding: "8px",
+      position: "relative",
+    }}
+  >
+    {/* Watermark Logo */}
+    <div
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        opacity: 0.15,
+        pointerEvents: "none",
+        zIndex: 0,
+      }}
+    >
+      <img
+        src="/logo-full.png"
+        alt="Watermark"
+        style={{
+          width: "400px",
+          height: "auto",
+        }}
+      />
+    </div>
+
+    {/* ================= HEADER ================= */}
+    <div className="border-b-2 border-black px-3 py-2 bg-gray-100" style={{ position: "relative", zIndex: 1 }}>
+      {/* Top Row: Firm Name | Authorized Dealer For */}
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <div className="font-black text-3xl tracking-wide text-gray-900 mb-1">{userData?.business_name}</div>
+          <div className="font-bold text-[11px] leading-tight text-gray-800 mb-1">
+            तालुका : {userData?.taluka} जिल्हा :  {userData?.district}<br/>
+            ईमेल : {userData?.email } मोबाइल : {userData?.mobile}
           </div>
-          <div className="text-center text-xs text-gray-700 space-y-0.5">
-            <div>Address: Plot No. XYZ, Agricultural Complex, Pune - 411005</div>
-            <div>GST No: 27AABCT1234H1Z0 | Phone: +91-9876543210 | Email: billing@agrifiles.com</div>
-          </div>
+          <div className="font-bold text-[11px] text-gray-800">GST क्रमांक - {userData?.gst_no}</div>
         </div>
-
-        {/* Bill Title */}
-        <div className="text-center py-4 border-b border-gray-300 bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, serif' }}>TAX INVOICE / BILL</h2>
-        </div>
-
-        {/* Bill Info & Farmer Details */}
-        <div className="p-6 border-b-2 border-gray-300">
-          <div className="grid grid-cols-3 gap-6 mb-4">
-            {/* Bill Details - Left */}
-            <div className="text-xs">
-              <div className="font-bold text-gray-900 mb-2">BILL DETAILS</div>
-              <div className="space-y-1 text-gray-700">
-                <div><span className="font-semibold">Bill No:</span> {bill.bill_no || 'N/A'}</div>
-                <div><span className="font-semibold">Bill Date:</span> {bill.bill_date ? new Date(bill.bill_date).toLocaleDateString('en-IN') : 'N/A'}</div>
-              </div>
-            </div>
-
-            {/* Farmer/Customer Details - Center */}
-            <div className="text-xs">
-              <div className="font-bold text-gray-900 mb-2">SOLD TO</div>
-              <div className="space-y-1 text-gray-700">
-                <div><span className="font-semibold">Name:</span> {fileData?.farmer_name || bill.farmer_name || 'N/A'}</div>
-                <div><span className="font-semibold">Mobile:</span> {fileData?.mobile || bill.farmer_mobile || 'N/A'}</div>
-                {fileData?.village && <div><span className="font-semibold">Village:</span> {fileData.village}</div>}
-                {fileData?.taluka && <div><span className="font-semibold">Taluka:</span> {fileData.taluka}</div>}
-                {fileData?.district && <div><span className="font-semibold">District:</span> {fileData.district}</div>}
-              </div>
-            </div>
-
-            {/* Additional Info - Right */}
-            <div className="text-xs">
-              <div className="font-bold text-gray-900 mb-2">STATUS</div>
-              <div className="space-y-1 text-gray-700">
-                <div><span className="font-semibold">Status:</span> <span className="capitalize px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">{bill.status || 'DRAFT'}</span></div>
-                {fileData?.crop_name && <div><span className="font-semibold">Crop:</span> {fileData.crop_name}</div>}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Items Table */}
-        <div className="p-6">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-gray-900 text-white">
-                <th className="border border-gray-900 px-3 py-2 text-left font-semibold">Sr</th>
-                <th className="border border-gray-900 px-3 py-2 text-left font-semibold">Description of Goods</th>
-                <th className="border border-gray-900 px-3 py-2 text-center font-semibold">HSN</th>
-                <th className="border border-gray-900 px-3 py-2 text-right font-semibold">Qty</th>
-                <th className="border border-gray-900 px-3 py-2 text-right font-semibold">Rate</th>
-                <th className="border border-gray-900 px-3 py-2 text-center font-semibold">GST%</th>
-                <th className="border border-gray-900 px-3 py-2 text-right font-semibold">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 px-3 py-2 text-center">{idx + 1}</td>
-                  <td className="border border-gray-300 px-3 py-2">{item.description || 'N/A'}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-center">{item.hsn || 'N/A'}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right">{Number(item.qty || 0).toFixed(2)}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right">₹ {Number(item.sales_rate || 0).toFixed(2)}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-center">{Number(item.gst_percent || 0).toFixed(1)}%</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right font-semibold">₹ {Number(item.amount || 0).toFixed(2)}</td>
-                </tr>
-              ))}
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="border border-gray-300 px-3 py-8 text-center text-gray-500">No items</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Totals Section */}
-        <div className="p-6 border-t-2 border-gray-300">
-          <div className="flex justify-end">
-            <div className="w-1/2">
-              <table className="w-full text-xs">
-                <tbody>
-                  <tr className="border-b border-gray-300">
-                    <td className="py-2 font-semibold text-gray-900">Taxable Amount:</td>
-                    <td className="text-right py-2 font-semibold">₹ {taxableAmount.toFixed(2)}</td>
-                  </tr>
-                  <tr className="border-b border-gray-300">
-                    <td className="py-2 font-semibold text-gray-900">Total GST:</td>
-                    <td className="text-right py-2 font-semibold">₹ {totalGst.toFixed(2)}</td>
-                  </tr>
-                  <tr className="bg-gray-900 text-white">
-                    <td className="py-3 font-bold">TOTAL AMOUNT:</td>
-                    <td className="text-right py-3 font-bold text-lg">₹ {finalAmount.toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Amount in Words */}
-        <div className="px-6 py-3 bg-gray-50 border-b border-gray-300 text-xs">
-          <span className="font-semibold text-gray-900">Amount in Words:</span> <span className="capitalize">{amountInWords}</span>
-        </div>
-
-        {/* Footer - Signature Section */}
-        <div className="p-6">
-          <div className="grid grid-cols-4 gap-4 text-xs">
-            {/* Sales Engineer */}
-            <div className="text-center border-t-2 border-gray-900 pt-4">
-              <div className="h-12 mb-2"></div>
-              <div className="font-semibold text-gray-900">Sales Engineer</div>
-              <div className="text-gray-600 mt-1">(Signature & Seal)</div>
-            </div>
-
-            {/* Company Stamp */}
-            <div className="text-center border-t-2 border-gray-900 pt-4">
-              <div className="h-12 mb-2 flex items-center justify-center">
-                <div className="text-gray-400 text-3xl">●</div>
-              </div>
-              <div className="font-semibold text-gray-900">Company Stamp</div>
-              <div className="text-gray-600 mt-1">(Stamp/Seal)</div>
-            </div>
-
-            {/* Owner/Authorized */}
-            <div className="text-center border-t-2 border-gray-900 pt-4">
-              <div className="h-12 mb-2"></div>
-              <div className="font-semibold text-gray-900">Authorized Signatory</div>
-              <div className="text-gray-600 mt-1">(Owner/Director)</div>
-            </div>
-
-            {/* Terms */}
-            <div className="text-xs text-gray-600 pt-4">
-              <div className="font-semibold text-gray-900 mb-2">Terms & Conditions:</div>
-              <div className="space-y-1">
-                <div>1. Payment due on or before 15 days</div>
-                <div>2. Cheque/DD in favor of AGRIFILES</div>
-                <div>3. Subject to Pune jurisdiction</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Print Footer */}
-        <div className="border-t-2 border-gray-900 p-3 text-center text-xs text-gray-600" style={{ pageBreakAfter: 'always' }}>
-          <div>Thank you for your business | This is a computer-generated document, signature not required</div>
+        <div className="text-right leading-tight">
+          <div className="font-bold text-[9px] text-gray-800 mb-1">AUTHORISED DEALER FOR-</div>
+          <div className="font-bold text-[13px] text-gray-900 mb-1">{fileData?.company || "____________________"}</div>
+          <div className="font-bold text-[11px] text-gray-800">राज्य : {userData?.gst_state }</div>
         </div>
       </div>
 
-      {/* Print Button */}
-      <div className="fixed bottom-6 right-6 flex gap-2" style={{ display: 'flex', zIndex: 50 }}>
-        <button
-          onClick={handlePrint}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 font-semibold text-sm"
-        >
-          🖨️ Print Bill
-        </button>
-        <button
-                   onClick={() => router.push('/bill')}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg shadow-lg hover:bg-gray-700 font-semibold text-sm"
-        >
-          ← Back
-        </button>
+      {/* BILL OF SUPPLY title */}
+      <div className="border-b-2 border-t-2 border-black mt-2 py-1.5 text-center bg-white">
+        <div className="font-black text-2xl tracking-widest text-gray-900 mb-0.5">BILL OF SUPPLY</div>
+        <div className="text-[8px] font-semibold text-gray-700">*COMPOSITION TAXABLE PERSON, NOT ELIGIBLE TO COLLECT TAX ON SUPPLIES*</div>
+      </div>
+
+      {/* Farmer/Client details - IMPROVED LAYOUT */}
+      <div className="mt-2 border-1 border-black p-2" style={{fontSize: "10px"}}>
+        {/* Row 1: Aadhar and Applicant Name */}
+        <div className="grid grid-cols-3 gap-3 mb-1">
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">आधार नंबर</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.aadhaar_no || "____________________"}</div>
+          </div>
+          <div className="col-span-2">
+            <div className="font-bold text-[8px] text-gray-700">ग्राहकाचे नाव</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_name || bill.farmer_name || "____________________"}</div>
+          </div>
+        </div>
+
+        {/* Row 2: Mobile and Farmer/Client ID */}
+        <div className="grid grid-cols-3 gap-3 mb-1">
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">मोबाइल नंबर</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.mobile || bill.farmer_mobile || "____________________"}</div>
+          </div>
+          <div className="col-span-2">
+            <div className="font-bold text-[8px] text-gray-700">शेतकरी ओळख क्रमांक </div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_id || "____________________"}</div>
+          </div>
+        </div>
+
+        {/* Row 3: Village, Taluka, District (single line) */}
+        <div className="grid grid-cols-3 gap-3 mb-1">
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">गाव</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.village || "आठेगॉन "}</div>
+          </div>
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">तालुका</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.taluka || "____________________"}</div>
+          </div>
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">जिल्हा</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.district || "____________________"}</div>
+          </div>
+        </div>
+
+        {/* Row 4: Area, Crop, Application ID */}
+        <div className="grid grid-cols-3 gap-3 mb-1">
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">क्षेत्रफळ (हेक्टेर)</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.area8a || "____________________"}</div>
+          </div>
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">पीकाचे नाव</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.crop_name || bill?.crop_name || "____________________"}</div>
+          </div>
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">अर्ज क्रमांक</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.application_id || "____________________"}</div>
+          </div>
+        </div>
+
+        {/* Row 5: Drip Area and Lateral Distance */}
+        <div className="grid grid-cols-3 gap-3 mb-1">
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">ड्रिप क्षेत्र</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.irrigation_area || "____________________"}</div>
+          </div>
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">लॅटरल अंतर</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.lateral_spacing || "____________________"}</div>
+          </div>
+          <div>
+            <div className="font-bold text-[8px] text-gray-700">बिल क्रमांक / दिनांक</div>
+            <div className="border-b border-black py-0.5 text-[11px] font-semibold">{bill?.bill_no || "N/A"} / {bill?.bill_date ? new Date(bill.bill_date).toLocaleDateString("en-IN") : "N/A"}</div>
+          </div>
+        </div>
       </div>
     </div>
+
+    {/* ================= ITEMS TABLE ================= */}
+    <div className="px-1 my-3 pt-0.5" style={{ position: "relative", zIndex: 1 }}>
+      <table className="w-full border border-black border-collapse" style={{fontSize: "10px"}}>
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border border-black px-0.5 py-0.5 text-center w-6">SR.</th>
+            <th className="border border-black px-0.5 py-0.5 text-left">DESCRIPTION OF GOODS</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-10">HSN</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-12">BATCH NO.</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-10">CML NO.</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-8">SIZE</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-10">QUANTITY</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-12">GOVT RATE</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-12">SALES RATE</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-8">UNIT</th>
+            <th className="border border-black px-0.5 py-0.5 text-center w-8">GST</th>
+            <th className="border border-black px-0.5 py-0.5 text-right w-12">AMOUNT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, idx) => (
+            <tr key={idx}>
+              <td className="border border-black px-0.5 py-0.5 text-center">{idx + 1}</td>
+              <td className="border border-black font-bold px-0.5 py-0.5">{item.description || "N/A"}</td>
+              <td className="border border-black px-0.5 py-0.5 text-center">{item.hsn || ""}</td>
+              <td className="border border-black px-0.5 py-0.5 text-center">{item.batch_no || ""}</td>
+              <td className="border border-black px-0.5 py-0.5 text-center">{item.cml_no || ""}</td>
+              <td className="border border-black px-0.5 py-0.5 text-center">{item.size || ""}</td>
+              <td className="border border-black px-0.5 py-0.5 text-center">{Number(item.qty || 0).toFixed(2)}</td>
+              <td className="border border-black px-0.5 py-0.5 text-right">{item.gov_rate ? Number(item.gov_rate).toFixed(2) : ""}</td>
+              <td className="border border-black px-0.5 py-0.5 text-right">{Number(item.sales_rate || 0).toFixed(2)}</td>
+              <td className="border border-black px-0.5 py-0.5 text-center">{item.uom || "NO"}</td>
+              <td className="border border-black px-0.5 py-0.5 text-center">{Number(item.gst_percent || 0).toFixed(1)}%</td>
+              <td className="border border-black px-0.5 py-0.5 text-right pr-0.5 font-semibold">{Number(item.amount || 0).toFixed(2)}</td>
+            </tr>
+          ))}
+          {Array.from({ length: Math.max(0, 7 - items.length) }).map((_, i) => (
+            <tr key={`empty-${i}`} className="h-4">
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+              <td className="border border-black" />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {/* ================= TOTALS SECTION ================= */}
+    <div className="px-1 pt-0.5 grid grid-cols-2 gap-1" style={{ position: "relative", zIndex: 1 }}>
+      {/* Left: GST Summary */}
+      <div>
+        <table className="w-full border border-black border-collapse" style={{fontSize: "9px"}}>
+          <tbody>
+            <tr>
+              <td className="border border-black px-0.5 py-0.5 font-bold w-12">GST %</td>
+              <td className="border border-black px-0.5 py-0.5 font-bold text-right">TAX. AMOUNT</td>
+              <td className="border border-black px-0.5 py-0.5 font-bold text-right">CGST</td>
+              <td className="border border-black px-0.5 py-0.5 font-bold text-right">SGST</td>
+              <td className="border border-black px-0.5 py-0.5 font-bold text-right">TOTAL</td>
+            </tr>
+            {gstGroupsArray.map((group, idx) => (
+              <tr key={idx}>
+                <td className="border border-black px-0.5 py-0.5 text-center">{group.gstPercent.toFixed(1)}%</td>
+                <td className="border border-black px-0.5 py-0.5 text-right">{group.taxableAmount.toFixed(2)}</td>
+                <td className="border border-black px-0.5 py-0.5 text-right">{(group.gstAmount / 2).toFixed(2)}</td>
+                <td className="border border-black px-0.5 py-0.5 text-right">{(group.gstAmount / 2).toFixed(2)}</td>
+                <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(group.taxableAmount + group.gstAmount).toFixed(2)}</td>
+              </tr>
+            ))}
+            {/* Total row if multiple GST groups */}
+            {gstGroupsArray.length > 1 && (
+              <tr className="bg-gray-100">
+                <td className="border border-black px-0.5 py-0.5 text-center font-bold">TOTAL</td>
+                <td className="border border-black px-0.5 py-0.5 text-right font-bold">{taxableAmount.toFixed(2)}</td>
+                <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(totalGst / 2).toFixed(2)}</td>
+                <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(totalGst / 2).toFixed(2)}</td>
+                <td className="border border-black px-0.5 py-0.5 text-right font-bold">{finalAmount.toFixed(2)}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Right: Total/Rounded/Grand Total */}
+      <div>
+        <table className="w-full border border-black border-collapse" style={{fontSize: "9px"}}>
+          <tbody>
+            <tr>
+              <td className="border border-black px-0.5 py-0.5 font-bold">TOTAL</td>
+              <td className="border border-black px-0.5 py-0.5 text-right font-bold">{finalAmount.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td className="border border-black px-0.5 py-0.5 font-bold">ROUNDED</td>
+              <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(Math.round(finalAmount) - finalAmount).toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td className="border border-black px-0.5 py-0.5 font-bold">GRAND TOTAL</td>
+              <td className="border border-black px-0.5 py-0.5 text-right font-bold text-base">{Math.round(finalAmount).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {/* Amount in words */}
+    <div className="px-1 py-0.5 border border-black my-1 py-2" style={{fontSize: "11px", position: "relative", zIndex: 1, background: "white"}}>
+      <span className="font-bold">AMOUNT IN WORDS - </span><span> {amountInWords.toUpperCase()} ONLY</span>
+    </div>
+
+    {/* ================= SIGNATURES ================= */}
+    <div className="px-1 py-3 mt-3 grid grid-cols-3 gap-4" style={{fontSize: "11px", position: "relative", zIndex: 1}}>
+      <div className="flex flex-col border border-black p-3 h-32">
+        <div className="h-16 flex-1" />
+        <div className="text-[12px] border-t-2 border-black pt-1 text-center leading-normal font-bold">
+          <div>ग्राहक</div>
+          <div className="text-[9px]">{fileData?.farmer_name}</div>
+        </div>
+      </div>
+
+      <div className="flex flex-col border border-black p-3 h-32">
+        <div className="h-16 flex-1" />
+        <div className="text-[12px] border-t-2 border-black pt-1 text-center leading-normal font-bold">
+          <div>सेल्स इंजिनियर </div>
+          <div className="text-[9px]"> {fileData?.company} ({fileData?.sales_engg || ""}) </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col border border-black p-3 h-32">
+        <div className="h-16 flex-1" />
+        <div className="text-[12px] border-t-2 border-black pt-1 text-center leading-normal font-bold overflow-hidden">
+          <div>मालक / विक्रेता</div>
+          <div className="text-[8px] truncate">{userData?.business_name}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Print / Back buttons */}
+  <div
+    className="fixed bottom-6 right-6 flex gap-2"
+    style={{ display: "flex", zIndex: 50 }}
+  >
+    <button
+      onClick={handlePrint}
+      className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 font-semibold text-sm"
+    >
+      🖨️ Print Bill
+    </button>
+    <button
+      onClick={() => router.push("/bill")}
+      className="px-4 py-2 bg-gray-600 text-white rounded-lg shadow-lg hover:bg-gray-700 font-semibold text-sm"
+    >
+      ← Back
+    </button>
+  </div>
+</div>
+
   );
 }
 
