@@ -253,6 +253,7 @@ function BillPrintContent({ params }) {
   // Determine bill type: TAX INVOICE if any item has GST > 0, else BILL OF SUPPLY
   const hasGst = items.some(item => Number(item.gst_percent || 0) > 0);
   const billType = hasGst ? 'TAX INVOICE' : 'BILL OF SUPPLY';
+  const billHeader = hasGst ? '' : '*COMPOSITION TAXABLE PERSON, NOT ELIGIBLE TO COLLECT TAX ON SUPPLIES*';
   
   const amountInWords = numberToWords(Math.floor(finalAmount)) + ' rupees';
 
@@ -320,7 +321,7 @@ function BillPrintContent({ params }) {
       {/* BILL OF SUPPLY title */}
       <div className="border-b-2 border-t-2 border-black mt-2 py-1.5 text-center bg-white">
         <div className="font-black text-2xl tracking-widest text-gray-900 mb-0.5">{billType}</div>
-        <div className="text-[8px] font-semibold text-gray-700">*COMPOSITION TAXABLE PERSON, NOT ELIGIBLE TO COLLECT TAX ON SUPPLIES*</div>
+        <div className="text-[8px] font-semibold text-gray-700">{billHeader}</div>
       </div>
 
       {/* Farmer/Client details - IMPROVED LAYOUT */}
@@ -368,7 +369,7 @@ function BillPrintContent({ params }) {
         {/* Row 4: Area, Crop, Application ID */}
         <div className="grid grid-cols-3 gap-3 mb-1">
           <div>
-            <div className="font-bold text-[8px] text-gray-700">क्षेत्रफळ (हेक्टेर)</div>
+            <div className="font-bold text-[8px] text-gray-700">क्षेत्रफळ (हेक्टर)</div>
             <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.area8a || "____________________"}</div>
           </div>
           <div>

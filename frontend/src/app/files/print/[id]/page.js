@@ -415,7 +415,7 @@ function FilePrintPageContent({ params }) {
             <div className="grid grid-cols-2 gap-1">
               <div className="flex gap-1 items-center">
                 <div className="text-lg w-30">८अ क्षेत्रफळ :</div>
-                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.area_8a || 'N/A'} हेक्टर</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.area8a || 'N/A'} हेक्टर</div>
               </div>
               <div className="flex gap-1 items-center">
                 <div className="text-lg w-30">गट/सर्व्हे क्रमांक :</div>
