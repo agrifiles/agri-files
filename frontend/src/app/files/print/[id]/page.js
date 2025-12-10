@@ -335,7 +335,7 @@ function FilePrintPageContent({ params }) {
   <script>
     window.onload = function() {
       setTimeout(function() {
-        //window.print();
+        window.print();
       }, 300);
     };
     window.onafterprint = function() {
@@ -343,7 +343,7 @@ function FilePrintPageContent({ params }) {
     };
     window.addEventListener('focus', function() {
       setTimeout(function() {
-       //window.close();
+       window.close();
       }, 500);
     });
   </script>
