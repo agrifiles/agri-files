@@ -850,9 +850,14 @@ const submitForm = async (e) => {
         onMouseUp={handleMouseUp}
         style={{
           border: '2px solid #ccc',
-          backgroundSize: '20px 20px',
-          backgroundImage:
-            'linear-gradient(to right, #eee 1px, transparent 1px), linear-gradient(to bottom, #eee 1px, transparent 1px)',
+          backgroundColor: '#ffffff',
+          backgroundImage: `
+            linear-gradient(to right, rgba(144, 238, 144, 0.3) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(144, 238, 144, 0.3) 1px, transparent 1px),
+            linear-gradient(to right, rgba(34, 139, 34, 0.35) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(34, 139, 34, 0.35) 1px, transparent 1px)
+          `,
+          backgroundSize: '5px 5px, 5px 5px, 50px 50px, 50px 50px',
           cursor: tool?.includes('pipe') ? 'crosshair' : 'default',
         }}
       >

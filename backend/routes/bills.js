@@ -103,7 +103,7 @@ router.get('/', async (req, res) => {
     const sql = `
       SELECT * FROM bills
       ${whereSql}
-      ORDER BY bill_date DESC, bill_id DESC
+      ORDER BY updated_at DESC, bill_date DESC, bill_id DESC
       LIMIT $${idx++} OFFSET $${idx++}
     `;
     params.push(limit, offset);
@@ -120,7 +120,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const billRes = await pool.query('SELECT * FROM bills WHERE bill_id=$1', [id]);
+    const billRes = await pool.query('SELECT * FROM bills WHERE bill_id=$1 ', [id]);
     if (!billRes.rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     const bill = billRes.rows[0];
     const itemsRes = await pool.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY item_id', [id]);
