@@ -445,7 +445,7 @@ const submitForm = async (e) => {
 };
  
   const addShape = (type) => {
-    if (type.includes('pipe')) {
+    if (type === 'main_pipe' || type === 'lateral_pipe' || type === 'sub_pipe') {
       setTool(type);
       return;
     }
@@ -469,15 +469,29 @@ const submitForm = async (e) => {
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition();
 
-    if (tool === 'main_pipe' || tool === 'lateral_pipe') {
+    if (tool === 'main_pipe' || tool === 'lateral_pipe' || tool === 'sub_pipe') {
       const id = `shape_${Date.now()}`;
+      let stroke = 'orange', strokeWidth = 3, dash = [];
+      if (tool === 'main_pipe') {
+        stroke = 'orange';
+        strokeWidth = 3;
+        dash = [];
+      } else if (tool === 'lateral_pipe') {
+        stroke = 'blue';
+        strokeWidth = 2;
+        dash = [10, 5];
+      } else if (tool === 'sub_pipe') {
+        stroke = '#166534'; // Tailwind green-800
+        strokeWidth = 3;
+        dash = [];
+      }
       const newLine = {
         id,
         type: tool,
         points: [pos.x, pos.y, pos.x, pos.y],
-        stroke: tool === 'main_pipe' ? 'orange' : 'blue',
-        strokeWidth: tool === 'main_pipe' ? 3 : 2,
-        dash: tool === 'lateral_pipe' ? [10, 5] : [],
+        stroke,
+        strokeWidth,
+        dash,
       };
       setShapes((prev) => [...prev, newLine]);
       setCurrentLine(id);
@@ -830,14 +844,21 @@ const submitForm = async (e) => {
 
       {/* Toolbar */}
       <div className="flex flex-wrap justify-center gap-2 mb-4">
-        <button type="button" onClick={() => addShape('well')} className="px-3 py-1 bg-blue-500 text-white rounded">{t.well}</button>
-        <button type="button" onClick={() => addShape('main_pipe')} className="px-3 py-1 bg-orange-500 text-white rounded">{t.mainPipe}</button>
-        <button type="button" onClick={() => addShape('lateral_pipe')} className="px-3 py-1 bg-sky-500 text-white rounded">{t.lateralPipe}</button>
-        <button type="button" onClick={() => addShape('border')} className="px-3 py-1 bg-green-600 text-white rounded">{t.border}</button>
-        <button type="button" onClick={() => addShape('valve_image')} className="px-3 py-1 bg-purple-500 text-white rounded">{t.valve}</button>
-        <button type="button" onClick={() => addShape('filter_image')} className="px-3 py-1 bg-teal-600 text-white rounded">{t.filter}</button>
-        <button type="button" onClick={() => addShape('flush_image')} className="px-3 py-1  bg-sky-600 text-white rounded">{t.flush}</button>
-        <button type="button" onClick={handleDelete} className="px-3 py-1 bg-red-600 text-white rounded">{t.delete}</button>
+        {/* Equipment Buttons */}
+        <div className="flex gap-2">
+          <button type="button" onClick={() => addShape('well')} className="px-3 py-1 border-2 border-blue-500 text-blue-500 bg-transparent rounded transition-colors duration-150 hover:bg-blue-500 hover:text-white">{t.well}</button>
+          <button type="button" onClick={() => addShape('main_pipe')} className="px-3 py-1 border-2 border-orange-500 text-orange-500 bg-transparent rounded transition-colors duration-150 hover:bg-orange-500 hover:text-white">{t.mainPipe}</button>
+          <button type="button" onClick={() => addShape('sub_pipe')} className="px-3 py-1 border-2 border-green-800 text-white bg-green-800 rounded transition-colors duration-150 hover:bg-green-900">Sub Pipe</button>
+          <button type="button" onClick={() => addShape('lateral_pipe')} className="px-3 py-1 border-2 border-sky-500 text-sky-500 bg-transparent rounded transition-colors duration-150 hover:bg-sky-500 hover:text-white">{t.lateralPipe}</button>
+          <button type="button" onClick={() => addShape('border')} className="px-3 py-1 border-2 border-green-600 text-green-600 bg-transparent rounded transition-colors duration-150 hover:bg-green-600 hover:text-white">{t.border}</button>
+          <button type="button" onClick={() => addShape('valve_image')} className="px-3 py-1 border-2 border-purple-500 text-purple-500 bg-transparent rounded transition-colors duration-150 hover:bg-purple-500 hover:text-white">{t.valve}</button>
+          <button type="button" onClick={() => addShape('filter_image')} className="px-3 py-1 border-2 border-teal-600 text-teal-600 bg-transparent rounded transition-colors duration-150 hover:bg-teal-600 hover:text-white">{t.filter}</button>
+          <button type="button" onClick={() => addShape('flush_image')} className="px-3 py-1 border-2 border-sky-600 text-sky-600 bg-transparent rounded transition-colors duration-150 hover:bg-sky-600 hover:text-white">{t.flush}</button>
+        </div>
+        {/* Action Buttons */}
+        <div className="flex gap-2 border-l-3 pl-2">
+          <button type="button" onClick={handleDelete} className="px-3 py-1 bg-red-600 text-white rounded">{t.delete}</button>
+        </div>
       </div>
 
       {/* Canvas */}
@@ -901,7 +922,7 @@ const submitForm = async (e) => {
                 />
               );
 
-            if (s.type === 'main_pipe' || s.type === 'lateral_pipe')
+            if (s.type === 'main_pipe' || s.type === 'lateral_pipe' || s.type === 'sub_pipe')
               return (
                 <Line
                   key={s.id}

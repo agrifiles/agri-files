@@ -147,16 +147,23 @@ export default function FarmMapCanvas({ shapes }) {
               />
             );
 
-          if (s.type === 'main_pipe' || s.type === 'lateral_pipe')
+          if (s.type === 'main_pipe' || s.type === 'lateral_pipe' || s.type === 'sub_pipe') {
+            let stroke = s.stroke, strokeWidth = s.strokeWidth, dash = s.dash || [];
+            if (s.type === 'sub_pipe') {
+              stroke = '#166534'; // Tailwind green-800
+              strokeWidth = 3;
+              dash = [];
+            }
             return (
               <Line
                 key={s.id}
                 points={s.points}
-                stroke={s.stroke}
-                strokeWidth={s.strokeWidth}
-                dash={s.dash || []}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                dash={dash}
               />
             );
+          }
 
           if (s.type === 'valve_image')
             return <ValveImage key={s.id} data={s} />;

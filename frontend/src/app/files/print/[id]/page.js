@@ -857,12 +857,9 @@ function FilePrintPageContent({ params }) {
               आम्ही मार्गदर्शक सुचनेतील मापदंडानुसार व संमतीनुसार खालील सही करणार लिहून देतो की, प्रधानमंत्री राष्ट्रीय कृषि विकास योजना प्रति थेंब अधिक पीक (सुक्ष्म सिंचन) सन <span className="font-bold">{toDevanagariDigits(file.fy_year || '')}</span> अंतर्गत लाभार्थी श्री/श्रीमती <span className="font-bold">{file.farmer_name || '________'}</span> गाव - <span className="font-bold">{file.village || '________'}</span> तालुका - <span className="font-bold">{file.taluka || '________'}</span> यांचे शेतावर सर्वे नं/गट नं. - <span className="font-bold">{file.gut_no || file.survey_no || '________'}</span> मध्ये एकूण क्षेत्र - <span className="font-bold">{file.area8a || '________'}</span> हेक्टर वर पिकाचे नाव <span className="font-bold">{file.crop_name || '________'}</span> आज दिनांक - <span className="font-bold">{formatDate(file.file_date) || '________'}</span> ठिबक/तुषार सिंचन संच उभारणी पुर्वसंमती, योजनेच्या मार्गदर्शक सुचना व आराखड्‌यानुसार कार्यान्वित करून दिला आहे.
             </p>
 
-            <div className="mt-6 flex justify-between items-start">
-              <div>
-                <div className="text-sm">दिनांक: <span className="font-bold">{formatDate(file.file_date) || '________'}</span></div>
-                <div className="text-sm mt-1">ठिकाण: <span className="font-bold">{file.village || '________'}</span></div>
-              </div>
-            </div>
+    <p className="text-sm mt-5">दिनांक: <span className="font-bold">{formatDate(file.file_date) || '________'}</span></p>
+      <p className="text-sm mt-1">ठिकाण: <span className="font-bold">{file.village || '________'}</span></p>
+
           </div>
           {/* Signatures Section */}
           <div className="px-1 py-3 mt-8 flex justify-between" style={{fontSize: "11px"}}>
