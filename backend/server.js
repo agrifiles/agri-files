@@ -3,7 +3,7 @@ const pool = require("./db"); // Neon DB connection
 const cors = require("cors"); 
 const app = express();
 const PORT = 5006;
- app.use(cors({ origin: "http://localhost:3000" }));
+ app.use(cors({ origin: ["http://localhost:3000",  "https://agrifiles-frontend.vercel.app","https://agrifiles-frontend-kdznzieed-agrifiles-projects.vercel.app/", "https://agrifiles-frontend-git-main-agrifiles-projects.vercel.app"] }));
  app.use(express.json());
  
  // for parsing JSON
