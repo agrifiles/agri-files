@@ -138,7 +138,7 @@ function FilesPageContent() {
     if (!confirm("Delete this file?")) return;
 
     try {
-      const res = await fetch(`${API}/api/files/${fileId}`, { method: "DELETE" });
+      const res = await fetch(`${API}/api/files/${fileId}/delete`, { method: "POST" });
       if (!res.ok) {
         alert("Delete failed");
         return;
@@ -174,7 +174,7 @@ function FilesPageContent() {
               <th className="px-4 py-3 text-left text-sm font-semibold">Mobile</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">File Date</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Bill No</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
+              {/* <th className="px-4 py-3 text-left text-sm font-semibold">Status</th> */}
               <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
             </tr>
           </thead>
@@ -227,7 +227,7 @@ function FilesPageContent() {
                   <td className="px-4 py-3 text-sm text-gray-700">{mobile}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{formatDate(fileDate)}</td>
                   <td className="px-4 py-3 text-sm font-semibold text-gray-800">{billNo}</td>
-                  
+{/*                   
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-semibold ${
@@ -238,7 +238,7 @@ function FilesPageContent() {
                     >
                       {billStatus}
                     </span>
-                  </td>
+                  </td> */}
 
                   <td className="px-4 py-3 flex gap-2">
                     <button
@@ -248,12 +248,12 @@ function FilesPageContent() {
                       Edit
                     </button>
 
-                    <button
+                    {/* <button
                       onClick={() => openBillModal(id, f.bill_id)}
                       className="text-purple-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-purple-800 text-sm font-medium"
                     >
                       {linkedBill ? "Update Bill" : "Link Bill"}
-                    </button>
+                    </button> */}
 
                     <button
                       onClick={() => router.push(`/files/print/${id}`)}
@@ -311,13 +311,13 @@ function FilesPageContent() {
               >
                 Cancel
               </button>
-              <button
+              {/* <button
                 onClick={linkBill}
                 className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
                 disabled={isLinking || !selectedBillId}
               >
                 {isLinking ? "Linking..." : "Link"}
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

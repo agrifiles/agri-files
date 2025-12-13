@@ -8,6 +8,17 @@ router.get('/ping', (req, res) => {
   return res.json({ ok: true, msg: 'files router alive' });
 });
 
+// GET /api/files/companies/list - Specific route, must come BEFORE /:id routes
+router.get('/companies/list', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT company_id, company_name, engineer_name, designation, mobile FROM company_oem ORDER BY company_name');
+    return res.json({ success: true, companies: rows });
+  } catch (err) {
+    console.error('fetch companies err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // Map front-end form keys to DB column names
 function mapFormToDb(form = {}) {
   return {
@@ -61,6 +72,18 @@ router.post('/', async (req, res) => {
     const mapped = mapFormToDb(form);
     const shapes_json = JSON.stringify(shapes || []);
 
+    console.log('=== FILE CREATE - BACKEND DEBUG ===');
+    console.log('User ID:', userId);
+    console.log('Title:', title);
+    console.log('Shapes count:', Array.isArray(shapes) ? shapes.length : 0);
+    if (Array.isArray(shapes) && shapes.length > 0) {
+      console.log('Shape types:', shapes.map(s => s.type).join(', '));
+      console.log('First shape:', shapes[0]);
+      console.log('Last shape:', shapes[shapes.length - 1]);
+    }
+    console.log('Shapes JSON length:', shapes_json.length);
+    console.log('=== END BACKEND DEBUG ===');
+
     const fields = ['owner_id', 'title', 'shapes_json', ...Object.keys(mapped)];
     const values = [userId, title, shapes_json, ...Object.values(mapped)];
     const params = values.map((_, i) => `$${i + 1}`).join(',');
@@ -88,6 +111,15 @@ router.put('/:id', async (req, res) => {
     const { title, form = {}, shapes } = req.body;
     const mapped = mapFormToDb(form);
 
+    console.log('=== FILE UPDATE - BACKEND DEBUG ===');
+    console.log('File ID:', id);
+    console.log('Shapes count:', Array.isArray(shapes) ? shapes.length : 0);
+    if (Array.isArray(shapes) && shapes.length > 0) {
+      console.log('Shape types:', shapes.map(s => s.type).join(', '));
+      console.log('First shape:', shapes[0]);
+    }
+    console.log('=== END UPDATE DEBUG ===');
+
     const updates = [];
     const values = [];
     let idx = 1;
@@ -113,6 +145,31 @@ router.put('/:id', async (req, res) => {
     return res.json({ success: true, file: rows[0] });
   } catch (err) {
     console.error('update file err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /api/files/:id/delete - Soft delete (sets status to 'deleted')
+router.post('/:id/delete', async (req, res) => {
+  try {
+    console.log('Soft delete request for file id:', req.params.id);
+    const id = req.params.id;
+    const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
+    
+    // Soft delete: set status to 'deleted'
+    const result = await pool.query(
+      'UPDATE files SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING id',
+      ['deleted', id]
+    );
+
+    console.log('✅ File soft deleted (id):', id);
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
+    return res.json({ success: true, message: 'File deleted successfully' });
+  } catch (err) {
+    console.error('❌ Soft delete file err', err);
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
@@ -204,6 +261,11 @@ router.get('/', async (req, res) => {
     const params = [];
     let idx = 1;
 
+    // Always exclude deleted files unless specifically querying for deleted status
+    if (!status || status !== 'deleted') {
+      where.push(`status != 'deleted'`);
+    }
+
     if (ownerId) {
       where.push(`owner_id = $${idx++}`);
       params.push(ownerId);
@@ -262,30 +324,6 @@ router.get('/:id', async (req, res) => {
 });
 
 
-// router.delete('/:id', async (req, res) => {
-//   try {
-//     const id = req.params.id;
-//     // you may want to check ownership before deleting:
-//     // const ownerCheck = await pool.query('SELECT owner_id FROM files WHERE id=$1',[id]);
-//     // if (!ownerCheck.rows[0] || ownerCheck.rows[0].owner_id !== req.user?.id) return res.status(403).json({success:false, error:'Forbidden'});
+// POST /api/files/:id/delete - Soft delete (sets status to 'deleted')
 
-// GET /api/files/companies/list
-// Fetch all companies with engineer details from company_oem table
-router.get('/companies/list', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT company_id, company_name, engineer_name, designation, mobile FROM company_oem ORDER BY company_name');
-    return res.json({ success: true, companies: rows });
-  } catch (err) {
-    console.error('fetch companies err', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
-
-//     await pool.query('DELETE FROM files WHERE id=$1', [id]);
-//     return res.json({ success: true });
-//   } catch (err) {
-//     console.error('delete file err', err);
-//     return res.status(500).json({ success: false, error: 'Server error' });
-//   }
-// });
 module.exports = router;

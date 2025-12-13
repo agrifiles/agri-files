@@ -278,9 +278,10 @@ router.post('/', async (req, res) => {
     return res.status(201).json({ success: true, bill: finalBill.rows[0] });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('create bill err', err);
+    console.error('❌ create bill err:', err);
+    console.error('Error Stack:', err.stack);
     // Return error message to aid debugging in dev. Remove message leak in production.
-    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+    return res.status(500).json({ success: false, error: err.message || err.toString() || 'Server error' });
   } finally {
     client.release();
   }
@@ -360,8 +361,9 @@ router.put('/:id', async (req, res) => {
     return res.json({ success: true, bill: b.rows[0] });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('update bill err', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
+    console.error('❌ update bill err:', err);
+    console.error('Error Stack:', err.stack);
+    return res.status(500).json({ success: false, error: err.message || err.toString() || 'Server error' });
   } finally {
     client.release();
   }

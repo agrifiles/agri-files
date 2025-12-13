@@ -1,5 +1,5 @@
 'use client';
-import { Stage, Layer, Circle, Rect, Line, Image as KonvaImage } from 'react-konva';
+import { Stage, Layer, Circle, Rect, Line, Image as KonvaImage, Group, Arrow } from 'react-konva';
 import { useEffect, useState } from 'react';
 import useImage from 'use-image';
 
@@ -74,7 +74,7 @@ export default function FarmMapCanvas({ shapes }) {
       minY = Math.min(minY, s.y);
       maxX = Math.max(maxX, s.x + s.width);
       maxY = Math.max(maxY, s.y + s.height);
-    } else if (s.type === 'main_pipe' || s.type === 'lateral_pipe') {
+    } else if (s.type === 'main_pipe' || s.type === 'lateral_pipe' || s.type === 'sub_pipe') {
       for (let i = 0; i < s.points.length; i += 2) {
         minX = Math.min(minX, s.points[i]);
         maxX = Math.max(maxX, s.points[i]);
@@ -120,6 +120,7 @@ export default function FarmMapCanvas({ shapes }) {
     >
       <Layer x={offsetX} y={offsetY} scaleX={scale} scaleY={scale}>
         {shapes.map((s) => {
+          // All shapes are now in standard format (no nested standardGroup)
           if (s.type === 'well')
             return (
               <Circle
@@ -130,6 +131,7 @@ export default function FarmMapCanvas({ shapes }) {
                 stroke="blue"
                 strokeWidth={2}
                 fillEnabled={false}
+                rotation={s.rotation || 0}
               />
             );
 
@@ -144,10 +146,11 @@ export default function FarmMapCanvas({ shapes }) {
                 stroke="green"
                 strokeWidth={2}
                 fillEnabled={false}
+                rotation={s.rotation || 0}
               />
             );
 
-          if (s.type === 'main_pipe' || s.type === 'lateral_pipe' || s.type === 'sub_pipe') {
+          if (s.type === 'main_pipe' || s.type === 'sub_pipe') {
             let stroke = s.stroke, strokeWidth = s.strokeWidth, dash = s.dash || [];
             if (s.type === 'sub_pipe') {
               stroke = '#166534'; // Tailwind green-800
@@ -161,7 +164,58 @@ export default function FarmMapCanvas({ shapes }) {
                 stroke={stroke}
                 strokeWidth={strokeWidth}
                 dash={dash}
+                rotation={s.rotation || 0}
               />
+            );
+          }
+          if (s.type === 'lateral_pipe') {
+            // Standardize dash size for all lateral pipes
+            const dash = [16, 8];
+            // Calculate arrow length so it doesn't overlap the line ends
+            const arrowLength = 14;
+            const arrowWidth = 10;
+            const [x1, y1, x2, y2] = s.points;
+            // Calculate direction vector
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            // Offset for arrows
+            const offset = arrowLength * (len > 0 ? 1 : 0) / len;
+            // Start arrow points
+            const sx1 = x1 + dx * offset;
+            const sy1 = y1 + dy * offset;
+            // End arrow points
+            const ex2 = x2 - dx * offset;
+            const ey2 = y2 - dy * offset;
+            // Use Konva.Group to combine line and arrows
+            return (
+              <Group key={s.id + '-group'}>
+                <Line
+                  key={s.id + '-line'}
+                  points={s.points}
+                  stroke={s.stroke}
+                  strokeWidth={s.strokeWidth}
+                  dash={dash}
+                />
+                <Arrow
+                  key={s.id + '-arrow-start'}
+                  points={[sx1, sy1, x1, y1]}
+                  pointerLength={arrowLength}
+                  pointerWidth={arrowWidth}
+                  fill={s.stroke}
+                  stroke={s.stroke}
+                  strokeWidth={s.strokeWidth}
+                />
+                <Arrow
+                  key={s.id + '-arrow-end'}
+                  points={[ex2, ey2, x2, y2]}
+                  pointerLength={arrowLength}
+                  pointerWidth={arrowWidth}
+                  fill={s.stroke}
+                  stroke={s.stroke}
+                  strokeWidth={s.strokeWidth}
+                />
+              </Group>
             );
           }
 
