@@ -1,9 +1,9 @@
 'use client';
 import { useState,  useContext, useEffect } from 'react';
-import { useRouter,  } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LangContext } from '../layout';
 import Loader from '@/components/Loader';
-import { getCurrentUserId , API_BASE} from '@/lib/utils';
+import { getCurrentUserId , API_BASE, getUserCompanyLinks} from '@/lib/utils';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 //import { API_BASE_URL } from '../../lib/config';
@@ -25,11 +25,14 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 
 function InventoryPageContent() {
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
 
   const { t } = useContext(LangContext);
   const router = useRouter();
   const [products, setProducts] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [linkedCompanies, setLinkedCompanies] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(null);
 
 const [form, setForm] = useState({
   product_id: null,                 // <-- added
@@ -47,6 +50,7 @@ const [form, setForm] = useState({
   sgst: '',
   cgst: '',
   bis: '',
+  spare2: null, // company_id
 });
 
 // 2) reset clears product_id too
@@ -66,6 +70,7 @@ const resetForm = () => {
     sgst: '',
     cgst: '',
     bis: '',
+    spare2: selectedCompanyId, // keep selected company
   });
   setEditingIndex(null);
 };
@@ -90,6 +95,7 @@ const handleEdit = (index) => {
     sgst: p.sgst ?? '',
     cgst: p.cgst ?? '',
     bis: p.bis ?? '',
+    spare2: p.spare2 || selectedCompanyId, // company_id
   });
 };
 
@@ -97,6 +103,36 @@ const handleChange = (e) => {
   const { name, value } = e.target;
   setForm(prev => ({ ...prev, [name]: value }));
 };
+
+// Load linked companies on mount
+useEffect(() => {
+  const loadCompanies = async () => {
+    try {
+      const links = await getUserCompanyLinks();
+      setLinkedCompanies(links);
+      
+      // Get company_id from URL params or use first company
+      const urlCompanyId = searchParams.get('company_id');
+      if (urlCompanyId) {
+        setSelectedCompanyId(urlCompanyId);
+        setForm(prev => ({ ...prev, spare2: urlCompanyId }));
+      } else if (links.length > 0) {
+        setSelectedCompanyId(links[0].company_id);
+        setForm(prev => ({ ...prev, spare2: links[0].company_id }));
+      }
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  };
+  loadCompanies();
+}, [searchParams]);
+
+const handleCompanyChange = (companyId) => {
+  setSelectedCompanyId(companyId);
+  setForm(prev => ({ ...prev, spare2: companyId }));
+  resetForm();
+};
+
 const fetchProducts = async () => {
   try {
     setLoading(true);
@@ -189,10 +225,16 @@ const handleDelete = async (index) => {
 };
 
 
-    // back to settings
   const handleBack = (index) => {
    router.push('/settings'); 
   };
+
+  // Filter products by selected company
+  const filteredProducts = selectedCompanyId 
+    ? products.filter(p => p.spare2 === selectedCompanyId)
+    : products;
+
+  const selectedCompanyName = linkedCompanies.find(c => c.company_id === selectedCompanyId)?.company_name || 'Unknown';
 
   return (
   
@@ -210,6 +252,29 @@ const handleDelete = async (index) => {
           ← {t.back || 'Back'}
         </button>
       </div>
+
+      {/* Company Selection Section */}
+      {linkedCompanies.length > 0 && (
+        <div className="mb-6 bg-white rounded-2xl shadow-lg border-2 border-blue-200 p-6">
+          <h3 className="text-lg font-bold text-blue-700 mb-4">📊 Select Company for Products</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {linkedCompanies.map((company) => (
+              <button
+                key={company.company_id}
+                onClick={() => handleCompanyChange(company.company_id)}
+                className={`p-4 rounded-lg border-2 text-left transition-all ${
+                  selectedCompanyId === company.company_id
+                    ? 'border-blue-600 bg-blue-50 shadow-lg'
+                    : 'border-gray-300 bg-white hover:border-blue-400'
+                }`}
+              >
+                <p className="font-bold text-gray-800">{company.company_name}</p>
+                <p className="text-sm text-gray-600">Engineer: {company.engineer_name}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left side – Product Table */}
@@ -230,14 +295,14 @@ const handleDelete = async (index) => {
               
               {/* Table Body */}
               <tbody className="divide-y divide-gray-200">
-                {products.length === 0 ? (
+                {filteredProducts.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="text-center py-8 text-gray-500 font-medium">
                       {t.noProducts}
                     </td>
                   </tr>
                 ) : (
-                  products.map((p, i) => (
+                  filteredProducts.map((p, i) => (
                     <tr
                       key={i}
                       className={`hover:bg-green-50 transition ${
@@ -296,9 +361,12 @@ const handleDelete = async (index) => {
         {/* Right side – Product Form */}
         <div className="lg:col-span-1">
           <div className="bg-white shadow-lg rounded-xl border-2 border-green-200 p-5">
-            <h2 className="text-xl font-bold text-green-700 mb-5">
+            <h2 className="text-xl font-bold text-green-700 mb-2">
               {editingIndex !== null ? t.editProduct : t.addProduct}
             </h2>
+            {selectedCompanyId && (
+              <p className="text-sm text-gray-600 mb-4">📍 Company: <span className="font-semibold text-blue-700">{selectedCompanyName}</span></p>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Section 1: Basic Details */}

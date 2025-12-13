@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -8,6 +8,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 function NewBillPageContent() {
   const API = API_BASE;
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Extract user ID from localStorage
   const getUserId = () => {
@@ -21,6 +22,7 @@ function NewBillPageContent() {
   };
 
   const userId = getUserId();
+  const selectedCompanyId = searchParams?.get('company_id') ? parseInt(searchParams.get('company_id')) : null;
 
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -92,6 +94,7 @@ const [filteredProducts, setFilteredProducts] = useState([]);
     try {
       const params = new URLSearchParams();
       if (userId) params.append('user_id', userId);
+      if (selectedCompanyId) params.append('company_id', selectedCompanyId);
       const res = await fetch(`${API}/products/list?${params.toString()}`);
       const text = await res.text();
       const data = JSON.parse(text || '{}');
@@ -104,8 +107,8 @@ const [filteredProducts, setFilteredProducts] = useState([]);
     }
   };
 
-// fetch products on mount
-useEffect(() => { loadProducts(); }, []);
+// fetch products on mount or when company changes
+useEffect(() => { loadProducts(); }, [selectedCompanyId]);
 
 useEffect(() => {
   // whenever products update or searchTerm changes, update filteredProducts

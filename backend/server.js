@@ -31,10 +31,12 @@ const authRoutes = require('./routes/auth');
 const productsRouter = require('./routes/products');
 const filesRouter = require('./routes/files'); 
 const billsRouter = require('./routes/bills');
+const companySettingsRouter = require('./routes/company-settings');
 app.use('/api/files', filesRouter);  
 app.use('/auth', authRoutes);
 app.use('/products', productsRouter);
 app.use('/api/bills', billsRouter);
+app.use('/api/company-settings', companySettingsRouter);
 
 
 //app.use('/api/files', filesRouter);  

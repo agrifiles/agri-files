@@ -51,8 +51,95 @@ export function clearCurrentUser() {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem('user');
+    // Also clear user company links cache on logout
+    localStorage.removeItem('userCompanyLinks');
   } catch (e) {
     console.warn('clearCurrentUser failed', e);
+  }
+}
+
+/**
+ * Get cached company links for current user from localStorage
+ */
+export function getCachedCompanyLinks() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('userCompanyLinks');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('getCachedCompanyLinks parse error', e);
+    return null;
+  }
+}
+
+/**
+ * Store company links in localStorage with user_id and timestamp
+ */
+export function setCachedCompanyLinks(links) {
+  if (typeof window === 'undefined') return;
+  try {
+    const user = getCurrentUser();
+    if (!user?.id) return;
+    
+    const cacheData = {
+      user_id: user.id,
+      links: links,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('userCompanyLinks', JSON.stringify(cacheData));
+  } catch (e) {
+    console.warn('setCachedCompanyLinks failed', e);
+  }
+}
+
+/**
+ * Fetch user's company links with local cache
+ * Returns from cache if available, otherwise fetches from API
+ */
+export async function getUserCompanyLinks() {
+  if (typeof window === 'undefined') return [];
+  
+  try {
+    const user = getCurrentUser();
+    if (!user?.id) return [];
+
+    // Check cache first
+    const cached = getCachedCompanyLinks();
+    if (cached && cached.user_id === user.id) {
+      console.log('✅ Using cached company links');
+      return cached.links || [];
+    }
+
+    // If not in cache, fetch from API
+    console.log('📡 Fetching company links from API');
+    const res = await fetch(`${API_BASE}/api/company-settings/user/${user.id}`);
+    const data = await res.json();
+
+    if (data.success && data.companyLinks) {
+      // Cache the result
+      setCachedCompanyLinks(data.companyLinks);
+      return data.companyLinks;
+    }
+
+    return [];
+  } catch (err) {
+    console.error('Error fetching company links:', err);
+    // Try to return cached data as fallback
+    const cached = getCachedCompanyLinks();
+    return cached?.links || [];
+  }
+}
+
+/**
+ * Clear cached company links
+ */
+export function clearCachedCompanyLinks() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem('userCompanyLinks');
+  } catch (e) {
+    console.warn('clearCachedCompanyLinks failed', e);
   }
 }
 

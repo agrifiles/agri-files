@@ -152,29 +152,28 @@ function FilesPageContent() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Files</h1>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">Files</h1>
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:cursor-pointer transition"
+          className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:cursor-pointer transition"
           onClick={() => router.push('/new')}
         >
           + New File
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl shadow-lg border border-gray-200">
-        <table className="min-w-full bg-white">
+      <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200">
+        <table className="w-full bg-white min-w-max md:min-w-full">
           
           {/* Table Head */}
-          <thead className="bg-gradient-to-r from-green-800 to-green-600 text-white">
+          <thead className="bg-gradient-to-r from-green-800 to-green-600 text-white hidden md:table-header-group">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-semibold">Sr No</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Farmer</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Mobile</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">File Date</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Bill No</th>
-              {/* <th className="px-4 py-3 text-left text-sm font-semibold">Status</th> */}
               <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
             </tr>
           </thead>
@@ -209,7 +208,6 @@ function FilesPageContent() {
               const linkedBill = bills.find(b => {
                 const bid = b.bill_id ?? b.id;
                 const bFileId = b.file_id ?? b.fileId;
-                // Match either by bill's file_id pointing to this file, explicit file.bill_id, or by bill_no equality
                 return bFileId === id || bid === f.bill_id || (b.bill_no && f.bill_no && b.bill_no === f.bill_no);
               });
               const billNo = linkedBill?.bill_no ?? f.bill_no ?? "-";
@@ -218,56 +216,46 @@ function FilesPageContent() {
               return (
                 <tr
                   key={id}
-                  className={`hover:bg-gray-50 transition ${
+                  className={`block md:table-row mb-4 md:mb-0 border md:border-none rounded-lg md:rounded-none overflow-hidden ${
                     i % 2 === 0 ? 'bg-green-50' : 'bg-green-100'
                   }`}
                 >
-                  <td className="px-4 py-3 text-sm text-gray-700">{i + 1}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{farmerName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{mobile}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{formatDate(fileDate)}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{billNo}</td>
-{/*                   
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        billStatus === 'final'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {billStatus}
-                    </span>
-                  </td> */}
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Sr_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{i + 1}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Farmer:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{farmerName}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Mobile:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{mobile}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Date:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{formatDate(fileDate)}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm font-semibold text-gray-800 before:content-['Bill_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{billNo}</td>
 
-                  <td className="px-4 py-3 flex gap-2">
-                    <button
-                      onClick={() => editFile(id)}
-                      className="text-blue-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-blue-800 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
+                  <td className="block md:table-cell px-4 py-3">
+                    <div className="flex flex-wrap gap-2 md:gap-2">
+                      <button
+                        onClick={() => editFile(id)}
+                        className="flex-1 md:flex-auto text-blue-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-blue-800 text-xs md:text-sm font-medium"
+                      >
+                        Edit file
+                      </button>
 
-                    {/* <button
-                      onClick={() => openBillModal(id, f.bill_id)}
-                      className="text-purple-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-purple-800 text-sm font-medium"
-                    >
-                      {linkedBill ? "Update Bill" : "Link Bill"}
-                    </button> */}
+                      <button
+                        onClick={() => router.push(`/new?id=${id}&section=bill`)}
+                        className="flex-1 md:flex-auto text-purple-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-purple-800 text-xs md:text-sm font-medium"
+                      >
+                        Direct Edit Bill
+                      </button>
 
-                    <button
-                      onClick={() => router.push(`/files/print/${id}`)}
-                      className="text-green-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-green-800 text-sm font-medium"
-                    >
-                      Print
-                    </button>
+                      <button
+                        onClick={() => router.push(`/files/print/${id}`)}
+                        className="flex-1 md:flex-auto text-green-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-green-800 text-xs md:text-sm font-medium"
+                      >
+                        Print
+                      </button>
 
-                    <button
-                      onClick={() => deleteFile(id)}
-                      className="text-red-600 rounded-full border px-3 py-0 hover:text-red-900 hover:cursor-pointer text-sm font-medium"
-                    >
-                      Delete
-                    </button>
+                      <button
+                        onClick={() => deleteFile(id)}
+                        className="flex-1 md:flex-auto text-red-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:text-red-900 hover:cursor-pointer text-xs md:text-sm font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -95,6 +95,7 @@ export default function RootLayout({ children }) {
   const confirmLogout = () => {
     setIsLoading(true);
     localStorage.removeItem('user');
+    localStorage.removeItem('userCompanyLinks'); // Clear cached company links
     setUser(null);
     setShowLogoutConfirm(false);
     setTimeout(() => {

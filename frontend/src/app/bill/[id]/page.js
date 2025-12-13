@@ -30,6 +30,7 @@ function BillFormPageContent({ params }) {
   // Products
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(null);
 
   // Submission
   const [isSaving, setIsSaving] = useState(false);
@@ -115,6 +116,7 @@ function BillFormPageContent({ params }) {
     try {
       const urlParams = new URLSearchParams();
       if (userId) urlParams.append('user_id', userId);
+      if (selectedCompanyId) urlParams.append('company_id', selectedCompanyId);
       const res = await fetch(`${API}/products/list?${urlParams.toString()}`);
       const text = await res.text();
       const data = JSON.parse(text || '{}');
@@ -147,6 +149,24 @@ function BillFormPageContent({ params }) {
         setFarmerMobile(b.farmer_mobile || '');
         setStatus(b.status || 'draft');
         setItems(b.items || []);
+        
+        // Fetch file to get company_id
+        if (b.file_id) {
+          try {
+            const fileRes = await fetch(`${API}/api/files/${b.file_id}`);
+            const fileData = await fileRes.json();
+            if (fileData.file && fileData.file.form && fileData.file.form.company) {
+              // Find company_id from master companies
+              const companies = await fetchCompanies();
+              const company = companies.find(c => c.company_name === fileData.file.form.company);
+              if (company) {
+                setSelectedCompanyId(company.id || company.company_id);
+              }
+            }
+          } catch (err) {
+            console.error('Failed to fetch file info:', err);
+          }
+        }
       } else {
         alert('Bill not found');
         router.push('/bill');
@@ -159,11 +179,22 @@ function BillFormPageContent({ params }) {
       setPageLoading(false);
     }
   };
+  
+  // Helper to fetch companies
+  const fetchCompanies = async () => {
+    try {
+      const res = await fetch(`${API}/api/files/companies/list`);
+      const data = await res.json();
+      return data.companies || [];
+    } catch (err) {
+      return [];
+    }
+  };
 
-  // Load products on mount
+  // Load products on mount or when company changes
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [selectedCompanyId]);
 
   // Load bill data if in edit mode
   useEffect(() => {

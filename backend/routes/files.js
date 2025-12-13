@@ -8,13 +8,93 @@ router.get('/ping', (req, res) => {
   return res.json({ ok: true, msg: 'files router alive' });
 });
 
-// GET /api/files/companies/list - Specific route, must come BEFORE /:id routes
-router.get('/companies/list', async (req, res) => {
+// GET /api/files/companies/list/:userId - Get user's linked companies from company_link table
+router.get('/companies/list/:userId', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT company_id, company_name, engineer_name, designation, mobile FROM company_oem ORDER BY company_name');
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'userId is required' });
+    }
+
+    // Query company_link table to get companies linked to this user
+    const { rows } = await pool.query(
+      `SELECT 
+        cl.link_id,
+        cl.company_id,
+        cl.user_id,
+        cl.company_slot,
+        cl.designation,
+        cl.engineer_name,
+        co.company_name,
+        co.mobile
+       FROM company_link cl
+       JOIN company_oem co ON cl.company_id = co.company_id
+       WHERE cl.user_id = $1
+       ORDER BY cl.company_slot ASC`,
+      [userId]
+    );
+
     return res.json({ success: true, companies: rows });
   } catch (err) {
-    console.error('fetch companies err', err);
+    console.error('fetch user companies err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// GET /api/files/products/:userId - Get products for billing (filter by user and optionally by company)
+router.get('/products/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { companyId } = req.query;
+    
+    console.log('=== GET /api/files/products DEBUG ===');
+    console.log('userId from params:', userId, 'Type:', typeof userId);
+    console.log('companyId from query:', companyId, 'Type:', typeof companyId);
+    
+    if (!userId || userId === 'null' || userId === 'undefined') {
+      console.error('❌ userId is missing or invalid');
+      return res.status(400).json({ success: false, error: 'userId is required' });
+    }
+
+    if (companyId) {
+      // Filter by both user AND company (spare1 = userId AND spare2 = companyId)
+      const userIdText = String(userId);
+      const companyIdText = String(companyId);
+      
+      console.log(`✅ Fetching products for userId=${userIdText}, companyId=${companyIdText}`);
+      
+      const query = `
+        SELECT *
+        FROM products
+        WHERE is_deleted = FALSE
+          AND spare1 = $1
+          AND spare2 = $2
+        ORDER BY product_id DESC
+      `;
+      const result = await pool.query(query, [userIdText, companyIdText]);
+      console.log(`Found ${result.rows.length} products for user+company`);
+      return res.json({ success: true, products: result.rows });
+    } else {
+      // Filter by user only (spare1 = userId OR spare1 = 'master_User')
+      const userIdText = String(userId);
+      
+      console.log(`✅ Fetching products for userId=${userIdText} (with master_User)`);
+      
+      const query = `
+        SELECT *
+        FROM products
+        WHERE is_deleted = FALSE
+          AND (spare1 = $1 OR spare1 = 'master_User')
+        ORDER BY product_id DESC
+      `;
+      const result = await pool.query(query, [userIdText]);
+      console.log(`Found ${result.rows.length} products for user`);
+      console.log('Sample products spare1 values:', result.rows.slice(0, 3).map(p => ({ product_id: p.product_id, spare1: p.spare1 })));
+      return res.json({ success: true, products: result.rows });
+    }
+  } catch (err) {
+    console.error('fetch products err', err);
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 });

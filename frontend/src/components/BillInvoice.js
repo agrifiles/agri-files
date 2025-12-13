@@ -146,7 +146,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           <div>
             <div className="font-black text-3xl tracking-wide text-gray-900 mb-1">{userData?.business_name}</div>
             <div className="font-bold text-[11px] leading-tight text-gray-800 mb-1">
-              तालुका : {userData?.taluka} जिल्हा :  {userData?.district}<br/>
+             {userData?.short_address} तालुका : {userData?.taluka} जिल्हा :  {userData?.district}<br/>
               ईमेल : {userData?.email } मोबाइल : {userData?.mobile}
             </div>
             <div className="font-bold text-[11px] text-gray-800">GST क्रमांक - {userData?.gst_no}</div>
@@ -168,34 +168,37 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
         <div className="mt-2 border-1 border-black p-2" style={{fontSize: "10px"}}>
           {/* Row 1: Aadhar and Applicant Name */}
           <div className="grid grid-cols-3 gap-3 mb-1">
+                        <div className="col-span-2">
+              <div className="font-bold text-[8px] text-gray-700">ग्राहकाचे नाव</div>
+              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{fileData?.farmer_name || bill.farmer_name || "____________________"}</div>
+            </div>
             <div>
               <div className="font-bold text-[8px] text-gray-700">आधार नंबर</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.aadhaar_no || "____________________"}</div>
             </div>
-            <div className="col-span-2">
-              <div className="font-bold text-[8px] text-gray-700">ग्राहकाचे नाव</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_name || bill.farmer_name || "____________________"}</div>
-            </div>
+
           </div>
 
           {/* Row 2: Mobile and Farmer/Client ID */}
           <div className="grid grid-cols-3 gap-3 mb-1">
+                        <div className="">
+              <div className="font-bold text-[8px] text-gray-700">शेतकरी ओळख क्रमांक </div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_id || "____________________"}</div>
+            </div>
             <div>
               <div className="font-bold text-[8px] text-gray-700">मोबाइल नंबर</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.mobile || bill.farmer_mobile || "____________________"}</div>
             </div>
-            <div className="col-span-2">
-              <div className="font-bold text-[8px] text-gray-700">शेतकरी ओळख क्रमांक </div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_id || "____________________"}</div>
+                        <div>
+              <div className="font-bold text-[8px] text-gray-700">गाव</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.village || "____________________"}</div>
             </div>
+
           </div>
 
           {/* Row 3: Village, Taluka, District (single line) */}
           <div className="grid grid-cols-3 gap-3 mb-1">
-            <div>
-              <div className="font-bold text-[8px] text-gray-700">गाव</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.village || "____________________"}</div>
-            </div>
+
             <div>
               <div className="font-bold text-[8px] text-gray-700">तालुका</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.taluka || "____________________"}</div>
@@ -204,37 +207,44 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
               <div className="font-bold text-[8px] text-gray-700">जिल्हा</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.district || "____________________"}</div>
             </div>
-          </div>
-
-          {/* Row 4: Area, Crop, Application ID */}
-          <div className="grid grid-cols-3 gap-3 mb-1">
-            <div>
-              <div className="font-bold text-[8px] text-gray-700">क्षेत्रफळ (हेक्टर)</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.area8a || "____________________"}</div>
-            </div>
-            <div>
-              <div className="font-bold text-[8px] text-gray-700">पीकाचे नाव</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.crop_name || bill?.crop_name || "____________________"}</div>
-            </div>
-            <div>
+                        <div>
               <div className="font-bold text-[8px] text-gray-700">अर्ज क्रमांक</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.application_id || "____________________"}</div>
             </div>
           </div>
 
-          {/* Row 5: Drip Area and Lateral Distance */}
+          {/* Row 4: Area, Crop, Application ID */}
           <div className="grid grid-cols-3 gap-3 mb-1">
+                        <div>
+              <div className="font-bold text-[8px] text-gray-700">पीकाचे नाव</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.crop_name || bill?.crop_name || "____________________"}</div>
+            </div>
             <div>
+              <div className="font-bold text-[8px] text-gray-700">क्षेत्रफळ (हेक्टर)</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.area8a || "____________________"}</div>
+            </div>
+                        <div>
               <div className="font-bold text-[8px] text-gray-700">ड्रिप क्षेत्र</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.irrigation_area || "____________________"}</div>
             </div>
+
+
+          </div>
+
+          {/* Row 5: Drip Area and Lateral Distance */}
+          <div className="grid grid-cols-3 gap-3 mb-1">
+
             <div>
               <div className="font-bold text-[8px] text-gray-700">लॅटरल अंतर</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.lateral_spacing || "____________________"}</div>
             </div>
             <div>
-              <div className="font-bold text-[8px] text-gray-700">बिल क्रमांक / दिनांक</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{bill?.bill_no || "N/A"} / {bill?.bill_date ? new Date(bill.bill_date).toLocaleDateString("en-IN") : "N/A"}</div>
+              <div className="font-bold text-[8px] text-gray-700"> दिनांक</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{bill?.bill_date ? new Date(bill.bill_date).toLocaleDateString("en-IN") : "N/A"}</div>
+            </div>
+                      <div>
+              <div className="font-bold text-[8px] text-gray-700">बिल क्रमांक</div>
+              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{bill?.bill_no || "N/A"}</div>
             </div>
           </div>
         </div>
@@ -301,33 +311,48 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
         {/* Left: GST Summary */}
         <div>
           <table className="w-full border border-black border-collapse" style={{fontSize: "9px"}}>
-            <tbody>
+            <thead>
               <tr>
-                <td className="border border-black px-0.5 py-0.5 font-bold w-12">GST %</td>
-                <td className="border border-black px-0.5 py-0.5 font-bold text-right">TAX. AMOUNT</td>
-                <td className="border border-black px-0.5 py-0.5 font-bold text-right">CGST</td>
-                <td className="border border-black px-0.5 py-0.5 font-bold text-right">SGST</td>
-                <td className="border border-black px-0.5 py-0.5 font-bold text-right">TOTAL</td>
+                <td className="border border-black px-0.5 py-0.5 w-12 text-center" rowSpan="2">GST %</td>
+                <td className="border border-black px-0.5 py-0.5  text-center" rowSpan="2">Tax. Amount</td>
+                <td className="border border-black px-0.5 py-0.5  text-center text-[8px]" colSpan="2">CGST</td>
+                <td className="border border-black px-0.5 py-0.5  text-center text-[8px]" colSpan="2">SGST</td>
+                <td className="border border-black px-0.5 py-0.5  text-center" rowSpan="2">Total GST</td>
+                <td className="border border-black px-0.5 py-0.5  text-center" rowSpan="2">Total </td>
               </tr>
+              <tr>
+                <td className="border border-black px-0.5 py-0.5  text-center text-[8px]">%</td>
+                <td className="border border-black px-0.5 py-0.5  text-center text-[8px]">Amount</td>
+                <td className="border border-black px-0.5 py-0.5  text-center text-[8px]">%</td>
+                <td className="border border-black px-0.5 py-0.5  text-center text-[8px]">Amount</td>
+              </tr>
+            </thead>
+            <tbody>
               {gstGroupsArray.map((group, idx) => (
                 <tr key={idx}>
-                  <td className="border border-black px-0.5 py-0.5 text-center">{group.gstPercent.toFixed(1)}%</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right">{group.taxableAmount.toFixed(2)}</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right">{(group.gstAmount / 2).toFixed(2)}</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right">{(group.gstAmount / 2).toFixed(2)}</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(group.taxableAmount + group.gstAmount).toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{group.gstPercent.toFixed(1)}%</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{group.taxableAmount.toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(group.gstPercent / 2).toFixed(1)}%</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(group.gstAmount / 2).toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(group.gstPercent / 2).toFixed(1)}%</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(group.gstAmount / 2).toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{group.gstAmount.toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(group.taxableAmount + group.gstAmount).toFixed(2)}</td>
                 </tr>
               ))}
               {/* Total row if multiple GST groups */}
-              {gstGroupsArray.length > 1 && (
+              {/* {gstGroupsArray.length > 1 && (
                 <tr className="bg-gray-100">
-                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">TOTAL</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right font-bold">{taxableAmount.toFixed(2)}</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(totalGst / 2).toFixed(2)}</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(totalGst / 2).toFixed(2)}</td>
-                  <td className="border border-black px-0.5 py-0.5 text-right font-bold">{finalAmount.toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(taxableAmount > 0 ? (totalGst / taxableAmount) * 100 : 0).toFixed(1)}%</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{taxableAmount.toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(taxableAmount > 0 ? (totalGst / taxableAmount) * 100 / 2 : 0).toFixed(1)}%</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(totalGst / 2).toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(taxableAmount > 0 ? (totalGst / taxableAmount) * 100 / 2 : 0).toFixed(1)}%</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{(totalGst / 2).toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{totalGst.toFixed(2)}</td>
+                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">{finalAmount.toFixed(2)}</td>
                 </tr>
-              )}
+              )} */}
             </tbody>
           </table>
         </div>
