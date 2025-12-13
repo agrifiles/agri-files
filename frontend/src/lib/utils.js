@@ -1,11 +1,11 @@
     // frontend/src/lib/utils.js
 // utility helpers used across components (client-side safe)
 
-// export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 
-// 'https://agri-files.onrender.com';
-
-// export const API_BASE =  'https://agri-files.onrender.com'
-export const API_BASE =  'http://localhost:5006'
+// Dynamic API_BASE - uses localhost for local development, onrender for production
+export const API_BASE = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:5006'
+  : 'https://agri-files.onrender.com'
 
 /**
  * Safely read the current user object from localStorage (client-only).

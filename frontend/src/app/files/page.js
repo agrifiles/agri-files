@@ -167,9 +167,9 @@ function FilesPageContent() {
         <table className="min-w-full bg-white">
           
           {/* Table Head */}
-          <thead className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+          <thead className="bg-gradient-to-r from-green-800 to-green-600 text-white">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Sr No</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Farmer</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Mobile</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">File Date</th>
@@ -219,10 +219,10 @@ function FilesPageContent() {
                 <tr
                   key={id}
                   className={`hover:bg-gray-50 transition ${
-                    i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    i % 2 === 0 ? 'bg-green-50' : 'bg-green-100'
                   }`}
                 >
-                  <td className="px-4 py-3 text-sm text-gray-700">{id}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{i + 1}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{farmerName}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{mobile}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{formatDate(fileDate)}</td>
