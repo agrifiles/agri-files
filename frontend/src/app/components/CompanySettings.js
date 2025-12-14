@@ -465,7 +465,7 @@ const CompanySettings = () => {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black text-blue-700 mb-2">Company Settings</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-blue-700 mb-2">Company Settings (One time setting )</h2>
           <p className="text-sm sm:text-base text-gray-600">Manage your company associations (Maximum 3 companies)</p>
         </div>
 
@@ -492,7 +492,7 @@ const CompanySettings = () => {
                       {/* Summary Section */}
             {companyLinks.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-200 mb-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-3">Your Companies</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-3">Your Companies selected</h3>
                 <div className="flex flex-wrap gap-2">
                   {companyLinks.map((link) => (
                     <div 

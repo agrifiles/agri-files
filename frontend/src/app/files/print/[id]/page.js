@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { getCurrentUser } from '@/lib/utils';
 import BillInvoice from '@/components/BillInvoice';
+import QuotationInvoice from '@/components/QuotationInvoice';
 
 // Dynamic import for farm map canvas to avoid SSR issues
 const FarmMapCanvas = dynamic(() => import('./FarmMapCanvas'), { ssr: false });
@@ -175,6 +176,24 @@ function FilePrintPageContent({ params }) {
         box-sizing: border-box;
         background: white;
         page-break-inside: auto;
+        page-break-before: always;
+      `;
+    }
+
+    // Fix quotation section container styling for print (multi-page support)
+    const quotationSection = clonedFile.querySelector('.quotation-section');
+    if (quotationSection) {
+      quotationSection.style.cssText = `
+        width: 210mm;
+        min-height: auto;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-sizing: border-box;
+        background: white;
+        page-break-inside: auto;
+        page-break-after: always;
       `;
     }
 
@@ -182,6 +201,22 @@ function FilePrintPageContent({ params }) {
     const billContent = clonedFile.querySelector('#file-bill-content');
     if (billContent) {
       billContent.style.cssText = `
+        width: 100%;
+        min-height: auto;
+        height: auto;
+        margin: 0;
+        padding: 5mm;
+        font-size: 11px;
+        position: relative;
+        box-sizing: border-box;
+        background: white;
+      `;
+    }
+
+    // Fix quotation invoice content styling for print
+    const quotationContent = clonedFile.querySelector('#file-quotation-content');
+    if (quotationContent) {
+      quotationContent.style.cssText = `
         width: 100%;
         min-height: auto;
         height: auto;
@@ -278,20 +313,42 @@ function FilePrintPageContent({ params }) {
       /* Bill invoice section - special handling for multi-page */
       .bill-section {
         width: 210mm !important;
-        min-height: 297mm !important;
+        min-height: auto !important;
         height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
         page-break-inside: auto !important;
-        page-break-after: auto !important;
+        page-break-before: always !important;
         box-sizing: border-box !important;
-        page: bill-page;
+      }
+
+      /* Quotation invoice section - special handling for multi-page */
+      .quotation-section {
+        width: 210mm !important;
+        min-height: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        page-break-inside: auto !important;
+        page-break-after: always !important;
+        box-sizing: border-box !important;
       }
 
       #file-bill-content {
         width: 100% !important;
-        min-height: 289mm !important;
+        min-height: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 5mm !important;
+        box-sizing: border-box !important;
+        display: block !important;
+      }
+
+      #file-quotation-content {
+        width: 100% !important;
+        min-height: auto !important;
         height: auto !important;
         margin: 0 !important;
         padding: 5mm !important;
@@ -997,6 +1054,30 @@ function FilePrintPageContent({ params }) {
           </div>
         </div>
 
+                {/* Quotation Invoice Section */}
+        <div 
+          className="quotation-section mx-auto bg-white shadow-lg border-4 border-blue-800"
+          style={{
+            width: "210mm",
+            minHeight: "297mm",
+            height: "auto",
+            margin: "15px auto",
+            padding: "0",
+            position: "relative",
+            boxSizing: "border-box",
+          }}
+        >
+          <QuotationInvoice 
+            bill={billData} 
+            fileData={file} 
+            userData={userData} 
+            id="file-quotation-content"
+            showWatermark={true}
+            embedded={true}
+            autoHeight={true}
+          />
+        </div>
+
         {/* Page 6+ - Bill Invoice (using shared BillInvoice component) - supports multi-page */}
         <div 
           className="bill-section mx-auto bg-white shadow-lg border-4 border-black"
@@ -1020,6 +1101,9 @@ function FilePrintPageContent({ params }) {
             autoHeight={true}
           />
         </div>
+        
+
+
       </div>
 
       {/* Action Buttons - Bottom Fixed */}

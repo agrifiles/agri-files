@@ -681,14 +681,29 @@ function HomePageContent() {
                       {t.noProducts}
                     </div>
                   ) : (
-                    filteredProducts.map((p, i) => (
+                    filteredProducts.map((p, i) => {
+                      // Get company name from spare2 (company_id)
+                      const productCompany = linkedCompanies.find(c => String(c.company_id) === String(p.spare2));
+                      const companyName = productCompany?.company_name || '';
+                      // Limit to 15 characters
+                      // const shortCompanyName = companyName.length > 10 ? companyName.substring(0, 60) + '...' : companyName;
+                                            const shortCompanyName =  companyName;
+
+                      return (
                       <div
                         key={i}
                         className="bg-white border-2 border-green-200 rounded-lg p-4 shadow-md hover:shadow-lg transition"
                       >
-                        {/* Card Header with Number and Description */}
+                        {/* Card Header with Number, Company and Description */}
                         <div className="mb-3">
-                          <p className="text-xs font-semibold text-gray-500 mb-1">#{i + 1}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-semibold text-gray-500">#{i + 1}</span>
+                            {shortCompanyName && (
+                              <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-200  ">
+                                {shortCompanyName}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm font-bold text-gray-800">{p.description_of_good}</p>
                         </div>
 
@@ -745,7 +760,7 @@ function HomePageContent() {
                           )}
                         </div>
                       </div>
-                    ))
+                    )})
                   )}
                 </div>
               </div>

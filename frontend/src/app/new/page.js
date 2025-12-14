@@ -1929,12 +1929,23 @@ const submitFormAndPrint = async (e) => {
 
                         <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.quotationNo}</label>
-              <input name="quotationNo" value={form.quotationNo} onChange={handleChange} className="input" />
+              <input 
+                name="quotationNo" 
+                value={billNo ? billNo.replace(/_(\d+)$/, '_QT$1') : ''} 
+                className="input bg-gray-100 text-gray-600 cursor-not-allowed" 
+                disabled 
+              />
             </div>
 
             <div className="flex flex-col">
               <label className="font-semibold mb-1">{t.quotationDate}</label>
-              <input type="date" name="quotationDate" value={form.quotationDate} onChange={handleChange} className="input" />
+              <input 
+                type="date" 
+                name="quotationDate" 
+                value={billDate} 
+                className="input bg-gray-100 text-gray-600 cursor-not-allowed" 
+                disabled 
+              />
             </div> 
 
             {/* <div className="flex flex-col">
