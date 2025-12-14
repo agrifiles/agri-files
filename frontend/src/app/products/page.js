@@ -286,7 +286,7 @@ const handleDelete = async (index) => {
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold">#</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">{t.description}</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">{t.qty}</th>
+                  {/* <th className="px-4 py-3 text-left text-sm font-semibold">{t.qty}</th> */}
                   <th className="px-4 py-3 text-left text-sm font-semibold">{t.unit}</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">{t.sellingRate}</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">{t.actions}</th>
@@ -311,7 +311,7 @@ const handleDelete = async (index) => {
                     >
                       <td className="px-4 py-3 text-sm font-semibold text-gray-700">{i + 1}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{p.description_of_good}</td>
-                      <td className="px-4 py-3 text-sm text-center text-gray-700">{p.qty}</td>
+                      {/* <td className="px-4 py-3 text-sm text-center text-gray-700">{p.qty}</td> */}
                       <td className="px-4 py-3 text-sm text-center text-gray-700">{p.unit_of_measure}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-gray-800">₹{p.selling_rate}</td>
                       

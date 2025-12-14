@@ -181,19 +181,20 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
 
           {/* Row 2: Mobile and Farmer/Client ID */}
           <div className="grid grid-cols-3 gap-3 mb-1">
-                        <div className="">
-              <div className="font-bold text-[8px] text-gray-700">शेतकरी ओळख क्रमांक </div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_id || "____________________"}</div>
-            </div>
-            <div>
-              <div className="font-bold text-[8px] text-gray-700">मोबाइल नंबर</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.mobile || bill.farmer_mobile || "____________________"}</div>
-            </div>
-                        <div>
+                                    <div>
               <div className="font-bold text-[8px] text-gray-700">गाव</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.village || "____________________"}</div>
             </div>
 
+    
+            <div>
+              <div className="font-bold text-[8px] text-gray-700">मोबाइल नंबर</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.mobile || bill.farmer_mobile || "____________________"}</div>
+            </div>
+                    <div className="">
+              <div className="font-bold text-[8px] text-gray-700">शेतकरी ओळख क्रमांक </div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_id || "____________________"}</div>
+            </div>
           </div>
 
           {/* Row 3: Village, Taluka, District (single line) */}
@@ -203,9 +204,9 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
               <div className="font-bold text-[8px] text-gray-700">तालुका</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.taluka || "____________________"}</div>
             </div>
-            <div>
-              <div className="font-bold text-[8px] text-gray-700">जिल्हा</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.district || "____________________"}</div>
+             <div>
+              <div className="font-bold text-[8px] text-gray-700">पीकाचे नाव</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.crop_name || bill?.crop_name || "____________________"}</div>
             </div>
                         <div>
               <div className="font-bold text-[8px] text-gray-700">अर्ज क्रमांक</div>
@@ -215,9 +216,10 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
 
           {/* Row 4: Area, Crop, Application ID */}
           <div className="grid grid-cols-3 gap-3 mb-1">
+           
                         <div>
-              <div className="font-bold text-[8px] text-gray-700">पीकाचे नाव</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.crop_name || bill?.crop_name || "____________________"}</div>
+              <div className="font-bold text-[8px] text-gray-700">जिल्हा</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.district || "____________________"}</div>
             </div>
             <div>
               <div className="font-bold text-[8px] text-gray-700">क्षेत्रफळ (हेक्टर)</div>
@@ -257,7 +259,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
             <tr className="bg-gray-200">
               <th className="border border-black px-0.5 py-0.5 text-center w-6">SR.</th>
               <th className="border border-black px-0.5 py-0.5 text-left">DESCRIPTION OF GOODS</th>
-              <th className="border border-black px-0.5 py-0.5 text-center w-10">HSN</th>
+              {/* <th className="border border-black px-0.5 py-0.5 text-center w-10">HSN</th> */}
               <th className="border border-black px-0.5 py-0.5 text-center w-12">BATCH NO.</th>
               <th className="border border-black px-0.5 py-0.5 text-center w-10">CML NO.</th>
               <th className="border border-black px-0.5 py-0.5 text-center w-8">SIZE</th>
@@ -274,7 +276,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
               <tr key={idx}>
                 <td className="border border-black px-0.5 py-0.5 text-center">{idx + 1}</td>
                 <td className="border border-black font-bold px-0.5 py-0.5">{item.description || "N/A"}</td>
-                <td className="border border-black px-0.5 py-0.5 text-center">{item.hsn || ""}</td>
+                {/* <td className="border border-black px-0.5 py-0.5 text-center">{item.hsn || ""}</td> */}
                 <td className="border border-black px-0.5 py-0.5 text-center">{item.batch_no || ""}</td>
                 <td className="border border-black px-0.5 py-0.5 text-center">{item.cml_no || ""}</td>
                 <td className="border border-black px-0.5 py-0.5 text-center">{item.size || ""}</td>
@@ -362,9 +364,17 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           <table className="w-full border border-black border-collapse" style={{fontSize: "9px"}}>
             <tbody>
               <tr>
+                <td className="border border-black px-0.5 py-0.5 font-bold">TAXABLE AMOUNT</td>
+                <td className="border border-black px-0.5 py-0.5 text-right font-bold">{taxableAmount.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td className="border border-black px-0.5 py-0.5 font-bold">TOTAL GST</td>
+                <td className="border border-black px-0.5 py-0.5 text-right font-bold">{totalGst.toFixed(2)}</td>
+              </tr>
+              {/* <tr>
                 <td className="border border-black px-0.5 py-0.5 font-bold">TOTAL</td>
                 <td className="border border-black px-0.5 py-0.5 text-right font-bold">{finalAmount.toFixed(2)}</td>
-              </tr>
+              </tr> */}
               <tr>
                 <td className="border border-black px-0.5 py-0.5 font-bold">ROUNDED</td>
                 <td className="border border-black px-0.5 py-0.5 text-right font-bold">{(Math.round(finalAmount) - finalAmount).toFixed(2)}</td>

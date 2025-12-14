@@ -511,7 +511,7 @@ function HomePageContent() {
 
   // Debug logging
   if (selectedCompanyId) {
-    console.log('Filter Debug:', {
+    console.log('Filter Debug:', { products,
       selectedCompanyId: selectedCompanyId,
       selectedCompanyIdType: typeof selectedCompanyId,
       totalProducts: products.length,
@@ -602,8 +602,10 @@ function HomePageContent() {
                       <tr>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">#</th>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.description}</th>
-                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.qty}</th>
-                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.unit}</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.cmlNo}</th>
+
+                        {/* <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.qty}</th> */}
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold">{t.unit}</th>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.sellingRate}</th>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.actions}</th>
                       </tr>
@@ -626,7 +628,7 @@ function HomePageContent() {
                           >
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-700">{i + 1}</td>
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700">{p.description_of_good}</td>
-                            <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-center text-gray-700">{p.qty}</td>
+                            <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-center text-gray-700">{p.cml_no}</td>
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-center text-gray-700">{p.unit_of_measure}</td>
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-800">₹{p.selling_rate}</td>
 
@@ -793,16 +795,16 @@ function HomePageContent() {
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <div className="flex flex-col">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {/* <div className="flex flex-col">
                             <label className="font-semibold text-xs text-gray-700 mb-1">{t.hsn}</label>
                             <input 
                               name="hsn_code" 
-                              value={form.hsn_code} 
+                              value={form.hsn_code || ''} 
                               onChange={handleChange} 
                               className="border-2 border-green-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
                             />
-                          </div>
+                          </div> */}
 
                           <div className="flex flex-col">
                             <label className="font-semibold text-xs text-gray-700 mb-1">{t.batchNo}</label>

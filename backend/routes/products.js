@@ -25,7 +25,7 @@ router.post('/save', async (req, res) => {
       spare3
     } = req.body;
 
-    if (!description_of_good || !hsn_code) {
+    if (!description_of_good) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 

@@ -404,7 +404,7 @@ function NewFilePageContent() {
           fatherName: file.father_name ?? prev.fatherName,
           mobile: file.mobile ?? prev.mobile,
           quotationNo: file.quotation_no ?? prev.quotationNo,
-          quotationDate: file.quotation_date ?? prev.quotationDate,
+          quotationDate: formatDateForInput(file.quotation_date ?? prev.quotationDate),
           billNo: file.bill_no ?? prev.billNo,
           aadhaarNo: file.aadhaar_no ?? prev.aadhaarNo,
           billDate: file.bill_date ? new Date(file.bill_date).toISOString().split('T')[0] : prev.billDate,
@@ -649,7 +649,7 @@ function NewFilePageContent() {
                     product_id: productId,
                     description: prod.description_of_good || prod.name || prod.product_name || '',
                     hsn: prod.hsn_code || prod.hsn || '',
-                    batch_no: prod.batch_no || prod.batchNo || '',
+                    batch_no: billItem?.batch_no || prod.batch_no || prod.batchNo || '',  // Use saved billItem batch_no first
                     size: prod.size || '',
                     gov_rate: Number(prod.gov_rate || prod.govRate || 0),
                     sales_rate: salesRate,
@@ -941,6 +941,15 @@ const updateBillItemGST = (productId, newGST) => {
   ));
 };
 
+// Update any bill item field (generic handler)
+const updateBillItemField = (productId, field, value) => {
+  setBillItems(prev => prev.map(it => 
+    it.product_id === productId 
+      ? { ...it, [field]: value } 
+      : it
+  ));
+};
+
 // Get only items with qty > 0 for saving
 const getBillItemsForSave = () => {
   const items = billItems.filter(it => (it.qty || 0) > 0);
@@ -1214,6 +1223,8 @@ const submitForm = async (e) => {
     }
 
     const returnedBillNo = billData.bill?.bill_no ?? billData.bill?.billNo ?? billData.bill?.id ?? null;
+    const returnedBillId = billData.bill?.bill_id ?? billIdForUpdate ?? null;
+    
     if (!isUpdate && returnedBillNo && !billNo) {
       setBillNo(returnedBillNo);
       console.log('✅ Bill created successfully. Bill No:', returnedBillNo);
@@ -1221,7 +1232,41 @@ const submitForm = async (e) => {
       console.log('✅ Bill updated successfully. Bill No:', billNo);
     }
 
-    alert(`✅ File and Bill saved successfully!\nFile ID: ${fileId}\nBill No: ${returnedBillNo}`);
+    // ===== VERIFY BILL ITEMS WERE SAVED =====
+    const expectedItemsCount = billPayload.billItems.length;
+    if (expectedItemsCount > 0 && returnedBillId) {
+      console.log(`🔍 Verifying bill items... Expected: ${expectedItemsCount} items`);
+      
+      const verifyRes = await fetch(`${API_BASE}/api/v2/bills/${returnedBillId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (verifyRes.ok) {
+        const verifyData = await verifyRes.json();
+        const savedItemsCount = verifyData.bill?.items?.length || 0;
+        
+        console.log(`🔍 Verification: Saved ${savedItemsCount} items, Expected ${expectedItemsCount} items`);
+        
+        if (savedItemsCount === 0 && expectedItemsCount > 0) {
+          console.error('❌ Bill items verification FAILED! No items saved.');
+          alert(`⚠️ Warning: Bill was saved but ${expectedItemsCount} items were NOT saved!\nPlease try saving again or contact support.`);
+          setSaving(false);
+          return;
+        } else if (savedItemsCount < expectedItemsCount) {
+          console.warn(`⚠️ Bill items partial save: ${savedItemsCount}/${expectedItemsCount} items saved`);
+          alert(`⚠️ Warning: Only ${savedItemsCount} of ${expectedItemsCount} bill items were saved.\nPlease verify and try again.`);
+          setSaving(false);
+          return;
+        } else {
+          console.log(`✅ Bill items verified: ${savedItemsCount} items saved successfully`);
+        }
+      } else {
+        console.warn('⚠️ Could not verify bill items (verification request failed)');
+      }
+    }
+
+    alert(`✅ File and Bill saved successfully!\nFile ID: ${fileId}\nBill No: ${returnedBillNo}${expectedItemsCount > 0 ? `\nBill Items: ${expectedItemsCount}` : ''}`);
 
     // Update talukas dropdown based on the saved district
     const savedDistrict = form.district;
@@ -1366,7 +1411,7 @@ const submitFormAndPrint = async (e) => {
       created_by: owner_id,
       company_id: company_id,
       company_slot_no: company_slot_no,
-      items: getBillItemsForSave()
+      billItems: getBillItemsForSave() // Changed from 'items' to 'billItems' for backend compatibility
     };
 
     console.log('Bill Payload:', billPayload);
@@ -1414,6 +1459,43 @@ const submitFormAndPrint = async (e) => {
       alert('⚠️ File saved, but unexpected bill response.');
       setSaving(false);
       return;
+    }
+
+    // Get bill_id for verification
+    const returnedBillId = billData.bill?.bill_id ?? null;
+    
+    // ===== VERIFY BILL ITEMS WERE SAVED =====
+    const expectedItemsCount = billPayload.billItems.length;
+    if (expectedItemsCount > 0 && returnedBillId) {
+      console.log(`🔍 Verifying bill items... Expected: ${expectedItemsCount} items`);
+      
+      const verifyRes = await fetch(`${API_BASE}/api/v2/bills/${returnedBillId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (verifyRes.ok) {
+        const verifyData = await verifyRes.json();
+        const savedItemsCount = verifyData.bill?.items?.length || 0;
+        
+        console.log(`🔍 Verification: Saved ${savedItemsCount} items, Expected ${expectedItemsCount} items`);
+        
+        if (savedItemsCount === 0 && expectedItemsCount > 0) {
+          console.error('❌ Bill items verification FAILED! No items saved.');
+          alert(`⚠️ Warning: Bill was saved but ${expectedItemsCount} items were NOT saved!\nPlease try saving again or contact support.`);
+          setSaving(false);
+          return;
+        } else if (savedItemsCount < expectedItemsCount) {
+          console.warn(`⚠️ Bill items partial save: ${savedItemsCount}/${expectedItemsCount} items saved`);
+          alert(`⚠️ Warning: Only ${savedItemsCount} of ${expectedItemsCount} bill items were saved.\nPlease verify and try again.`);
+          setSaving(false);
+          return;
+        } else {
+          console.log(`✅ Bill items verified: ${savedItemsCount} items saved successfully`);
+        }
+      } else {
+        console.warn('⚠️ Could not verify bill items (verification request failed)');
+      }
     }
 
     console.log('✅ Bill saved successfully.');
@@ -1769,12 +1851,20 @@ const submitFormAndPrint = async (e) => {
               <label className="font-semibold mb-1 text-sm md:text-base">{t.selectCrop}</label>
               <select name="cropName" value={form.cropName} onChange={handleChange} className="input">
                 <option value="">{t.selectCrop}</option>
-                <option value="Sugarcane">{t.sugarcane}</option>
-                <option value="Cotton">{t.cotton}</option>
-                <option value="Wheat">{t.wheat}</option>
+                <option value={t.sugarcane}>{t.sugarcane}</option>
+                <option value={t.cotton}>{t.cotton}</option>
+                <option value={t.wheat}>{t.wheat}</option>
               </select>
             </div>
-
+            <div className="flex flex-col">
+              <label className="font-semibold mb-1 text-sm md:text-base">{t.irrigationType}</label>
+              <select name="driplineProduct" value={form.driplineProduct} onChange={handleChange} className="input">
+                <option value="">{t.irrigationType}</option>
+                <option value={t.drip}>{t.drip}</option>
+                <option value={t.sprinkler}>{t.sprinkler}</option>
+                <option value={t.microSprinkler}>{t.microSprinkler}</option>
+              </select>
+            </div>
 
             <div className="flex flex-col">
               <label className="font-semibold mb-1 text-sm md:text-base">{t.irrigationArea}</label>
@@ -2673,6 +2763,7 @@ const submitFormAndPrint = async (e) => {
           <thead className="bg-gray-50 sticky top-0">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Description</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">Batch No</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Rate</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">GST%</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Qty</th>
@@ -2705,6 +2796,16 @@ const submitFormAndPrint = async (e) => {
                       </div>
                     )}
                   </div>
+                </td>
+
+                <td className="px-4 py-3 text-sm text-center">
+                  <input
+                    type="text"
+                    className="w-24 rounded-md border border-gray-200 px-2 py-1 text-center focus:ring-1 focus:ring-green-300 focus:border-green-300"
+                    value={it.batch_no || ''}
+                    onChange={(e) => updateBillItemField(it.product_id, 'batch_no', e.target.value)}
+                    placeholder="-"
+                  />
                 </td>
 
                 <td className="px-4 py-3 text-sm text-right">
@@ -2773,6 +2874,17 @@ const submitFormAndPrint = async (e) => {
             </div>
 
             <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Batch No:</span>
+                <input
+                  type="text"
+                  className="w-24 rounded-md border border-gray-300 px-2 py-1 text-center text-sm focus:ring-1 focus:ring-green-300 focus:border-green-300"
+                  value={it.batch_no || ''}
+                  onChange={(e) => updateBillItemField(it.product_id, 'batch_no', e.target.value)}
+                  placeholder="-"
+                />
+              </div>
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Rate:</span>
                 <span className="font-medium">₹{Number(it.sales_rate || 0).toFixed(2)}</span>
