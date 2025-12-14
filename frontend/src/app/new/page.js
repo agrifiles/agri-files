@@ -12,12 +12,49 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { STANDARD_LAYOUTS } from '@/lib/standardLayouts';
 
 function NewFilePageContent() {
+  // ---------- Helper Functions ----------
+  // Ensure date is in YYYY-MM-DD format for HTML date input
+  const formatDateForInput = (dateStr) => {
+    if (!dateStr) return '';
+    // If it's already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+    // Otherwise parse it and format using LOCAL date (not UTC)
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      // Use local date components instead of toISOString (which converts to UTC)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (_) {
+      return '';
+    }
+  };
+
+  // Get company name and slot from spare2 (company_id)
+  const getCompanyInfo = (spare2) => {
+    if (!spare2 || !companies || companies.length === 0) return null;
+    const companyId = Number(spare2);
+    const company = companies.find(c => c.company_id === companyId);
+    if (company) {
+      return {
+        name: company.company_name,
+        slot: company.company_slot || '?'
+      };
+    }
+    return null;
+  };
+
   // ---------- Localization ----------
   const { t, lang, toggleLang } = useContext(LangContext);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [savedFileId, setSavedFileId] = useState(null); // store returned id
   const [saving, setSaving] = useState(false);
+  const [loadingFile, setLoadingFile] = useState(false); // Loading state for file hydration
   const [mounted, setMounted] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const formRef = useRef(null);
@@ -96,34 +133,45 @@ function NewFilePageContent() {
     // ✅ If the "company" field changes, auto-populate engineer details and reload products
     if (name === "company") {
       const selectedCompany = companies.find(c => c.company_name === value);
+      const previousCompany = companies.find(c => c.company_name === prev.company);
+      const currentCompanyValue = prev.company; // Get the PREVIOUS form company value from prev state
       
-      // 🔄 If company is changing and bill exists, show confirmation to delete and reload items
-      if (originalCompany && originalCompany !== value && billNo) {
-        const confirmed = window.confirm(
-          `You are changing the company from "${originalCompany}" to "${value}". ` +
-          `⚠️ All items in the current bill will be DELETED and replaced with products from the new company. Continue?`
-        );
-        if (!confirmed) {
-          // Revert to original company
-          updatedForm.company = originalCompany;
-          return updatedForm;
-        } else {
-          // Company change confirmed - delete old bill items and reload with new company products
-          if (selectedCompany) {
-            console.log('🔄 Company changed from', originalCompany, 'to', value);
-            console.log('📦 Company ID:', selectedCompany.company_id);
-            
-            // Delete existing bill items and reload with new company products
-            handleCompanyChangeInBill(selectedCompany.company_id);
+      // 🔄 If company is actually changing (not same as current value)
+      if (selectedCompany && currentCompanyValue !== value && value !== '') {
+        // Only show confirmation if there was a previous company selected (not first selection)
+        if (currentCompanyValue && currentCompanyValue !== '') {
+          const confirmed = window.confirm(
+            `You are changing the company from "${currentCompanyValue}" to "${value}". ` +
+            `⚠️ Bill items will be switched to products from the new company. Continue?`
+          );
+          if (!confirmed) {
+            // Revert to previous company
+            updatedForm.company = currentCompanyValue;
+            return updatedForm;
           }
+          // Company change confirmed - cache current items and switch
+          console.log('🔄 Company changed from', currentCompanyValue, 'to', value);
+          
+          // Cache current bill items BEFORE switching (use previous company ID)
+          if (previousCompany) {
+            const prevCompanyId = String(previousCompany.company_id);
+            console.log(`💾 Caching ${billItems.length} items for company ${prevCompanyId}`);
+            setBillItemsCache(prevCache => ({
+              ...prevCache,
+              [prevCompanyId]: billItems
+            }));
+          }
+          
+          // Load new company (will check cache first)
+          handleCompanyChangeInBill(selectedCompany.company_id);
+        } else {
+          // First company selection - just load products without confirmation
+          console.log('🔄 First company selection:', value);
+          loadProductsForCompany(selectedCompany.company_id);
         }
-      } else if (!billNo && selectedCompany) {
-        // New file or no bill yet - just reload products for selected company
-        console.log('� [FILTER] Company selected (NEW FILE/BILL)');
-        console.log('🔄 [FILTER] Company name:', value);
-        console.log('🔄 [FILTER] Company ID:', selectedCompany.company_id, 'Type:', typeof selectedCompany.company_id);
-        console.log('🔄 [FILTER] Calling loadProductsForCompany()...');
-        loadProductsForCompany(selectedCompany.company_id);
+        
+        // Update originalCompany to track for future changes
+        setOriginalCompany(value);
       }
       
       if (selectedCompany && selectedCompany.engineer_name) {
@@ -209,6 +257,11 @@ function NewFilePageContent() {
   const [billItems, setBillItems] = useState([]);
   const [lastFetchedMonthYear, setLastFetchedMonthYear] = useState('');
   const [products, setProducts] = useState([]);
+  
+  // Cache for bill items by company - allows switching back to previous company
+  // Format: { companyId: billItems[] }
+  const [billItemsCache, setBillItemsCache] = useState({});
+  const [originalBillCompanyId, setOriginalBillCompanyId] = useState(null); // Track original bill's company
 
   // Fitting / Installation & Accessories charges
   const [enableFittingCharges, setEnableFittingCharges] = useState(false);
@@ -240,26 +293,25 @@ function NewFilePageContent() {
     }
   }, [form.district, districts]); // Re-run when district OR districts array changes
 
-  // Fetch companies on mount (master list + user's linked companies)
+  // Fetch companies on mount using v2 API
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
         setLoadingCompanies(true);
         
-        // Get user ID and fetch user's linked companies
         const uid = getCurrentUserId();
         if (!uid) {
           console.log('No user ID found');
           return;
         }
         
-        const res = await fetch(`${API_BASE}/api/files/companies/list/${uid}`);
+        // Use v2 API to fetch context (companies + engineer details)
+        const res = await fetch(`${API_BASE}/api/v2/files/context/${uid}`);
         const data = await res.json();
         
-        if (data.success && data.companies) {
-          // API now returns user-specific companies with engineer details already included
-          console.log('✅ Fetched user companies with engineer details:', data.companies);
-          setCompanies(data.companies);
+        if (data.success && data.companyLinks) {
+          console.log('✅ Fetched user company links:', data.companyLinks);
+          setCompanies(data.companyLinks);
         }
       } catch (err) {
         console.error('Failed to fetch companies:', err);
@@ -270,24 +322,15 @@ function NewFilePageContent() {
     fetchCompanies();
   }, []);
 
-  // Auto-load products when company is selected in form (for new files)
+  // Clear products when company is cleared (loading is handled in handleChange)
   useEffect(() => {
     if (!form.company) {
-      console.log('🔄 [AUTO] Company cleared - clearing products');
       setBillItems([]);
       setProducts([]);
-      return;
     }
-
-    // Find the selected company from companies list
-    const selectedCompany = companies.find(c => c.company_name === form.company);
-    if (selectedCompany && !savedFileId) {
-      // NEW FILE mode - auto-load products for this company
-      console.log('🔄 [AUTO] Company changed to:', form.company);
-      console.log('🔄 [AUTO] Calling loadProductsForCompany() for company_id:', selectedCompany.company_id);
-      loadProductsForCompany(selectedCompany.company_id);
-    }
-  }, [form.company, companies, savedFileId]);
+    // NOTE: Product loading when company changes is handled in handleChange function
+    // This ensures products are always reloaded and confirmation dialogs work correctly
+  }, [form.company]);
 
   // Set default district and taluka from user data (for main, w1, and w2) - only if NOT editing
   useEffect(() => {
@@ -326,13 +369,15 @@ function NewFilePageContent() {
     if (!id) return;
 
     const loadFileForEdit = async () => {
+      setLoadingFile(true); // Start loading
       try {
-        const res = await fetch(`${API_BASE}/api/files/${id}`);
+        const res = await fetch(`${API_BASE}/api/v2/files/${id}`);
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch (_) { data = null; }
         if (!res.ok || !data?.success) {
           console.error('Failed to load file for edit', res.status, text);
+          setLoadingFile(false);
           return;
         }
 
@@ -375,7 +420,7 @@ function NewFilePageContent() {
           dripperDischarge: file.dripper_discharge ?? prev.dripperDischarge,
           dripperSpacing: file.dripper_spacing ?? prev.dripperSpacing,
           planeLateralQty: file.plane_lateral_qty ?? prev.planeLateralQty,
-          fileDate: file.file_date ? new Date(file.file_date).toISOString().split('T')[0] : prev.fileDate,
+          fileDate: formatDateForInput(file.file_date ?? prev.fileDate),
           salesEngg: file.sales_engg ?? prev.salesEngg,
           pumpType: file.pump_type ?? prev.pumpType,
           twoNozzelDistance: file.two_nozzel_distance ?? prev.twoNozzelDistance,
@@ -467,7 +512,7 @@ function NewFilePageContent() {
         // ===== LOAD ASSOCIATED BILL =====
         // If this file has a bill, load it
         try {
-          const billRes = await fetch(`${API_BASE}/api/bills?file_id=${returnedId}&limit=1`);
+          const billRes = await fetch(`${API_BASE}/api/v2/bills?file_id=${returnedId}&limit=1`);
           const billText = await billRes.text();
           let billData = null;
           try { billData = JSON.parse(billText); } catch (e) { billData = null; }
@@ -477,7 +522,7 @@ function NewFilePageContent() {
             console.log('✅ Found associated bill_id:', billSummary.bill_id);
 
             // Now fetch full bill with items using bill_id
-            const fullBillRes = await fetch(`${API_BASE}/api/bills/${billSummary.bill_id}`);
+            const fullBillRes = await fetch(`${API_BASE}/api/v2/bills/${billSummary.bill_id}`);
             const fullBillText = await fullBillRes.text();
             let fullBillData = null;
             try { fullBillData = JSON.parse(fullBillText); } catch (e) { fullBillData = null; }
@@ -488,25 +533,37 @@ function NewFilePageContent() {
 
               // Set bill details
               setBillNo(bill.bill_no || '');
-              setBillDate(bill.bill_date ? new Date(bill.bill_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+              setBillDate(formatDateForInput(bill.bill_date) || new Date().toISOString().split('T')[0]);
 
-              // Fetch all products and merge with bill items (filter by company from form)
+              // Fetch products filtered by the bill's company
               if (bill.items && Array.isArray(bill.items)) {
-                console.log('✅ Fetching products to merge with bill items');
+                console.log('✅ Fetching products for bill company');
+                console.log('Bill items count:', bill.items.length);
                 
-                // Get the selected company from form (will be set from file data)
-                // Find company_id from companies array based on form.company name
-                const selectedCompany = companies.find(c => c.company_name === form.company);
-                const companyId = selectedCompany?.company_id;
+                // Get company_id from bill (NEW field we just added)
+                let companyId = null;
                 
-                if (!companyId) {
-                  console.warn('⚠️ Could not find company from form, using first item company_id');
-                  // Fallback to bill items company
+                if (bill.company_id) {
+                  companyId = bill.company_id;
+                  console.log('📦 Using company_id from bill:', companyId);
+                } else {
+                  // Fallback: get company_id from form or bill items
+                  const selectedCompany = companies.find(c => c.company_name === form.company);
+                  
+                  if (selectedCompany?.company_id) {
+                    companyId = selectedCompany.company_id;
+                    console.log('📦 Using company_id from dropdown:', companyId);
+                  } else if (bill.items.length > 0 && bill.items[0].spare2) {
+                    companyId = bill.items[0].spare2;
+                    console.warn('⚠️ Company not in dropdown, using company_id from bill items:', companyId);
+                  } else {
+                    console.warn('⚠️ Could not find company_id - bill has no company context');
+                  }
                 }
                 
                 // Convert companyId to string since spare2 is TEXT field in database
-                const companyIdText = String(companyId);
-                console.log(`📦 Using company from dropdown: ${form.company}, company_id: ${companyIdText} (Type: ${typeof companyIdText})`);
+                const companyIdText = companyId ? String(companyId) : '';
+                console.log(`📦 Using company_id: ${companyIdText} (Type: ${typeof companyIdText})`);
                 
                 // Fetch products for user and company
                 const owner_id = getCurrentUserId();
@@ -517,9 +574,29 @@ function NewFilePageContent() {
                   return;
                 }
                 
-                let productsUrl = `${API_BASE}/api/files/products/${owner_id}`;
+                // IMPORTANT: Only fetch products if we have company context
+                if (!companyIdText) {
+                  console.warn('⚠️ No company_id for bill - showing bill items without product merge');
+                  setBillItems(bill.items.filter(item => !item.is_fitting_charge).map(item => ({
+                    product_id: item.product_id,
+                    description: item.description || '',
+                    hsn: item.hsn || '',
+                    batch_no: item.batch_no || '',
+                    size: item.size || '',
+                    gov_rate: item.gov_rate || 0,
+                    sales_rate: item.sales_rate || 0,
+                    uom: item.uom || '',
+                    gst_percent: item.gst_percent || 0,
+                    qty: item.qty || 0,
+                    amount: item.amount || 0,
+                    spare2: item.spare2
+                  })));
+                  return;
+                }
+                
+                let productsUrl = `${API_BASE}/api/v2/files/products?userId=${owner_id}`;
                 if (companyIdText) {
-                  productsUrl += `?companyId=${companyIdText}`;
+                  productsUrl += `&companyId=${companyIdText}`;
                 }
                 console.log('📡 Bill loading fetch URL:', productsUrl);
                 const productsRes = await fetch(productsUrl);
@@ -527,26 +604,46 @@ function NewFilePageContent() {
                 const productsData = JSON.parse(productsText || '{}');
                 const allProducts = productsData.products || [];
 
-                // Backend already filtered by user and company, so use all returned products
                 console.log(`✅ Loaded ${allProducts.length} products for company ${companyIdText}`);
                 
-                // Create a map of product_id -> {qty, gst_percent} from loaded bill
+                // Store original bill's company ID for tracking
+                setOriginalBillCompanyId(companyIdText);
+                
+                // Create a map of product_id -> bill item data from loaded bill
                 const billItemMap = {};
-                bill.items.forEach(item => {
-                  if (!item.is_fitting_charge) {  // Skip fitting charges for product mapping
-                    billItemMap[item.product_id] = {
-                      qty: item.qty || 0,
-                      gst_percent: item.gst_percent || item.gst || 0
-                    };
-                  }
+                const billItemsWithoutFitting = bill.items.filter(item => 
+                  !item.is_fitting_charge && 
+                  item.product_id && 
+                  !item.description?.includes('Fitting / Installation')
+                );
+                
+                billItemsWithoutFitting.forEach(item => {
+                  const key = String(item.product_id);
+                  billItemMap[key] = {
+                    qty: Number(item.qty) || 0,
+                    gst_percent: Number(item.gst_percent || item.gst) || 0,
+                    sales_rate: Number(item.sales_rate) || 0,
+                    description: item.description || '',
+                    hsn: item.hsn || '',
+                    size: item.size || '',
+                    uom: item.uom || '',
+                    batch_no: item.batch_no || '',
+                    gov_rate: Number(item.gov_rate) || 0,
+                    amount: Number(item.amount) || 0
+                  };
+                  console.log(`📋 Bill item: product_id=${key}, qty=${billItemMap[key].qty}`);
                 });
-
-                // Create merged items: loaded products with bill quantities
+                
+                // Create set of product IDs from API for matching
+                const productIdSet = new Set(allProducts.map(p => String(p.product_id ?? p.id)));
+                
+                // STEP 1: Map ALL products from API (with qty from bill if matched)
                 const mergedItems = allProducts.map(prod => {
-                  const billItem = billItemMap[prod.product_id || prod.id];
                   const productId = prod.product_id ?? prod.id;
+                  const productIdKey = String(productId);
+                  const billItem = billItemMap[productIdKey];
                   const salesRate = Number(prod.selling_rate || prod.sellingRate || prod.sales_rate || 0);
-                  const qty = billItem?.qty ?? 0;
+                  const qty = Number(billItem?.qty) || 0;
                   
                   return {
                     product_id: productId,
@@ -557,16 +654,52 @@ function NewFilePageContent() {
                     gov_rate: Number(prod.gov_rate || prod.govRate || 0),
                     sales_rate: salesRate,
                     uom: prod.unit_of_measure || prod.unit || prod.uom || '',
-                    gst_percent: billItem?.gst_percent ?? Number(prod.sgst || prod.cgst || prod.gst_percent || 0),
+                    gst_percent: Number(billItem?.gst_percent) || Number(prod.sgst || prod.cgst || prod.gst_percent || 0),
                     qty: qty,
                     amount: Number((qty * salesRate).toFixed(2)),
-                    spare2: prod.spare2  // Track company_id
+                    spare2: prod.spare2
                   };
                 });
-
-                console.log('✅ Merged bill items with products:', mergedItems);
-                setBillItems(mergedItems);
-                setProducts(allProducts);  // Also update products state
+                
+                // STEP 2: Add bill items that don't exist in current products (legacy/changed products)
+                const unmatchedBillItems = billItemsWithoutFitting
+                  .filter(item => !productIdSet.has(String(item.product_id)))
+                  .map(item => ({
+                    product_id: item.product_id,
+                    description: item.description || '',
+                    hsn: item.hsn || '',
+                    batch_no: item.batch_no || '',
+                    size: item.size || '',
+                    gov_rate: Number(item.gov_rate) || 0,
+                    sales_rate: Number(item.sales_rate) || 0,
+                    uom: item.uom || '',
+                    gst_percent: Number(item.gst_percent) || 0,
+                    qty: Number(item.qty) || 0,
+                    amount: Number(item.amount) || 0,
+                    spare2: companyIdText,
+                    isLegacy: true // Mark as legacy item for UI indication
+                  }));
+                
+                if (unmatchedBillItems.length > 0) {
+                  console.log(`📋 Adding ${unmatchedBillItems.length} legacy bill items (products no longer in catalog)`);
+                }
+                
+                // Combine: all products + unmatched bill items
+                const finalItems = [...mergedItems, ...unmatchedBillItems];
+                
+                // Log summary
+                const itemsWithQty = finalItems.filter(i => i.qty > 0);
+                console.log('✅ Final bill items:', finalItems.length, '| Items with qty > 0:', itemsWithQty.length);
+                
+                setBillItems(finalItems);
+                setProducts(allProducts);
+                
+                // Cache this company's bill items for later switching
+                setBillItemsCache(prev => ({
+                  ...prev,
+                  [companyIdText]: finalItems
+                }));
+                console.log('💾 Cached bill items for company:', companyIdText);
 
                 // Check if bill has fitting charges
                 const fittingChargeItem = bill.items.find(item => 
@@ -575,7 +708,6 @@ function NewFilePageContent() {
                 
                 if (fittingChargeItem) {
                   console.log('✅ Found fitting charges:', fittingChargeItem);
-                  // Extract percentage from description (e.g., "Fitting / Installation & Accessories charges @ 5%")
                   const percentMatch = fittingChargeItem.description?.match(/@\s*([\d.]+)%/);
                   if (percentMatch) {
                     const extractedPercent = parseFloat(percentMatch[1]);
@@ -591,10 +723,11 @@ function NewFilePageContent() {
           }
         } catch (billErr) {
           console.warn('Error loading bill for file:', billErr);
-          // Don't fail the whole form load if bill fetch fails
         }
       } catch (err) {
         console.error('loadFileForEdit err', err);
+      } finally {
+        setLoadingFile(false);
       }
     };
 
@@ -636,7 +769,7 @@ const fetchNextBillNo = async (dateStr) => {
   if (monthYearKey === lastFetchedMonthYear) return;
   
   try {
-    const res = await fetch(`${API_BASE}/api/bills/next-bill-no?owner_id=${owner_id}&month=${month}&year=${year}`);
+    const res = await fetch(`${API_BASE}/api/v2/bills/next-bill-no?owner_id=${owner_id}&month=${month}&year=${year}`);
     const data = await res.json();
     if (data.success && data.bill_no) {
       setBillNo(data.bill_no);
@@ -670,7 +803,7 @@ const loadProducts = async () => {
       return;
     }
     
-    const url = `${API_BASE}/api/files/products/${owner_id}`;
+    const url = `${API_BASE}/api/v2/files/products?userId=${owner_id}`;
     console.log('📡 Fetching from:', url);
     
     const res = await fetch(url);
@@ -706,44 +839,23 @@ const loadProducts = async () => {
   }
 };
 
-// Load products ONLY for selected company (filter by spare1=userId AND spare2=companyId)
+// Load products ONLY for selected company (filter by company_id)
 const loadProductsForCompany = async (companyId) => {
   const owner_id = getCurrentUserId();
   try {
-    // Convert companyId to string since spare2 is TEXT field in database
-    const companyIdText = String(companyId);
-    console.log('');
-    console.log('═══════════════════════════════════════════════════');
-    console.log('🔄 [FILTER] loadProductsForCompany() CALLED');
-    console.log('   userId:', owner_id, 'Type:', typeof owner_id);
-    console.log('   companyId:', companyIdText, 'Type:', typeof companyIdText);
-    console.log('═══════════════════════════════════════════════════');
-    
     if (!owner_id) {
       console.error('❌ loadProductsForCompany: No owner_id found');
       return;
     }
     
-    const url = `${API_BASE}/api/files/products/${owner_id}?companyId=${companyIdText}`;
-    console.log('📡 API URL:', url);
+    console.log(`🔄 Loading products for company ${companyId}...`);
+    const url = `${API_BASE}/api/v2/files/products?companyId=${companyId}&userId=${owner_id}`;
     
     const res = await fetch(url);
-    const text = await res.text();
-    const data = JSON.parse(text || '{}');
+    const data = await res.json();
     const allProducts = data.products || [];
     
-    // Backend already filters by user AND company, so use all returned products
     console.log(`✅ API returned ${allProducts.length} products`);
-    if (allProducts.length > 0) {
-      console.log('🔍 Sample products (checking spare2 = company):');
-      allProducts.slice(0, 3).forEach((p, i) => {
-        console.log(`   [${i}] product_id=${p.product_id}, spare1=${p.spare1}, spare2=${p.spare2}, description=${p.description_of_good}`);
-      });
-    } else {
-      console.warn('⚠️ No products returned! Check if company has products or if filter is correct');
-    }
-    
-    console.log('📝 Setting products state with:', allProducts.length, 'items');
     setProducts(allProducts);
 
     // Initialize bill items with loaded products (qty = 0)
@@ -757,48 +869,51 @@ const loadProductsForCompany = async (companyId) => {
       sales_rate: Number(prod.selling_rate || prod.sellingRate || prod.sales_rate || 0),
       uom: prod.unit_of_measure || prod.unit || prod.uom || '',
       gst_percent: Number(prod.sgst || prod.cgst || prod.gst_percent || 0),
-      qty: 0, // Default qty is 0
+      qty: 0,
       amount: 0,
-      spare2: prod.spare2 // Track company_id
+      spare2: prod.spare2
     }));
     
-    console.log('📋 Setting billItems state with:', initialItems.length, 'items');
-    console.log('═══════════════════════════════════════════════════');
-    console.log('');
+    console.log('📋 Setting billItems with:', initialItems.length, 'items');
     setBillItems(initialItems);
   } catch (err) {
     console.error('❌ Error loading products for company:', err);
   }
 };
 
-// Handle company change when bill exists - delete old items and load new ones
+// Handle company change when bill exists - cache current items, then check cache or load fresh
+// NOTE: Bill items are not deleted from DB here - they will be replaced when user saves the file
 const handleCompanyChangeInBill = async (newCompanyId) => {
-  console.log(`🔄 Handling company change in bill to company ${newCompanyId}`);
+  const newCompanyIdStr = String(newCompanyId);
+  console.log(`🔄 Handling company change in bill to company ${newCompanyIdStr}`);
   
-  // Step 1: Delete all bill items from database for this bill
-  if (billNo) {
+  // Check if we have cached items for the NEW company
+  const cachedItems = billItemsCache[newCompanyIdStr];
+  const uid = getCurrentUserId();
+  
+  if (cachedItems && cachedItems.length > 0) {
+    // Restore from cache
+    console.log(`✅ Restoring ${cachedItems.length} cached items for company ${newCompanyIdStr}`);
+    setBillItems(cachedItems);
+    
+    // Also need to load products for the products list (for form display)
     try {
-      console.log(`🗑️ Deleting all bill items for bill_no: ${billNo}`);
-      const deleteRes = await fetch(`${API_BASE}/api/bills/${billNo}/items`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (!deleteRes.ok) {
-        console.warn('Warning: Could not delete bill items from database:', deleteRes.statusText);
-      } else {
-        console.log('✅ Bill items deleted from database');
+      const res = await fetch(`${API_BASE}/api/v2/files/products?companyId=${newCompanyId}&userId=${uid}`);
+      const data = await res.json();
+      if (data.products) {
+        setProducts(data.products);
       }
     } catch (err) {
-      console.error('Error deleting bill items:', err);
+      console.error('Error loading products list:', err);
     }
+  } else {
+    // No cache - load fresh products with qty=0
+    console.log(`📦 No cache found, loading fresh products for company ${newCompanyIdStr}`);
+    setBillItems([]);
+    await loadProductsForCompany(newCompanyId);
   }
   
-  // Step 2: Clear bill items from state and reload with new company products
-  console.log(`📦 Loading products for new company ${newCompanyId}`);
-  await loadProductsForCompany(newCompanyId);
-  
-  console.log('✅ Bill items cleared and reloaded with new company products');
+  console.log('✅ Company switch complete');
 };
 
 // Update bill item qty (automatically calculate amount)
@@ -926,15 +1041,30 @@ const submitForm = async (e) => {
   // Flatten standardGroup if it exists, otherwise use regular shapes
   const shapesToSave = standardGroup ? flattenStandardGroup(standardGroup) : shapes;
 
+  // Calculate bill totals to get the actual bill amount
+  const billTotals = computeBillTotals();
+  const actualBillAmount = billTotals.total;
+
+  // Add bill data to form before saving
+  const formWithBillData = {
+    ...form,
+    billNo: billNo || null,
+    billDate: billDate || new Date().toISOString().split('T')[0],
+    billAmount: actualBillAmount  // Use calculated total, not form input
+  };
+
   const filePayload = {
     owner_id,                         
     title: `${form.farmerName || 'File'} - ${form.fileDate}`,
-    form,
+    form: formWithBillData,
     shapes: shapesToSave
   };
 
   console.log('=== SUBMITTING FORM ===');
   console.log('File Payload:', filePayload);
+  console.log('📊 Bill totals calculated:', billTotals);
+  console.log('📊 actualBillAmount:', actualBillAmount);
+  console.log('📊 formWithBillData.billAmount:', formWithBillData.billAmount);
 
   try {
     setSaving(true);
@@ -949,7 +1079,7 @@ const submitForm = async (e) => {
 
     // ===== STEP 1: SAVE FILE =====
     console.log(`Step 1: ${isUpdate ? 'Updating' : 'Creating'} file...`);
-    const fileUrl = isUpdate ? `${API_BASE}/api/files/${savedFileId}` : `${API_BASE}/api/files`;
+    const fileUrl = isUpdate ? `${API_BASE}/api/v2/files/${savedFileId}` : `${API_BASE}/api/v2/files`;
     const fileMethod = isUpdate ? 'PUT' : 'POST';
 
     const fileRes = await fetch(fileUrl, {
@@ -995,16 +1125,29 @@ const submitForm = async (e) => {
     // Prepare bill payload with items NOW that we have fileId
     // IMPORTANT: Use backend field names: farmer_name (not customer_name), farmer_mobile (not customer_mobile)
     // Only include items with qty > 0
+    
+    // Get company context
+    const selectedCompany = companies.find(c => c.company_name === form.company);
+    const company_id = selectedCompany?.company_id || null;
+    const company_slot_no = selectedCompany?.company_slot || null;
+    
     const billPayload = {
       bill_no: billNo || null, // Will be auto-generated if null
       bill_date: billDate || new Date().toISOString().split('T')[0],
       farmer_name: form.farmerName,
       farmer_mobile: form.mobile,
       status: 'draft',
+      owner_id: owner_id,  // REQUIRED: Owner ID for database constraint
       created_by: owner_id,
       file_id: fileId, // NOW we have fileId from file save
-      items: getBillItemsForSave() // Only items with qty > 0
+      company_id: company_id,  // NEW: Company reference
+      company_slot_no: company_slot_no,  // NEW: Slot number
+      total_amount: actualBillAmount,  // Calculated bill total
+      taxable_amount: billTotals.taxable,  // Taxable amount
+      billItems: getBillItemsForSave() // Only items with qty > 0
     };
+    
+    console.log('📦 Bill payload:', { bill_no: billPayload.bill_no, owner_id, company_id, company_slot_no, total_amount: billPayload.total_amount, items_count: billPayload.billItems.length });
     
     let billUrl = null;
     let billMethod = null;
@@ -1014,7 +1157,7 @@ const submitForm = async (e) => {
       // Update existing bill - need to find bill_id first
       // Query to get bill_id from file_id or bill_no
       console.log(`Fetching existing bill for file_id: ${fileId} or bill_no: ${billNo}...`);
-      const getBillRes = await fetch(`${API_BASE}/api/bills?file_id=${fileId}&owner_id=${owner_id}&limit=1`, {
+      const getBillRes = await fetch(`${API_BASE}/api/v2/bills?file_id=${fileId}&owner_id=${owner_id}&limit=1`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1026,18 +1169,18 @@ const submitForm = async (e) => {
       if (getBillRes.ok && getBillData && getBillData.bills && getBillData.bills.length > 0) {
         // Bill exists - update it using bill_id
         billIdForUpdate = getBillData.bills[0].bill_id;
-        billUrl = `${API_BASE}/api/bills/${billIdForUpdate}`;
+        billUrl = `${API_BASE}/api/v2/bills/${billIdForUpdate}`;
         billMethod = 'PUT';
         console.log(`Found existing bill_id: ${billIdForUpdate}`);
       } else {
         // Bill doesn't exist yet - create new one
-        billUrl = `${API_BASE}/api/bills`;
+        billUrl = `${API_BASE}/api/v2/bills`;
         billMethod = 'POST';
         console.log('No existing bill found - will create new one');
       }
     } else {
       // Create new bill for this file
-      billUrl = `${API_BASE}/api/bills`;
+      billUrl = `${API_BASE}/api/v2/bills`;
       billMethod = 'POST';
     }
 
@@ -1166,7 +1309,7 @@ const submitFormAndPrint = async (e) => {
 
     // ===== STEP 1: SAVE FILE =====
     console.log(`Step 1: ${isUpdate ? 'Updating' : 'Creating'} file...`);
-    const fileUrl = isUpdate ? `${API_BASE}/api/files/${savedFileId}` : `${API_BASE}/api/files`;
+    const fileUrl = isUpdate ? `${API_BASE}/api/v2/files/${savedFileId}` : `${API_BASE}/api/v2/files`;
     const fileMethod = isUpdate ? 'PUT' : 'POST';
 
     const fileRes = await fetch(fileUrl, {
@@ -1207,31 +1350,41 @@ const submitFormAndPrint = async (e) => {
     }
 
     console.log('Step 2: Saving bill for file...');
+    
+    // Get company context
+    const selectedCompany = companies.find(c => c.company_name === form.company);
+    const company_id = selectedCompany?.company_id || null;
+    const company_slot_no = selectedCompany?.company_slot || null;
+    
     const billPayload = {
       file_id: fileId,
       bill_no: billNo,
       bill_date: billDate,
       farmer_name: form.farmerName || '',
       farmer_mobile: form.mobile || '',
+      owner_id: owner_id,  // REQUIRED: Owner ID for database constraint
+      created_by: owner_id,
+      company_id: company_id,
+      company_slot_no: company_slot_no,
       items: getBillItemsForSave()
     };
 
     console.log('Bill Payload:', billPayload);
 
     // Determine if bill is new or update
-    let billUrl = `${API_BASE}/api/bills`;
+    let billUrl = `${API_BASE}/api/v2/bills`;
     let billMethod = 'POST';
 
     if (isUpdate && savedFileId) {
       // Query for existing bill
-      const billQuery = await fetch(`${API_BASE}/api/bills?file_id=${fileId}&limit=1`);
+      const billQuery = await fetch(`${API_BASE}/api/v2/bills?file_id=${fileId}&limit=1`);
       const billQueryText = await billQuery.text();
       let billQueryData = null;
       try { billQueryData = JSON.parse(billQueryText); } catch (e) { billQueryData = null; }
 
       if (billQuery.ok && billQueryData?.success && billQueryData?.bills && billQueryData.bills.length > 0) {
         const existingBill = billQueryData.bills[0];
-        billUrl = `${API_BASE}/api/bills/${existingBill.bill_id}`;
+        billUrl = `${API_BASE}/api/v2/bills/${existingBill.bill_id}`;
         billMethod = 'PUT';
         console.log('Bill exists, will update bill_id:', existingBill.bill_id);
       }
@@ -1442,6 +1595,7 @@ const submitFormAndPrint = async (e) => {
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 py-3 md:py-5 px-2 md:px-4 relative">
       {saving && <Loader fullScreen message={savedFileId ? (t.updating || 'Updating...') : (t.savingFile || 'Saving file...')} />}
+      {loadingFile && <Loader fullScreen message="Loading file details..." />}
 
       <form
         ref={formRef}
@@ -1492,7 +1646,7 @@ const submitFormAndPrint = async (e) => {
 </div>
 
 {/* FILE SECTION */}
-{activeSection === 'file' && (
+{activeSection === 'file' && !loadingFile && (
   <div>
 
 
@@ -1607,7 +1761,7 @@ const submitFormAndPrint = async (e) => {
             
             <div className="flex flex-col">
               <label className="font-semibold mb-1 text-sm md:text-base">{t.salesEngg}</label>
-              <input name="salesEngg" value={form.salesEngg} onChange={handleChange} className="input" required />
+              <input name="salesEngg" value={form.salesEngg} onChange={handleChange} className="input bg-gray-100 text-gray-600 cursor-not-allowed" disabled />
             </div>
 
 
@@ -2337,13 +2491,6 @@ const submitFormAndPrint = async (e) => {
       </Stage>
       </div>
 
-{/* 
-      <button
-        onClick={() => console.log('Exported Layout:', shapes)}
-        className="mt-4 px-4 py-2 bg-cyan-700 text-white rounded"
-      >
-        {t.export}
-      </button> */}
         </div>
 
         {/* Step 4: Witness & File Details */}
@@ -2351,44 +2498,6 @@ const submitFormAndPrint = async (e) => {
           <h3 className="text-lg md:text-xl font-bold text-cyan-700 mb-4 md:mb-6 pb-3 md:pb-4 border-b-4 border-cyan-400">{t.stepFour || 'Witness & File Details'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
 
-    {/* Bill Information */}
-    {/* <div className="flex flex-col">
-      <label className="font-semibold mb-1">{t.billNo}</label>
-      <input
-        name="billNo"
-        value={form.billNo}
-        onChange={handleChange}
-        className="input bg-gray-50 text-gray-500 opacity-70"
-        disabled
-      />
-      <p className="text-xs text-gray-400 mt-1">Bill number is linked separately via Bills. Edit from Files &gt; Link Bill.</p>
-    </div>
-
-    <div className="flex flex-col">
-      <label className="font-semibold mb-1">{t.billDate}</label>
-      <input
-        type="date"
-        name="billDate"
-        value={form.billDate}
-        onChange={handleChange}
-        className="input bg-gray-50 text-gray-500 opacity-70"
-        disabled
-      />
-      <p className="text-xs text-gray-400 mt-1">Bill date is linked separately via Bills.</p>
-    </div>
-
-    <div className="flex flex-col">
-      <label className="font-semibold mb-1">{t.billAmount}</label>
-      <input
-        type="number"
-        name="billAmount"
-        value={form.billAmount}
-        onChange={handleChange}
-        className="input bg-gray-50 text-gray-500 opacity-70"
-        disabled
-      />
-      <p className="text-xs text-gray-400 mt-1">Bill amount is linked separately via Bills. Edit from Files &gt; Link Bill.</p>
-    </div> */}
 
     <div className="flex flex-col">
       <label className="font-semibold mb-1">{t.w1Name}</label>
@@ -2582,12 +2691,20 @@ const submitFormAndPrint = async (e) => {
 
             {billItems.length > 0 && console.log(`📊 [RENDER] Rendering ${billItems.length} bill items in table`)}
             {billItems.map((it) => {
-              console.log(`   [Row] product_id=${it.product_id}, spare2=${it.spare2}, description=${it.description}`);
+             // console.log(`   [Row] product_id=${it.product_id}, spare2=${it.spare2}, description=${it.description}`);
               return (
               <tr key={it.product_id} className={`transition hover:bg-green-100 ${(it.qty || 0) > 0 ? 'bg-green-100' : 'bg-white'}`}>
                 <td className="px-4 py-3 text-sm text-gray-800">
                   <div className="font-medium">{it.description || 'N/A'}</div>
-                  {it.size && <div className="text-xs text-gray-400">Size: {it.size}</div>}
+                  <div className="flex items-center gap-2 mt-1">
+                    {it.size && <div className="text-xs text-gray-400">Size: {it.size}</div>}
+                    {it.spare2 && getCompanyInfo(it.spare2) && (
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full border border-gray-300">
+                        <span className="text-xs font-semibold text-gray-600">No-{getCompanyInfo(it.spare2).slot}</span>
+                        <span className="text-xs text-gray-500 italic">{getCompanyInfo(it.spare2).name}</span>
+                      </div>
+                    )}
+                  </div>
                 </td>
 
                 <td className="px-4 py-3 text-sm text-right">
@@ -2644,7 +2761,15 @@ const submitFormAndPrint = async (e) => {
           >
             <div className="mb-3">
               <div className="font-semibold text-gray-800">{it.description || 'N/A'}</div>
-              {it.size && <div className="text-xs text-gray-500 mt-1">Size: {it.size}</div>}
+              <div className="flex items-center gap-2 mt-1">
+                {it.size && <div className="text-xs text-gray-500">Size: {it.size}</div>}
+                {it.spare2 && getCompanyInfo(it.spare2) && (
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full border border-gray-300">
+                    <span className="text-xs font-semibold text-gray-600">No-{getCompanyInfo(it.spare2).slot}</span>
+                    <span className="text-xs text-gray-500 italic">{getCompanyInfo(it.spare2).name}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -2785,263 +2910,7 @@ const submitFormAndPrint = async (e) => {
   );
 }
 
-// return (
-//     <div className="min-h-screen flex flex-col items-center bg-gray-50 py-5 px-4">
-//       <form
-//         onSubmit={submitForm}
-//         className="w-full max-w-6xl bg-white shadow-lg rounded-lg p-8 space-y-6"
-//       >
-//         {/* top header and steps */}
-//         <div className="flex items-center justify-between mb-8">
-//           <h2 className="text-2xl font-bold text-cyan-700">{t.newFile}</h2>
-//           <div className="flex items-center space-x-6">
-//             {steps.map((s) => (
-//               <div
-//                 key={s.id}
-//                 className="flex flex-col items-center cursor-pointer"
-//                 onClick={() => goToStep(s.id)}
-//               >
-//                 <div
-//                   className={`w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-lg shadow-md transition-all ${
-//                     step === s.id
-//                       ? 'bg-cyan-600 scale-110'
-//                       : 'bg-gray-300 hover:bg-cyan-400 hover:scale-105'
-//                   }`}
-//                 >
-//                   {s.id}
-//                 </div>
-//                 <p className={`mt-2 text-sm font-medium ${step === s.id ? 'text-cyan-700' : 'text-gray-500'}`}>
-//                   {/* optional title */}
-//                 </p>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
 
-//         {/* Step 1 */}
-//         {step === 1 && (
-//           <div className="grid grid-cols-2 gap-4">
-//             {/* ... all your input fields unchanged ... */}
-//             <div className="flex flex-col">
-//               <label className="font-semibold mb-1">{t.fyYear}</label>
-//               <select name="fyYear" value={form.fyYear} onChange={handleChange} className="input" required>
-//                 <option value="">{t.fyYear}</option>
-//                 <option value="2025-26">2025-26</option>
-//                 <option value="2024-25">2024-25</option>
-//                 <option value="2023-24">2023-24</option>
-//               </select>
-//             </div>
-//             {/* farmerName etc... (copy remaining fields exactly from your component) */}
-//             <div className="flex flex-col">
-//               <label className="font-semibold mb-1">{t.farmerName}</label>
-//               <input name="farmerName" value={form.farmerName} onChange={handleChange} className="input" required />
-//             </div>
-//             {/* rest of fields... */}
-//           </div>
-//         )}
-
-//         {/* Step 2 */}
-//         {step === 2 && (
-//           <div className="grid grid-cols-2 gap-4">
-//             {/* ... */}
-//             <div className="flex flex-col">
-//               <label className="font-semibold mb-1">{t.selectCompany}</label>
-//               <select name="company" value={form.company} onChange={handleChange} className="input" required>
-//                 <option value="">{t.selectCompany}</option>
-//                 <option value="Agri Solutions">Agri Solutions</option>
-//                 <option value="Green Fields">Green Fields</option>
-//                 <option value="FarmTech">FarmTech</option>
-//               </select>
-//             </div>
-//             {/* other inputs... */}
-//           </div>
-//         )}
-
-//         {/* Step 3: Canvas */}
-//         {step === 3 && (
-//           <div className="flex flex-col items-center p-1">
-//             <h2 className="text-2xl font-bold text-cyan-700 mb-4">{t.graphTitle}</h2>
-
-//             <div className="flex flex-wrap justify-center gap-2 mb-4">
-//               <button type="button" onClick={() => addShape('well')} className="px-3 py-1 bg-blue-500 text-white rounded">{t.well}</button>
-//               <button type="button" onClick={() => addShape('main_pipe')} className="px-3 py-1 bg-orange-500 text-white rounded">{t.mainPipe}</button>
-//               <button type="button" onClick={() => addShape('lateral_pipe')} className="px-3 py-1 bg-sky-500 text-white rounded">{t.lateralPipe}</button>
-//               <button type="button" onClick={() => addShape('border')} className="px-3 py-1 bg-green-600 text-white rounded">{t.border}</button>
-//               <button type="button" onClick={() => addShape('valve_image')} className="px-3 py-1 bg-purple-500 text-white rounded">{t.valve}</button>
-//               <button type="button" onClick={() => addShape('filter_image')} className="px-3 py-1 bg-teal-600 text-white rounded">{t.filter}</button>
-//               <button type="button" onClick={() => addShape('flush_image')} className="px-3 py-1  bg-sky-600 text-white rounded">{t.flush}</button>
-//               <button type="button" onClick={handleDelete} className="px-3 py-1 bg-red-600 text-white rounded">{t.delete}</button>
-//             </div>
-
-//             <Stage
-//               width={900}
-//               height={416}
-//               ref={stageRef}
-//               onMouseDown={handleMouseDown}
-//               onMouseMove={handleMouseMove}
-//               onMouseUp={handleMouseUp}
-//               style={{
-//                 border: '2px solid #ccc',
-//                 backgroundSize: '20px 20px',
-//                 backgroundImage:
-//                   'linear-gradient(to right, #eee 1px, transparent 1px), linear-gradient(to bottom, #eee 1px, transparent 1px)',
-//                 cursor: tool?.includes('pipe') ? 'crosshair' : 'default',
-//               }}
-//             >
-//               <Layer>
-//                 {shapes.map((s) => {
-//                   const common = {
-//                     id: s.id,
-//                     draggable: !s.type.includes('pipe'),
-//                     onClick: () => setSelectedId(s.id),
-//                     onDragEnd: (e) => handleDragEnd(s.id, e),
-//                     onTransformEnd: (e) => handleTransformEnd(s.id, e.target),
-//                     hitStrokeWidth: 20,
-//                   };
-
-//                   if (s.type === 'well')
-//                     return (
-//                       <Circle
-//                         key={s.id}
-//                         {...common}
-//                         x={s.x}
-//                         y={s.y}
-//                         radius={s.radius}
-//                         stroke="blue"
-//                         strokeWidth={2}
-//                         fillEnabled={false}
-//                       />
-//                     );
-
-//                   if (s.type === 'border')
-//                     return (
-//                       <Rect
-//                         key={s.id}
-//                         {...common}
-//                         x={s.x}
-//                         y={s.y}
-//                         width={s.width}
-//                         height={s.height}
-//                         stroke="green"
-//                         strokeWidth={2}
-//                         fillEnabled={false}
-//                       />
-//                     );
-
-//                   if (s.type === 'main_pipe' || s.type === 'lateral_pipe')
-//                     return (
-//                       <Line
-//                         key={s.id}
-//                         {...common}
-//                         points={s.points}
-//                         stroke={s.stroke}
-//                         strokeWidth={s.strokeWidth}
-//                         dash={s.dash}
-//                       />
-//                     );
-
-//                   if (s.type === 'valve_image')
-//                     return (
-//                       <Image
-//                         key={s.id}
-//                         {...common}
-//                         x={s.x}
-//                         y={s.y}
-//                         width={s.width}
-//                         height={s.height}
-//                         image={valveImg}
-//                       />
-//                     );
-
-//                   if (s.type === 'filter_image')
-//                     return (
-//                       <Image
-//                         key={s.id}
-//                         {...common}
-//                         x={s.x}
-//                         y={s.y}
-//                         width={s.width}
-//                         height={s.height}
-//                         image={filterImg}
-//                       />
-//                     );
-
-//                   if (s.type === 'flush_image')
-//                     return (
-//                       <Image
-//                         key={s.id}
-//                         {...common}
-//                         x={s.x}
-//                         y={s.y}
-//                         width={s.width}
-//                         height={s.height}
-//                         image={flushImg}
-//                       />
-//                     );
-
-//                   return null;
-//                 })}
-
-//                 <Transformer ref={trRef} rotateEnabled={true} anchorSize={8} borderStroke="black" borderDash={[4, 4]} />
-//               </Layer>
-//             </Stage>
-//           </div>
-//         )}
-
-//         {/* Step 4 */}
-//         {step === 4 && (
-//           <div className="grid grid-cols-2 gap-4">
-//             {/* Bill info fields (unchanged) */}
-//             <div className="flex flex-col">
-//               <label className="font-semibold mb-1">{t.billNo}</label>
-//               <input name="billNo" value={form.billNo} onChange={handleChange} className="input" required />
-//             </div>
-//             <div className="flex flex-col">
-//               <label className="font-semibold mb-1">{t.billAmount}</label>
-//               <input type="number" name="billAmount" value={form.billAmount} onChange={handleChange} className="input" required />
-//             </div>
-//             {/* rest of W1/W2 and date/place */}
-//             <div className="flex flex-col">
-//               <label className="font-semibold mb-1">{t.fileDate}</label>
-//               <input type="date" name="fileDate" value={form.fileDate} onChange={handleChange} className="input" required />
-//             </div>
-//             <div className="flex flex-col">
-//               <label className="font-semibold mb-1">{t.place}</label>
-//               <input name="place" value={form.place} onChange={handleChange} className="input" />
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Navigation Buttons */}
-//         <div className="flex justify-between mt-6">
-//           {step > 1 && (
-//             <button type="button" onClick={prevStep} className="px-6 py-2 bg-gray-300 rounded hover:bg-gray-400">
-//               {t.previous}
-//             </button>
-//           )}
-//           {step < 4 && (
-//             <button type="button" onClick={nextStep} className="px-6 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600">
-//               {t.next}
-//             </button>
-//           )}
-//           {step === 4 && (
-//             <button type="submit" className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-//               {saving ? (t.saving || 'Saving...') : (t.submit || 'Submit')}
-//             </button>
-//           )}
-//         </div>
-
-//         <style jsx>{`
-//           .input {
-//             border: 1px solid #e5e7eb;
-//             padding: 10px;
-//             border-radius: 6px;
-//             width: 100%;
-//           }
-//         `}</style>
-//       </form>
-//     </div>
-//   )
 
 export default function NewFilePage() {
   return (

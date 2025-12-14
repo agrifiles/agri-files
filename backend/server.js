@@ -29,13 +29,16 @@ const PORT = 5006;
 
 const authRoutes = require('./routes/auth');
 const productsRouter = require('./routes/products');
-const filesRouter = require('./routes/files'); 
+const filesRouter = require('./routes/files');
+const filesV2Router = require('./routes/files-v2');
 const billsRouter = require('./routes/bills');
 const companySettingsRouter = require('./routes/company-settings');
-app.use('/api/files', filesRouter);  
+app.use('/api/files', filesRouter);
+app.use('/api/v2/files', filesV2Router);  // New v2 routes under /files prefix
 app.use('/auth', authRoutes);
 app.use('/products', productsRouter);
-app.use('/api/bills', billsRouter);
+app.use('/api/bills', billsRouter);  // Contains both /api/bills (v1) and /api/v2/bills (v2)
+app.use('/api/v2/bills', billsRouter);  // Also register at v2 path for new endpoints
 app.use('/api/company-settings', companySettingsRouter);
 
 

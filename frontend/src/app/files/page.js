@@ -53,7 +53,14 @@ function FilesPageContent() {
       const fText = await fRes.text();
       let fJson = null;
       try { fJson = JSON.parse(fText); } catch (_) {}
-      const filesList = fJson?.files || [];
+      let filesList = fJson?.files || [];
+
+      // Sort files by file_date (latest first)
+      filesList.sort((a, b) => {
+        const dateA = new Date(a.file_date || a.fileDate || 0);
+        const dateB = new Date(b.file_date || b.fileDate || 0);
+        return dateB.getTime() - dateA.getTime(); // Latest first
+      });
 
       const bRes = await fetch(`${API}/api/bills?owner_id=${ownerId}`);
       const bText = await bRes.text();

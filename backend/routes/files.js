@@ -258,7 +258,7 @@ router.post('/:id/delete', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM files WHERE id=$1', [id]);
+    const { rows } = await pool.query('SELECT * FROM files WHERE id=$1 order by file_date desc', [id]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     return res.json({ success: true, file: rows[0] });
   } catch (err) {

@@ -120,10 +120,12 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    console.log('📋 GET /:id route hit with id:', id);
     const billRes = await pool.query('SELECT * FROM bills WHERE bill_id=$1 ', [id]);
     if (!billRes.rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     const bill = billRes.rows[0];
     const itemsRes = await pool.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY item_id', [id]);
+    console.log('📋 Bill items query returned:', itemsRes.rows.length, 'items for bill_id:', id);
     bill.items = itemsRes.rows;
     return res.json({ success: true, bill });
   } catch (err) {
@@ -154,10 +156,13 @@ router.post('/', async (req, res) => {
       farmer_name = null,
       farmer_mobile = null,
       created_by = req.body.created_by || null,
-      items = [],
       file_id = null,
-      status = 'draft'
+      status = 'draft',
+      company_id = null,  // NEW: Company ID for proper bill-company relationship
+      company_slot_no = null  // NEW: Company slot number (1, 2, or 3)
     } = body;
+    // Support both 'items' and 'billItems' from frontend
+    const items = body.items || body.billItems || [];
     // map owner_id for schemas that require it
     const owner_id = body.owner_id ?? created_by ?? null;
 
@@ -170,7 +175,7 @@ router.post('/', async (req, res) => {
 
     // insert header - only include columns that actually exist in DB to avoid schema mismatch
     const cols = await ensureBillsCols();
-    const headerVals = { bill_no, bill_date, farmer_name, farmer_mobile, file_id, status, created_by, owner_id };
+    const headerVals = { bill_no, bill_date, farmer_name, farmer_mobile, file_id, status, created_by, owner_id, company_id, company_slot_no };
     const insertCols = [];
     const insertParams = [];
     Object.keys(headerVals).forEach((k) => {
@@ -292,7 +297,9 @@ router.put('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
     const id = req.params.id;
-    const { bill_no, bill_date, farmer_name, farmer_mobile, status = 'draft', items = [], created_by = req.body.created_by || null } = req.body;
+    const { bill_no, bill_date, farmer_name, farmer_mobile, status = 'draft', created_by = req.body.created_by || null, company_id = null, company_slot_no = null } = req.body;
+    // Support both 'items' and 'billItems' from frontend
+    const items = req.body.items || req.body.billItems || [];
 
     await client.query('BEGIN');
 
@@ -303,10 +310,29 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Not found' });
     }
 
-    await client.query(
-      `UPDATE bills SET bill_no=$1, bill_date=$2, farmer_name=$3, farmer_mobile=$4, status=$5, updated_at=now() WHERE bill_id=$6`,
-      [bill_no, bill_date, farmer_name, farmer_mobile, status, id]
-    );
+    // Get available columns
+    const cols = await ensureBillsCols();
+    
+    // Build UPDATE query dynamically based on available columns
+    const updateFields = ['bill_no=$1', 'bill_date=$2', 'farmer_name=$3', 'farmer_mobile=$4', 'status=$5', 'updated_at=now()'];
+    const updateParams = [bill_no, bill_date, farmer_name, farmer_mobile, status];
+    
+    let paramIndex = 6;
+    if (cols.includes('company_id') && company_id !== null && company_id !== undefined) {
+      updateFields.push(`company_id=$${paramIndex}`);
+      updateParams.push(company_id);
+      paramIndex++;
+    }
+    if (cols.includes('company_slot_no') && company_slot_no !== null && company_slot_no !== undefined) {
+      updateFields.push(`company_slot_no=$${paramIndex}`);
+      updateParams.push(company_slot_no);
+      paramIndex++;
+    }
+    
+    updateParams.push(id);
+    const updateQuery = `UPDATE bills SET ${updateFields.join(', ')} WHERE bill_id=$${paramIndex}`;
+    
+    await client.query(updateQuery, updateParams);
 
     // delete old items and re-insert (simpler)
     await client.query('DELETE FROM bill_items WHERE bill_id=$1', [id]);
@@ -422,6 +448,272 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error('delete bill err', err);
     return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// ============================================================================
+// V2 ENDPOINTS - Type-safe bill management
+// ============================================================================
+
+const toNumber = (val) => {
+  if (val === null || val === undefined) return 0;
+  const num = Number(val);
+  return isNaN(num) ? 0 : num;
+};
+
+const toString = (val) => {
+  return val === null || val === undefined ? '' : String(val);
+};
+
+// GET /api/v2/bills?file_id=X&limit=1 (fetch by file_id)
+router.get('/v2', async (req, res) => {
+  try {
+    const { file_id, owner_id, limit = 10 } = req.query;
+    let sql = 'SELECT * FROM bills WHERE 1=1';
+    let params = [];
+
+    if (file_id) {
+      sql += ` AND file_id = $${params.length + 1}`;
+      params.push(toNumber(file_id));
+    }
+    if (owner_id) {
+      sql += ` AND owner_id = $${params.length + 1}`;
+      params.push(toNumber(owner_id));
+    }
+
+    sql += ` ORDER BY bill_id DESC LIMIT $${params.length + 1}`;
+    params.push(toNumber(limit));
+
+    const { rows } = await pool.query(sql, params);
+    return res.json({ success: true, bills: rows });
+  } catch (err) {
+    console.error('Error fetching bills v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// GET /api/v2/bills/:billId
+router.get('/v2/:billId', async (req, res) => {
+  try {
+    const { billId } = req.params;
+    const billIdNum = toNumber(billId);
+
+    if (!billIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid billId' });
+    }
+
+    const billRes = await pool.query(
+      'SELECT * FROM bills WHERE bill_id = $1',
+      [billIdNum]
+    );
+
+    if (billRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Bill not found' });
+    }
+
+    // Fetch bill items
+    const itemsRes = await pool.query(
+      'SELECT * FROM bill_items WHERE bill_id = $1 ORDER BY item_id ASC',
+      [billIdNum]
+    );
+
+    console.log('📦 Bill items query result:', itemsRes.rows.length, 'items for bill_id:', billIdNum);
+
+    const bill = billRes.rows[0];
+    bill.items = itemsRes.rows.map(item => ({
+      ...item,
+      qty: toNumber(item.qty),
+      gov_rate: toNumber(item.gov_rate),
+      sales_rate: toNumber(item.sales_rate),
+      gst_percent: toNumber(item.gst_percent),
+      amount: toNumber(item.amount),
+      product_id: toNumber(item.product_id)
+    }));
+
+    console.log('📦 Returning bill with', bill.items.length, 'items');
+
+    return res.json({ success: true, bill });
+  } catch (err) {
+    console.error('Error fetching bill v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /api/v2/bills - Create new bill
+router.post('/v2', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const {
+      file_id,
+      owner_id,
+      company_id,
+      bill_no,
+      bill_date,
+      farmer_name,
+      farmer_mobile,
+      total_amount,
+      taxable_amount,
+      billItems
+    } = req.body;
+
+    const fileIdNum = toNumber(file_id);
+    const ownerIdNum = toNumber(owner_id);
+    const companyIdNum = toNumber(company_id);
+    const totalAmountNum = toNumber(total_amount);
+    const taxableAmountNum = toNumber(taxable_amount);
+
+    if (!fileIdNum || !ownerIdNum || !companyIdNum) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    await client.query('BEGIN');
+
+    // Delete any existing bill for this file + company
+    await client.query(
+      'DELETE FROM bills WHERE file_id = $1 AND owner_id = $2 AND company_id = $3',
+      [fileIdNum, ownerIdNum, companyIdNum]
+    );
+
+    // Create new bill
+    const billRes = await client.query(
+      `INSERT INTO bills (
+        bill_no, bill_date, file_id, owner_id, company_id,
+        farmer_name, farmer_mobile, total_amount, taxable_amount, status, created_by, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $4, NOW(), NOW())
+      RETURNING *`,
+      [
+        bill_no || null,
+        bill_date || new Date().toISOString().split('T')[0],
+        fileIdNum,
+        ownerIdNum,
+        companyIdNum,
+        farmer_name || '',
+        farmer_mobile || '',
+        totalAmountNum,
+        taxableAmountNum
+      ]
+    );
+
+    const createdBillId = billRes.rows[0].bill_id;
+
+    // Insert bill items (only those with qty > 0)
+    if (billItems && Array.isArray(billItems)) {
+      for (const item of billItems) {
+        const qty = toNumber(item.qty);
+        if (qty > 0) {
+          await client.query(
+            `INSERT INTO bill_items (
+              bill_id, product_id, description, hsn, batch_no, size,
+              gov_rate, sales_rate, uom, gst_percent, qty, amount, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())`,
+            [
+              createdBillId,
+              toNumber(item.product_id),
+              toString(item.description),
+              toString(item.hsn),
+              toString(item.batch_no),
+              toString(item.size),
+              toNumber(item.gov_rate),
+              toNumber(item.sales_rate),
+              toString(item.uom),
+              toNumber(item.gst_percent),
+              qty,
+              toNumber(item.amount)
+            ]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      bill_id: createdBillId,
+      message: 'Bill created successfully'
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error creating bill v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /api/v2/bills/:billId - Update bill
+router.put('/v2/:billId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { billId } = req.params;
+    const { billItems, bill_date, farmer_name, farmer_mobile, total_amount, taxable_amount } = req.body;
+
+    const billIdNum = toNumber(billId);
+    if (!billIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid billId' });
+    }
+
+    const totalAmountNum = toNumber(total_amount);
+    const taxableAmountNum = toNumber(taxable_amount);
+
+    await client.query('BEGIN');
+
+    // Update bill header including amounts
+    await client.query(
+      `UPDATE bills 
+       SET bill_date = COALESCE($1, bill_date),
+           farmer_name = COALESCE($2, farmer_name),
+           farmer_mobile = COALESCE($3, farmer_mobile),
+           total_amount = $4,
+           taxable_amount = $5,
+           updated_at = NOW()
+       WHERE bill_id = $6`,
+      [bill_date || null, farmer_name || null, farmer_mobile || null, totalAmountNum, taxableAmountNum, billIdNum]
+    );
+
+    // Delete existing items and insert new ones
+    await client.query('DELETE FROM bill_items WHERE bill_id = $1', [billIdNum]);
+
+    if (billItems && Array.isArray(billItems)) {
+      for (const item of billItems) {
+        const qty = toNumber(item.qty);
+        if (qty > 0) {
+          await client.query(
+            `INSERT INTO bill_items (
+              bill_id, product_id, description, hsn, batch_no, size,
+              gov_rate, sales_rate, uom, gst_percent, qty, amount, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())`,
+            [
+              billIdNum,
+              toNumber(item.product_id),
+              toString(item.description),
+              toString(item.hsn),
+              toString(item.batch_no),
+              toString(item.size),
+              toNumber(item.gov_rate),
+              toNumber(item.sales_rate),
+              toString(item.uom),
+              toNumber(item.gst_percent),
+              qty,
+              toNumber(item.amount)
+            ]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      message: 'Bill updated successfully'
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating bill v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  } finally {
+    client.release();
   }
 });
 
