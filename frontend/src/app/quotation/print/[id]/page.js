@@ -150,29 +150,39 @@ function QuotationPrintContent({ params }) {
     return () => { mounted = false; };
   }, [params]);
 
-  // Fetch bill and linked file data
+  // Fetch quotation and linked file data
   useEffect(() => {
     if (!routeId) return;
     let mounted = true;
     (async () => {
       try {
-        // Fetch bill
-        const billRes = await fetch(`${API}/api/bills/${routeId}`);
-        const billText = await billRes.text();
-        const billData = JSON.parse(billText || '{}');
-        console.log('Fetched bill data for quotation:', routeId, billData);
+        // Fetch quotation
+        const quotationRes = await fetch(`${API}/api/quotations/${routeId}`);
+        const quotationText = await quotationRes.text();
+        const quotationData = JSON.parse(quotationText || '{}');
+        console.log('Fetched quotation data:', routeId, quotationData);
         if (!mounted) return;
-        const billObj = billData.bill || null;
-        setBill(billObj);
-        console.log('Bill data loaded for quotation print:', billObj);
+        const quotationObj = quotationData.quotation || null;
+        
+        // Map quotation fields to bill-like structure for QuotationInvoice
+        if (quotationObj) {
+          const billLikeObj = {
+            ...quotationObj,
+            bill_no: quotationObj.quotation_no,
+            bill_date: quotationObj.quotation_date,
+            items: quotationObj.items || []
+          };
+          setBill(billLikeObj);
+          console.log('Quotation data loaded for print:', billLikeObj);
+        }
 
-        // If bill is linked to a file, fetch file details
-        if (billObj && billObj.file_id) {
+        // If quotation is linked to a file, fetch file details
+        if (quotationObj && quotationObj.file_id) {
           try {
-            const fileRes = await fetch(`${API}/api/files/${billObj.file_id}`);
+            const fileRes = await fetch(`${API}/api/files/${quotationObj.file_id}`);
             const fileText = await fileRes.text();
             const fileRespData = JSON.parse(fileText || '{}');
-            console.log('Fetched file data for quotation print:', billObj.file_id, fileRespData);
+            console.log('Fetched file data for quotation print:', quotationObj.file_id, fileRespData);
             if (mounted && fileRespData.success) {
               setFileData(fileRespData.file || null);
               console.log('File data loaded for quotation print:', fileRespData.file);
@@ -182,7 +192,7 @@ function QuotationPrintContent({ params }) {
           }
         }
       } catch (err) {
-        console.error('Error fetching bill for quotation:', err);
+        console.error('Error fetching quotation:', err);
       }
     })();
     return () => { mounted = false; };
@@ -223,13 +233,13 @@ function QuotationPrintContent({ params }) {
           🖨️ Print Quotation
         </button>
         <button
-          onClick={() => router.push(`/bill/${bill.bill_id}`)}
+          onClick={() => router.push(`/quotations/new?id=${routeId}`)}
           className="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg hover:bg-yellow-600 font-semibold text-sm"
         >
           ✏️ Edit
         </button>
         <button
-          onClick={() => router.push("/bill")}
+          onClick={() => router.push("/quotations")}
           className="px-4 py-2 bg-gray-600 text-white rounded-lg shadow-lg hover:bg-gray-700 font-semibold text-sm"
         >
           ← Back

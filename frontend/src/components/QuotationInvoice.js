@@ -152,7 +152,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           </div>
           <div className="text-right leading-tight">
             <div className="font-bold text-[9px] text-gray-800 mb-1">AUTHORISED DEALER FOR-</div>
-            <div className="font-bold text-[13px] text-gray-900 mb-1">{fileData?.company || "____________________"}</div>
+            <div className="font-bold text-[13px] text-gray-900 mb-1">{fileData?.company || bill?.company_name || "____________________"}</div>
             <div className="font-bold text-[11px] text-gray-800">राज्य : {userData?.gst_state }</div>
           </div>
         </div>
@@ -167,32 +167,36 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
         <div className="mt-2 border-1 border-black p-2" style={{fontSize: "10px"}}>
           {/* Row 1: Aadhar and Applicant Name */}
           <div className="grid grid-cols-3 gap-3 mb-1">
-                        <div className="col-span-2">
+                        <div className="col-span-1">
               <div className="font-bold text-[8px] text-gray-700">ग्राहकाचे नाव</div>
-              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{fileData?.farmer_name || bill.farmer_name || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{fileData?.farmer_name || bill?.farmer_name || "____________________"}</div>
             </div>
-            <div>
-              <div className="font-bold text-[8px] text-gray-700">आधार नंबर</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.aadhaar_no || "____________________"}</div>
+                        <div>
+              <div className="font-bold text-[8px] text-gray-700"> दिनांक</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{bill?.bill_date ? new Date(bill.bill_date).toLocaleDateString("en-IN") : "N/A"}</div>
             </div>
 
+                      <div>
+              <div className="font-bold text-[8px] text-gray-700">कोटेशन क्रमांक</div>
+              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{bill?.bill_no ? bill.bill_no.replace(/_(\d+)$/, '_QT$1') : "N/A"}</div>
+            </div>
           </div>
 
           {/* Row 2: Mobile and Farmer/Client ID */}
           <div className="grid grid-cols-3 gap-3 mb-1">
                                     <div>
               <div className="font-bold text-[8px] text-gray-700">गाव</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.village || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.village || bill?.village || "____________________"}</div>
             </div>
 
     
             <div>
               <div className="font-bold text-[8px] text-gray-700">मोबाइल नंबर</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.mobile || bill.farmer_mobile || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.mobile || bill?.farmer_mobile || "____________________"}</div>
             </div>
                     <div className="">
               <div className="font-bold text-[8px] text-gray-700">शेतकरी ओळख क्रमांक </div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_id || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.farmer_id || bill?.farmer_id || "____________________"}</div>
             </div>
           </div>
 
@@ -201,7 +205,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
 
             <div>
               <div className="font-bold text-[8px] text-gray-700">तालुका</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.taluka || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.taluka || bill?.taluka || "____________________"}</div>
             </div>
              <div>
               <div className="font-bold text-[8px] text-gray-700">पीकाचे नाव</div>
@@ -209,7 +213,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
             </div>
                         <div>
               <div className="font-bold text-[8px] text-gray-700">अर्ज क्रमांक</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.application_id || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.application_id || bill?.application_id || "____________________"}</div>
             </div>
           </div>
 
@@ -218,15 +222,15 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
            
                         <div>
               <div className="font-bold text-[8px] text-gray-700">जिल्हा</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.district || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.district || bill?.district || "____________________"}</div>
             </div>
             <div>
               <div className="font-bold text-[8px] text-gray-700">क्षेत्रफळ (हेक्टर)</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.area8a || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.area8a || bill?.area8a || "____________________"}</div>
             </div>
                         <div>
               <div className="font-bold text-[8px] text-gray-700">ड्रिप क्षेत्र</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.irrigation_area || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.irrigation_area || bill?.irrigation_area || "____________________"}</div>
             </div>
 
 
@@ -237,16 +241,14 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
 
             <div>
               <div className="font-bold text-[8px] text-gray-700">लॅटरल अंतर</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.lateral_spacing || "____________________"}</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.lateral_spacing || bill?.lateral_spacing || "____________________"}</div>
             </div>
-            <div>
-              <div className="font-bold text-[8px] text-gray-700"> दिनांक</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{bill?.bill_date ? new Date(bill.bill_date).toLocaleDateString("en-IN") : "N/A"}</div>
+
+                        <div>
+              <div className="font-bold text-[8px] text-gray-700">आधार नंबर</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.aadhaar_no || bill?.aadhaar_no || "____________________"}</div>
             </div>
-                      <div>
-              <div className="font-bold text-[8px] text-gray-700">कोटेशन क्रमांक</div>
-              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{bill?.bill_no ? bill.bill_no.replace(/_(\d+)$/, '_QT$1') : "N/A"}</div>
-            </div>
+
           </div>
         </div>
       </div>
@@ -396,7 +398,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
       <div className="px-1 border border-black my-1 py-2" style={{fontSize: "9px", position: "relative", zIndex: 1, pageBreakInside: "avoid"}}>
         <div className="font-bold text-[10px] mb-1">टीप / Notes:</div>
         <ol className="list-decimal list-inside space-y-0.5 text-[8px]">
-          <li>हे कोटेशन 15 दिवसांसाठी वैध आहे / This quotation is valid for 15 days from the date of issue.</li>
+          <li>हे कोटेशन {bill?.validity_days || 15} दिवसांसाठी वैध आहे / This quotation is valid for {bill?.validity_days || 15} days from the date of issue.</li>
           {/* <li>किंमती GST सह दर्शविल्या आहेत / Prices shown are inclusive of applicable GST.</li> */}
           <li>वितरण तारीख ऑर्डर कन्फर्मेशनवर अवलंबून आहे / Delivery date is subject to order confirmation and stock availability.</li>
           {/* <li>पेमेंट अटी: ऑर्डर देताना 50% आगाऊ, वितरणापूर्वी उर्वरित 50% / Payment Terms: 50% advance with order, balance 50% before delivery.</li> */}
@@ -421,7 +423,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           <div className="h-16 flex-1" />
           <div className="text-[12px] border-t-2 border-black pt-1 text-center leading-normal font-bold">
             <div>सेल्स इंजिनियर </div>
-            <div className="text-[9px]"> {fileData?.company} {fileData?.sales_engg ? `(${fileData?.sales_engg})` : ''} </div>
+            <div className="text-[9px]"> {fileData?.company || bill?.company_name} {(fileData?.sales_engg || bill?.sales_engg) ? `(${fileData?.sales_engg || bill?.sales_engg})` : ''} </div>
           </div>
         </div>
 

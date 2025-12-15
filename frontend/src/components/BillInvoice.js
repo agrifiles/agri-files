@@ -168,14 +168,19 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
         <div className="mt-2 border-1 border-black p-2" style={{fontSize: "10px"}}>
           {/* Row 1: Aadhar and Applicant Name */}
           <div className="grid grid-cols-3 gap-3 mb-1">
-                        <div className="col-span-2">
+                        <div className="col-span-1">
               <div className="font-bold text-[8px] text-gray-700">ग्राहकाचे नाव</div>
               <div className="border-b border-black py-0.5 text-[12px] font-semibold">{fileData?.farmer_name || bill.farmer_name || "____________________"}</div>
             </div>
-            <div>
-              <div className="font-bold text-[8px] text-gray-700">आधार नंबर</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.aadhaar_no || "____________________"}</div>
+                        <div>
+              <div className="font-bold text-[8px] text-gray-700"> दिनांक</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{bill?.bill_date ? new Date(bill.bill_date).toLocaleDateString("en-IN") : "N/A"}</div>
             </div>
+                                 <div>
+              <div className="font-bold text-[8px] text-gray-700">बिल क्रमांक</div>
+              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{bill?.bill_no || "N/A"}</div>
+            </div>
+ 
 
           </div>
 
@@ -240,13 +245,10 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
               <div className="font-bold text-[8px] text-gray-700">लॅटरल अंतर</div>
               <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.lateral_spacing || "____________________"}</div>
             </div>
+
             <div>
-              <div className="font-bold text-[8px] text-gray-700"> दिनांक</div>
-              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{bill?.bill_date ? new Date(bill.bill_date).toLocaleDateString("en-IN") : "N/A"}</div>
-            </div>
-                      <div>
-              <div className="font-bold text-[8px] text-gray-700">बिल क्रमांक</div>
-              <div className="border-b border-black py-0.5 text-[12px] font-semibold">{bill?.bill_no || "N/A"}</div>
+              <div className="font-bold text-[8px] text-gray-700">आधार नंबर</div>
+              <div className="border-b border-black py-0.5 text-[11px] font-semibold">{fileData?.aadhaar_no || "____________________"}</div>
             </div>
           </div>
         </div>

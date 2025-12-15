@@ -10,7 +10,7 @@ const translations = {
     dashboard: "Dashboard",
     settings : "Settings",
     home: "Home",
-
+existingFilesSubtitle : "See All Files",
     // Registration form
     fullName: "Full Name",
     businessName: "Business Name",
@@ -105,7 +105,7 @@ newFile: "New File",
          diesel : "Diesel",
                   solar : "Solar",
          electric : "electric",
-
+existingFeatureSearch : "Find",
 billNo: "Bill Number",
 billAmount: "Bill Amount",
 witness1: "Witness 1",
@@ -214,7 +214,30 @@ place: "Place",
   "existingFeatureBills": "Browse Bills & Quotations",
   "existingFeatureEdit": "Edit Existing Records",
   "existingFeatureExport": "Print & Export Data",
-  "existingFeatureMaps": "View Field Maps"
+  "existingFeatureMaps": "View Field Maps",
+
+  // Quotation Section
+  "newQuotation": "New Quotation",
+  "newQuotationSubtitle": "Create estimate for customer",
+  "seeExistingQuotations": "See Quotations",
+  "existingQuotationsSubtitle": "View all your quotations",
+  "quotationFeatureCustomer": "Customer Information",
+  "quotationFeatureProducts": "Product Selection",
+  "quotationFeaturePrint": "Print / PDF",
+  "quotationFeatureConvert": "Convert to Bill",
+  "quotationFeatureList": "All Quotations List",
+  "quotationFeatureStatus": "Status Management",
+  "quotationFeatureEdit": "Edit Quotation",
+  "quotationFeatureDelete": "Delete Quotation",
+  "quotations": "Quotations",
+  "quotationList": "Quotation List",
+  "editQuotation": "Edit Quotation",
+  "statusDraft": "Draft",
+  "statusSent": "Sent",
+  "statusAccepted": "Accepted",
+  "statusRejected": "Rejected",
+  "statusExpired": "Expired",
+  "statusConverted": "Converted"
  },
 
 
@@ -252,7 +275,8 @@ place: "Place",
     username: "ईमेल किंवा मोबाइल",
     loginBtn: "लॉगिन करा",
     forgotPassword: "पासवर्ड विसरलात?",
-
+existingFeatureSearch : "शोधा",
+existingFilesSubtitle : "सर्व फाईल्स पहा",
     // Forgot password
     sendOtpEmail: "ईमेलवर OTP पाठवा",
     resetPassword: "पासवर्ड रीसेट करा",
@@ -425,7 +449,30 @@ fillNewFileFeatureLayout: "शेत लेआउट मॅपिंग",
   "existingFeatureBills": "बिले व कोटेशन ब्राउझ करा",
   "existingFeatureEdit": "जुन्या नोंदी एडिट करा",
   "existingFeatureExport": "डेटा प्रिंट व डाउनलोड करा",
-  "existingFeatureMaps": "शेत ठिबक आराखडा पहा"
+  "existingFeatureMaps": "शेत ठिबक आराखडा पहा",
+
+  // Quotation Section
+  "newQuotation": "नवीन कोटेशन",
+  "newQuotationSubtitle": "ग्राहकासाठी अंदाजपत्रक तयार करा",
+  "seeExistingQuotations": "कोटेशन पहा",
+  "existingQuotationsSubtitle": "तुमची सर्व अंदाजपत्रके पहा",
+  "quotationFeatureCustomer": "ग्राहक माहिती",
+  "quotationFeatureProducts": "साहित्य निवड",
+  "quotationFeaturePrint": "प्रिंट / PDF",
+  "quotationFeatureConvert": "बिलात रूपांतर",
+  "quotationFeatureList": "सर्व कोटेशन यादी",
+  "quotationFeatureStatus": "स्टेटस व्यवस्थापन",
+  "quotationFeatureEdit": "कोटेशन संपादन",
+  "quotationFeatureDelete": "कोटेशन हटवा",
+  "quotations": "कोटेशन्स",
+  "quotationList": "कोटेशन यादी",
+  "editQuotation": "कोटेशन संपादन करा",
+  "statusDraft": "ड्राफ्ट",
+  "statusSent": "पाठवले",
+  "statusAccepted": "स्वीकृत",
+  "statusRejected": "नाकारले",
+  "statusExpired": "मुदत संपली",
+  "statusConverted": "बिलात रूपांतरित"
 
   },
 };

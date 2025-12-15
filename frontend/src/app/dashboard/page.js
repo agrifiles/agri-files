@@ -32,159 +32,138 @@ function DashboardPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50 py-6 px-4">
       {/* Background animation container */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-20 -right-20 w-96 h-96 bg-green-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 -right-32 w-72 h-72 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-green-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      <div className="max-w-6xl mx-auto relative z-10">
-        {/* Main Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-
-          {/* New File Card */}
-<div
-  onClick={() => router.push('/new')}
-  className="group relative bg-gradient-to-br from-green-50 via-green-50 to-emerald-50 rounded-3xl shadow-2xl border-2 border-green-200 backdrop-blur-md overflow-hidden p-10 cursor-pointer hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2"
->
-  <div className="absolute inset-0 bg-gradient-to-br from-green-100/30 via-transparent to-emerald-100/30 pointer-events-none"></div>
-  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-48 h-2 bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 rounded-full blur-xl opacity-60 group-hover:opacity-100 transition-opacity"></div>
-  
-  <div className="absolute top-6 right-6 w-20 h-20 bg-green-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 group-hover:opacity-50 transition-opacity animate-blob"></div>
-  
-  <div className="relative z-10">
-    <div className="text-7xl mb-6 transform group-hover:scale-110 transition-transform">🌱</div>
-
-    {/* Title */}
-    <h2 className="leading-normal text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-emerald-600 mb-3">
-      {t.fillNewFile} (MAHADBT)
-    </h2>
-
-    {/* Subtitle */}
-    <p className="text-green-700 font-medium text-lg mb-6">
-      {t.fillNewFileSubtitle}
-    </p>
-    
-    <div className="flex items-center gap-2 mb-6">
-      <div className="flex-grow h-1 bg-gradient-to-r from-green-400 to-transparent rounded-full"></div>
-    </div>
-
-    {/* Features list */}
-    <ul className="space-y-2 mb-8">
-      <li className="flex items-center gap-3 text-green-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.fillNewFileFeatureFarmer}</span>
-      </li>
-      <li className="flex items-center gap-3 text-green-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.fillNewFileFeatureIrrigation}</span>
-      </li>
-      <li className="flex items-center gap-3 text-green-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.fillNewFileFeatureDrip}</span>
-      </li>
-      <li className="flex items-center gap-3 text-green-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.fillNewFileFeatureQuotation}</span>
-      </li>
-      <li className="flex items-center gap-3 text-green-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.fillNewFileFeatureLayout}</span>
-      </li>
-    </ul>
-
-    {/* Button */}
-    <button className="relative group/btn w-full overflow-hidden text-white font-bold rounded-xl text-lg px-6 py-4 transition-all duration-300 shadow-lg hover:shadow-xl">
-      <div className="absolute inset-0 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 group-hover/btn:from-green-700 group-hover/btn:via-emerald-700 group-hover/btn:to-teal-700 transition duration-300"></div>
-      <span className="relative flex items-center justify-center gap-2">
-        🚀 {t.fillNewFile}
-      </span>
-    </button>
-  </div>
-</div>
-{/* Existing Files Card */}
-<div 
-  onClick={handleNavigateToFiles}
-  className="group relative bg-gradient-to-br from-emerald-50 via-emerald-50 to-teal-50 rounded-3xl shadow-2xl border-2 border-emerald-200 backdrop-blur-md overflow-hidden p-10 cursor-pointer hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2"
->
-  <div className="absolute inset-0 bg-gradient-to-br from-emerald-100/30 via-transparent to-teal-100/30 pointer-events-none"></div>
-  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-48 h-2 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 rounded-full blur-xl opacity-60 group-hover:opacity-100 transition-opacity"></div>
-
-  <div className="absolute top-6 right-6 w-20 h-20 bg-emerald-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 group-hover:opacity-50 transition-opacity animate-blob" style={{ animationDelay: '2s' }}></div>
-
-  <div className="relative z-10">
-    <div className="text-7xl mb-6 transform group-hover:scale-110 transition-transform">📂</div>
-
-    <h2 className="leading-normal text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-600 mb-3">
-      {t.seeExistingFiles}
-    </h2>
-
-    <p className="text-emerald-700 font-medium text-lg mb-6">
-      {t.existingSubtitle}
-    </p>
-
-    <div className="flex items-center gap-2 mb-6">
-      <div className="flex-grow h-1 bg-gradient-to-r from-emerald-400 to-transparent rounded-full"></div>
-    </div>
-
-    <ul className="space-y-2 mb-8">
-      <li className="flex items-center gap-3 text-emerald-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.existingFeatureViewFiles}</span>
-      </li>
-      <li className="flex items-center gap-3 text-emerald-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.existingFeatureBills}</span>
-      </li>
-      <li className="flex items-center gap-3 text-emerald-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.existingFeatureEdit}</span>
-      </li>
-      <li className="flex items-center gap-3 text-emerald-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.existingFeatureExport}</span>
-      </li>
-      <li className="flex items-center gap-3 text-emerald-700">
-        <span className="text-2xl">✓</span>
-        <span className="font-semibold">{t.existingFeatureMaps}</span>
-      </li>
-    </ul>
-
-    <button className="relative group/btn w-full overflow-hidden text-white font-bold rounded-xl text-lg px-6 py-4 transition-all duration-300 shadow-lg hover:shadow-xl">
-      <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 group-hover/btn:from-emerald-700 group-hover/btn:via-teal-700 group-hover/btn:to-cyan-700 transition duration-300"></div>
-      <span className="relative flex items-center justify-center gap-2">
-        📋 {t.seeExistingFiles}
-      </span>
-    </button>
-  </div>
-</div>
-
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Header */}
+        <div className="text-center mb-6">
+          {/* <h1 className="text-2xl font-bold text-gray-800">🌾 {t.dashboard || 'डॅशबोर्ड'}</h1> */}
         </div>
 
-        {/* User Info Section */}
-        <div className="relative bg-gradient-to-r from-green-100/50 to-emerald-100/50 rounded-3xl border-2 border-green-200 backdrop-blur-md p-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <p className="text-xs font-bold text-green-700 mb-2">BUSINESS NAME</p>
-              <p className="text-2xl font-black text-green-700">{user.business_name}</p>
+        {/* All 4 Cards in Single Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+          {/* Card 1: New File (MAHADBT) */}
+          <div
+            onClick={() => router.push('/new')}
+            className="group relative bg-white rounded-xl shadow-lg border border-green-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
+            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🌱</div>
+            <h2 className="text-lg font-bold text-green-700 mb-1">{t.fillNewFile}</h2>
+            <p className="text-xs text-green-600 mb-3">(MAHADBT)</p>
+            <ul className="text-xs text-gray-600 space-y-1 mb-4">
+              <li>✓ {t.fillNewFileFeatureFarmer || 'शेतकरी माहिती'}</li>
+              <li>✓ {t.fillNewFileFeatureIrrigation || 'सिंचन प्रणाली'}</li>
+              <li>✓ {t.fillNewFileFeatureLayout || 'नकाशा तयार करा'}</li>
+            </ul>
+            <button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all">
+              ➕ नवीन फाईल
+            </button>
+          </div>
+
+          {/* Card 2: Existing Files */}
+          <div
+            onClick={handleNavigateToFiles}
+            className="group relative bg-white rounded-xl shadow-lg border border-teal-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-cyan-500"></div>
+            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📁</div>
+            <h2 className="text-lg font-bold text-teal-700 mb-1">{t.seeExistingFiles}</h2>
+            <p className="text-xs text-teal-600 mb-3">{t.existingFilesSubtitle || 'सर्व फाईल्स पहा'}</p>
+            <ul className="text-xs text-gray-600 space-y-1 mb-4">
+              <li>✓ {t.existingFeatureSearch || 'शोधा'}</li>
+              <li>✓ {t.existingFeatureEdit || 'संपादन'}</li>
+              <li>✓ {t.existingFeatureMaps || 'नकाशे पहा'}</li>
+            </ul>
+            <button className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all">
+              📋 फाईल्स पहा
+            </button>
+          </div>
+
+          {/* Card 3: New Quotation */}
+          <div
+            onClick={() => router.push('/quotations/new')}
+            className="group relative bg-white rounded-xl shadow-lg border border-blue-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📋</div>
+            <h2 className="text-lg font-bold text-blue-700 mb-1">{t.newQuotation || 'नवीन कोटेशन'}</h2>
+            <p className="text-xs text-blue-600 mb-3">{t.newQuotationSubtitle || 'अंदाजपत्रक तयार करा'}</p>
+            <ul className="text-xs text-gray-600 space-y-1 mb-4">
+              <li>✓ {t.quotationFeatureCustomer || 'ग्राहक माहिती'}</li>
+              <li>✓ {t.quotationFeatureProducts || 'साहित्य निवड'}</li>
+              <li>✓ {t.quotationFeaturePrint || 'प्रिंट / PDF'}</li>
+            </ul>
+            <button className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all">
+              📝 नवीन कोटेशन
+            </button>
+          </div>
+
+          {/* Card 4: Existing Quotations */}
+          <div
+            onClick={() => router.push('/quotations')}
+            className="group relative bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📑</div>
+            <h2 className="text-lg font-bold text-purple-700 mb-1">{t.seeExistingQuotations || 'कोटेशन पहा'}</h2>
+            <p className="text-xs text-purple-600 mb-3">{t.existingQuotationsSubtitle || 'सर्व कोटेशन यादी'}</p>
+            <ul className="text-xs text-gray-600 space-y-1 mb-4">
+              <li>✓ {t.quotationFeatureList || 'यादी पहा'}</li>
+              <li>✓ {t.quotationFeatureEdit || 'संपादन करा'}</li>
+              <li>✓ {t.quotationFeatureConvert || 'बिलात रूपांतर'}</li>
+            </ul>
+            <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all">
+              📑 कोटेशन पहा
+            </button>
+          </div>
+
+        </div>
+        {/* User Info Section - Stylish */}
+        <div className="relative overflow-hidden rounded-2xl mt-8 shadow-xl">
+          {/* Gradient Background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600"></div>
+          {/* Decorative circles */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full"></div>
+          <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/10 rounded-full"></div>
+          
+          <div className="relative p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <span className="text-xl">👤</span>
+              </div>
+              <div>
+                <p className="text-white/70 text-xs font-medium">आपले खाते</p>
+                <p className="text-white font-bold text-lg">{user.name || user.business_name}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-green-700 mb-2">DISTRICT</p>
-              <p className="text-xl font-bold text-green-700">{user.district}</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-green-700 mb-2">TALUKA</p>
-              <p className="text-xl font-bold text-green-700">{user.taluka}</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-green-700 mb-2">STATUS</p>
-              <p className="text-xl font-bold">
-                <span className="px-4 py-2 bg-green-500 text-white rounded-full text-sm font-bold">
-                  ✓ Active
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                <p className="text-white/60 text-xs font-medium mb-1">🏢 व्यवसाय</p>
+                <p className="text-white font-bold text-sm truncate">{user.business_name}</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                <p className="text-white/60 text-xs font-medium mb-1">📍 जिल्हा</p>
+                <p className="text-white font-bold text-sm">{user.district}</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                <p className="text-white/60 text-xs font-medium mb-1">🗺️ तालुका</p>
+                <p className="text-white font-bold text-sm">{user.taluka}</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                <p className="text-white/60 text-xs font-medium mb-1">⚡ स्थिती</p>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-400/30 text-green-100 rounded-full text-xs font-bold border border-green-400/50">
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                  Active
                 </span>
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -192,20 +171,11 @@ function DashboardPageContent() {
 
       <style jsx>{`
         @keyframes blob {
-          0%, 100% {
-            transform: translate(0, 0) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
         }
-
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
+        .animate-blob { animation: blob 7s infinite; }
       `}</style>
     </div>
   );

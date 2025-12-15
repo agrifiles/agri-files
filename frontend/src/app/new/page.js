@@ -266,6 +266,7 @@ function NewFilePageContent() {
   // Fitting / Installation & Accessories charges
   const [enableFittingCharges, setEnableFittingCharges] = useState(false);
   const [fittingChargesPercent, setFittingChargesPercent] = useState(0);
+  const [fittingChargesGst, setFittingChargesGst] = useState(5); // Default 5% GST
 
   // Load districts based on selected language
   useEffect(() => {
@@ -715,6 +716,11 @@ function NewFilePageContent() {
                     setFittingChargesPercent(extractedPercent);
                     console.log('✅ Set fitting charges percent to:', extractedPercent);
                   }
+                  // Extract GST from fitting item
+                  if (fittingChargeItem.gst_percent !== undefined && fittingChargeItem.gst_percent !== null) {
+                    setFittingChargesGst(Number(fittingChargeItem.gst_percent) || 5);
+                    console.log('✅ Set fitting charges GST to:', fittingChargeItem.gst_percent);
+                  }
                 }
               }
             }
@@ -963,7 +969,7 @@ const getBillItemsForSave = () => {
       product_id: null,
       description: `Fitting / Installation & Accessories charges @ ${fittingChargesPercent}%`,
       hsn: '',
-      gst_percent: 0,
+      gst_percent: fittingChargesGst,
       sales_rate: fittingChargesAmount,
       qty: 1,
       amount: fittingChargesAmount,
@@ -990,12 +996,14 @@ const computeBillTotals = () => {
   
   // Calculate fitting charges if enabled
   let fittingChargesAmount = 0;
+  let fittingChargesGstAmount = 0;
   if (enableFittingCharges && fittingChargesPercent > 0) {
     fittingChargesAmount = Number(((fittingChargesPercent / 100) * taxable).toFixed(2));
+    fittingChargesGstAmount = Number(((fittingChargesGst / 100) * fittingChargesAmount).toFixed(2));
   }
   
-  const total = Number((taxable + totalGst + fittingChargesAmount).toFixed(2));
-  return { taxable, totalGst, fittingChargesAmount, total };
+  const total = Number((taxable + totalGst + fittingChargesAmount + fittingChargesGstAmount).toFixed(2));
+  return { taxable, totalGst, fittingChargesAmount, fittingChargesGstAmount, total };
 };
 
 // Load products on mount
@@ -1949,7 +1957,7 @@ const submitFormAndPrint = async (e) => {
             </div> 
 
             {/* <div className="flex flex-col">
-              <label className="font-semibold mb-1">{t.billNo}</label>
+              <label className="font-semibold mb-1"sddsds>{t.billNo}</label>
               <input name="billNo" value={form.billNo} onChange={handleChange} className="input" />
             </div>
 
@@ -2750,18 +2758,34 @@ const submitFormAndPrint = async (e) => {
           </label>
 
           {enableFittingCharges && (
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
-                value={fittingChargesPercent}
-                onChange={(e) => setFittingChargesPercent(Number(e.target.value) || 0)}
-                placeholder="0"
-              />
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Charges %:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+                  value={fittingChargesPercent}
+                  onChange={(e) => setFittingChargesPercent(Number(e.target.value) || 0)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">GST %:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+                  value={fittingChargesGst}
+                  onChange={(e) => setFittingChargesGst(Number(e.target.value) || 0)}
+                  placeholder="5"
+                />
+              </div>
               <span className="text-sm text-gray-600">
                 ≈ ₹{enableFittingCharges && fittingChargesPercent > 0 ? ((fittingChargesPercent / 100) * computeBillTotals().taxable).toFixed(2) : '0.00'}
+                {fittingChargesGst > 0 && ` + GST ₹${(((fittingChargesGst / 100) * (fittingChargesPercent / 100) * computeBillTotals().taxable) || 0).toFixed(2)}`}
               </span>
             </div>
           )}
