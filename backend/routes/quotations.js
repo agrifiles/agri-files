@@ -154,6 +154,7 @@ router.post('/', async (req, res) => {
       taluka = null,
       district = null,
       crop_name = null,
+      dripline_product = null,
       application_id = null,
       area8a = null,
       irrigation_area = null,
@@ -196,17 +197,17 @@ router.post('/', async (req, res) => {
       (quotation_no, quotation_date, farmer_name, farmer_mobile, file_id, status, 
        company_id, company_slot_no, owner_id, validity_days, valid_until, 
        taxable_amount, total_gst, grand_total, notes, terms_conditions,
-       aadhaar_no, farmer_id, village, taluka, district, crop_name, application_id,
+       aadhaar_no, farmer_id, village, taluka, district, crop_name, dripline_product, application_id,
        area8a, irrigation_area, lateral_spacing, sales_engg, company_name,
        created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, now(), now())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, now(), now())
       RETURNING *
     `;
     const insertVals = [
       quotation_no, quotation_date, farmer_name, farmer_mobile, file_id, status,
       company_id, company_slot_no, owner_id, validity_days, valid_until,
       taxable_amount, total_gst, grand_total, notes, terms_conditions,
-      aadhaar_no, farmer_id, village, taluka, district, crop_name, application_id,
+      aadhaar_no, farmer_id, village, taluka, district, crop_name, dripline_product, application_id,
       area8a, irrigation_area, lateral_spacing, sales_engg, company_name
     ];
 
@@ -282,6 +283,7 @@ router.put('/:id', async (req, res) => {
       taluka,
       district,
       crop_name,
+      dripline_product,
       application_id,
       area8a,
       irrigation_area,
@@ -343,21 +345,22 @@ router.put('/:id', async (req, res) => {
         taluka = $19,
         district = $20,
         crop_name = $21,
-        application_id = $22,
-        area8a = $23,
-        irrigation_area = $24,
-        lateral_spacing = $25,
-        sales_engg = $26,
-        company_name = $27,
+        dripline_product = $22,
+        application_id = $23,
+        area8a = $24,
+        irrigation_area = $25,
+        lateral_spacing = $26,
+        sales_engg = $27,
+        company_name = $28,
         updated_at = now()
-      WHERE quotation_id = $28
+      WHERE quotation_id = $29
       RETURNING *
     `;
     const updateVals = [
       quotation_no, quotation_date, farmer_name, farmer_mobile, file_id, status,
       company_id, company_slot_no, validity_days, valid_until,
       taxable_amount, total_gst, grand_total, notes, terms_conditions,
-      aadhaar_no, farmer_id, village, taluka, district, crop_name, application_id,
+      aadhaar_no, farmer_id, village, taluka, district, crop_name, dripline_product, application_id,
       area8a, irrigation_area, lateral_spacing, sales_engg, company_name, id
     ];
 

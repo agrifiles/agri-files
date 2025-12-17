@@ -162,6 +162,8 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
         <div className="border-b-2 border-t-2 border-black mt-2 py-1.5 text-center bg-white">
           <div className="font-black text-2xl tracking-widest text-gray-900 mb-0.5">{billType}</div>
           <div className="text-[8px] font-semibold text-gray-700">{billHeader}</div>
+                    <div className="text-[10px] font-semibold text-gray-700">Under Jurisdication of : {userData?.taluka}</div>
+
         </div>
 
         {/* Farmer/Client details - IMPROVED LAYOUT */}

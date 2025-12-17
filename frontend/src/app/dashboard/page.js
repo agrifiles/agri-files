@@ -45,83 +45,85 @@ function DashboardPageContent() {
           {/* <h1 className="text-2xl font-bold text-gray-800">🌾 {t.dashboard || 'डॅशबोर्ड'}</h1> */}
         </div>
 
-        {/* All 4 Cards in Single Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Two Section Layout - Files & Quotations */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">  
 
-          {/* Card 1: New File (MAHADBT) */}
-          <div
-            onClick={() => router.push('/new')}
-            className="group relative bg-white rounded-xl shadow-lg border border-green-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-          >
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
-            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🌱</div>
-            <h2 className="text-lg font-bold text-green-700 mb-1">{t.fillNewFile}</h2>
-            <p className="text-xs text-green-600 mb-3">(MAHADBT)</p>
-            <ul className="text-xs text-gray-600 space-y-1 mb-4">
-              <li>✓ {t.fillNewFileFeatureFarmer || 'शेतकरी माहिती'}</li>
-              <li>✓ {t.fillNewFileFeatureIrrigation || 'सिंचन प्रणाली'}</li>
-              <li>✓ {t.fillNewFileFeatureLayout || 'नकाशा तयार करा'}</li>
-            </ul>
-            <button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all">
-              ➕ नवीन फाईल
-            </button>
+          {/* Files Section */}
+          <div className="relative bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border-2 border-green-200 shadow-lg">
+            {/* Section Header */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">📂</span>
+              <h3 className="text-lg font-bold text-green-800">{t.filesSection || 'फाईल्स (MAHADBT)'}</h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {/* Card 1: New File */}
+              <div
+                onClick={() => router.push('/new')}
+                className="group relative bg-white rounded-xl shadow-md border border-green-200 overflow-hidden p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
+                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">🌱</div>
+                <h2 className="text-base font-bold text-green-700 mb-1">{t.fillNewFile}</h2>
+                <p className="text-xs text-gray-500 mb-3">नवीन फाईल तयार करा</p>
+                <button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold py-2 rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all">
+                  ➕ नवीन फाईल
+                </button>
+              </div>
+
+              {/* Card 2: Existing Files */}
+              <div
+                onClick={handleNavigateToFiles}
+                className="group relative bg-white rounded-xl shadow-md border border-teal-200 overflow-hidden p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-cyan-500"></div>
+                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📁</div>
+                <h2 className="text-base font-bold text-teal-700 mb-1">{t.seeExistingFiles}</h2>
+                <p className="text-xs text-gray-500 mb-3">सर्व फाईल्स पहा</p>
+                <button className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-xs font-semibold py-2 rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all">
+                  📋 फाईल्स पहा
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Card 2: Existing Files */}
-          <div
-            onClick={handleNavigateToFiles}
-            className="group relative bg-white rounded-xl shadow-lg border border-teal-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-          >
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-cyan-500"></div>
-            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📁</div>
-            <h2 className="text-lg font-bold text-teal-700 mb-1">{t.seeExistingFiles}</h2>
-            <p className="text-xs text-teal-600 mb-3">{t.existingFilesSubtitle || 'सर्व फाईल्स पहा'}</p>
-            <ul className="text-xs text-gray-600 space-y-1 mb-4">
-              <li>✓ {t.existingFeatureSearch || 'शोधा'}</li>
-              <li>✓ {t.existingFeatureEdit || 'संपादन'}</li>
-              <li>✓ {t.existingFeatureMaps || 'नकाशे पहा'}</li>
-            </ul>
-            <button className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all">
-              📋 फाईल्स पहा
-            </button>
-          </div>
+          {/* Quotations Section */}
+          <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 border-2 border-blue-200 shadow-lg">
+            {/* Section Header */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">📋</span>
+              <h3 className="text-lg font-bold text-blue-800">{t.quotationsSection || 'कोटेशन'}</h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {/* Card 3: New Quotation */}
+              <div
+                onClick={() => router.push('/quotations/new')}
+                className="group relative bg-white rounded-xl shadow-md border border-blue-200 overflow-hidden p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📝</div>
+                <h2 className="text-base font-bold text-blue-700 mb-1">{t.newQuotation || 'नवीन कोटेशन'}</h2>
+                <p className="text-xs text-gray-500 mb-3">अंदाजपत्रक तयार करा</p>
+                <button className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-semibold py-2 rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all">
+                  📝 नवीन कोटेशन
+                </button>
+              </div>
 
-          {/* Card 3: New Quotation */}
-          <div
-            onClick={() => router.push('/quotations/new')}
-            className="group relative bg-white rounded-xl shadow-lg border border-blue-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-          >
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📋</div>
-            <h2 className="text-lg font-bold text-blue-700 mb-1">{t.newQuotation || 'नवीन कोटेशन'}</h2>
-            <p className="text-xs text-blue-600 mb-3">{t.newQuotationSubtitle || 'अंदाजपत्रक तयार करा'}</p>
-            <ul className="text-xs text-gray-600 space-y-1 mb-4">
-              <li>✓ {t.quotationFeatureCustomer || 'ग्राहक माहिती'}</li>
-              <li>✓ {t.quotationFeatureProducts || 'साहित्य निवड'}</li>
-              <li>✓ {t.quotationFeaturePrint || 'प्रिंट / PDF'}</li>
-            </ul>
-            <button className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all">
-              📝 नवीन कोटेशन
-            </button>
-          </div>
-
-          {/* Card 4: Existing Quotations */}
-          <div
-            onClick={() => router.push('/quotations')}
-            className="group relative bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden p-5 cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-          >
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
-            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📑</div>
-            <h2 className="text-lg font-bold text-purple-700 mb-1">{t.seeExistingQuotations || 'कोटेशन पहा'}</h2>
-            <p className="text-xs text-purple-600 mb-3">{t.existingQuotationsSubtitle || 'सर्व कोटेशन यादी'}</p>
-            <ul className="text-xs text-gray-600 space-y-1 mb-4">
-              <li>✓ {t.quotationFeatureList || 'यादी पहा'}</li>
-              <li>✓ {t.quotationFeatureEdit || 'संपादन करा'}</li>
-              <li>✓ {t.quotationFeatureConvert || 'बिलात रूपांतर'}</li>
-            </ul>
-            <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all">
-              📑 कोटेशन पहा
-            </button>
+              {/* Card 4: Existing Quotations */}
+              <div
+                onClick={() => router.push('/quotations')}
+                className="group relative bg-white rounded-xl shadow-md border border-purple-200 overflow-hidden p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📑</div>
+                <h2 className="text-base font-bold text-purple-700 mb-1">{t.seeExistingQuotations || 'कोटेशन पहा'}</h2>
+                <p className="text-xs text-gray-500 mb-3">सर्व कोटेशन यादी</p>
+                <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all">
+                  📑 कोटेशन पहा
+                </button>
+              </div>
+            </div>
           </div>
 
         </div>
