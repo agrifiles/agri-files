@@ -1109,8 +1109,20 @@ function FilePrintPageContent({ params }) {
       {/* Action Buttons - Bottom Fixed */}
       <div className="no-print fixed bottom-6 right-6 flex gap-2" style={{ zIndex: 50 }}>
         <button
+          onClick={() => router.push(`/new?id=${routeId}`)}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-600 font-semibold text-sm"
+        >
+          ✏️ Edit File
+        </button>
+        <button
+          onClick={() => router.push(`/new?id=${routeId}&section=bill`)}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg shadow-lg hover:bg-purple-700 font-semibold text-sm"
+        >
+          📝 Edit Bill
+        </button>
+        <button
           onClick={handlePrint}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 font-semibold text-sm"
+          className="px-4 py-2 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 font-semibold text-sm"
         >
           🖨️ Print File
         </button>

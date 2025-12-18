@@ -114,7 +114,7 @@ function NewFilePageContent() {
     mobile: '', aadhaarNo: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
-    dripperSpacing: '', planeLateralQty: '', fileDate: new Date().toISOString().split('T')[0],
+    dripperSpacing: '', planeLateralQty: '',
     // optional other fields referenced in UI
     salesEngg: '', pumpType: '', twoNozzelDistance: '', w1Name: '', w1Village: '',
     w2Name: '', w2Village: '', place: '', billAmount: '',
@@ -752,7 +752,6 @@ function NewFilePageContent() {
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
     dripperSpacing: '', planeLateralQty: '',
-    fileDate: new Date().toISOString().split('T')[0],
     salesEngg: '', pumpType: '', twoNozzelDistance: '',
     w1Name: '', w1Village: '',
     w2Name: '', w2Village: '',
@@ -1033,8 +1032,8 @@ const submitForm = async (e) => {
   if (saving) return; // prevent double submit
 
   // Validate required file fields
-  if (!form.fyYear || !form.farmerName || !form.mobile || !form.fileDate) {
-    alert('Please fill in all required file fields (FY Year, Farmer Name, Mobile, File Date)');
+  if (!form.fyYear || !form.farmerName || !form.mobile) {
+    alert('Please fill in all required file fields (FY Year, Farmer Name, Mobile)');
     return;
   }
 
@@ -1077,8 +1076,8 @@ const submitForm = async (e) => {
 
   const filePayload = {
     owner_id,                         
-    title: `${form.farmerName || 'File'} - ${form.fileDate}`,
-    form: formWithBillData,
+    title: `${form.farmerName || 'File'} - ${billDate}`,
+    form: { ...formWithBillData, fileDate: billDate },  // Use billDate as fileDate
     shapes: shapesToSave
   };
 
@@ -1314,8 +1313,8 @@ const submitFormAndPrint = async (e) => {
   if (saving) return; // prevent double submit
 
   // Validate required file fields
-  if (!form.fyYear || !form.farmerName || !form.mobile || !form.fileDate) {
-    alert('Please fill in all required file fields (FY Year, Farmer Name, Mobile, File Date)');
+  if (!form.fyYear || !form.farmerName || !form.mobile) {
+    alert('Please fill in all required file fields (FY Year, Farmer Name, Mobile)');
     return;
   }
 
@@ -1346,8 +1345,8 @@ const submitFormAndPrint = async (e) => {
 
   const filePayload = {
     owner_id,                         
-    title: `${form.farmerName || 'File'} - ${form.fileDate}`,
-    form,
+    title: `${form.farmerName || 'File'} - ${billDate}`,
+    form: { ...form, fileDate: billDate },  // Use billDate as fileDate
     shapes: shapesToSave
   };
 
@@ -1967,10 +1966,15 @@ const submitFormAndPrint = async (e) => {
               <label className="font-semibold mb-1">{t.quotationNo}</label>
               <input 
                 name="quotationNo" 
-                value={billNo ? billNo.replace(/_(\d+)$/, '_QT$1') : ''} 
-                className="input bg-gray-100 text-gray-600 cursor-not-allowed" 
-                disabled 
+                value={form.quotationNo} 
+                onChange={handleChange}
+                className="input" 
+                placeholder="Enter Quotation No"
               />
+              {/* Auto-generation commented out:
+              value={billNo ? billNo.replace(/_(\d+)$/, '_QT$1') : ''} 
+              disabled 
+              */}
             </div>
 
             <div className="flex flex-col">
@@ -1978,10 +1982,14 @@ const submitFormAndPrint = async (e) => {
               <input 
                 type="date" 
                 name="quotationDate" 
-                value={billDate} 
-                className="input bg-gray-100 text-gray-600 cursor-not-allowed" 
-                disabled 
+                value={form.quotationDate} 
+                onChange={handleChange}
+                className="input" 
               />
+              {/* Auto-sync with billDate commented out:
+              value={billDate} 
+              disabled 
+              */}
             </div> 
 
             {/* <div className="flex flex-col">
@@ -2683,18 +2691,7 @@ const submitFormAndPrint = async (e) => {
 
     {/* Date and Place */}
     {/* <div className="col-span-2 border-t pt-4"></div> */}
-
-    <div className="flex flex-col">
-      <label className="font-semibold mb-1">{t.fileDate}</label>
-      <input
-        type="date"
-        name="fileDate"
-        value={form.fileDate}
-        onChange={handleChange}
-        className="input"
-        required
-      />
-    </div>
+    {/* File Date field removed - uses Bill Date instead */}
 
 <div className="flex flex-col">
   <label className="font-semibold mb-1">{t.place}</label>

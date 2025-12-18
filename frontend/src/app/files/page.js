@@ -55,11 +55,11 @@ function FilesPageContent() {
       try { fJson = JSON.parse(fText); } catch (_) {}
       let filesList = fJson?.files || [];
 
-      // Sort files by file_date (latest first)
+      // Sort files by created_at (oldest first, new files at bottom)
       filesList.sort((a, b) => {
-        const dateA = new Date(a.file_date || a.fileDate || 0);
-        const dateB = new Date(b.file_date || b.fileDate || 0);
-        return dateB.getTime() - dateA.getTime(); // Latest first
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateA.getTime() - dateB.getTime(); // Oldest first (new at bottom)
       });
 
       const bRes = await fetch(`${API}/api/bills?owner_id=${ownerId}`);
