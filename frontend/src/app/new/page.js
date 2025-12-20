@@ -266,7 +266,23 @@ function NewFilePageContent() {
   // Fitting / Installation & Accessories charges
   const [enableFittingCharges, setEnableFittingCharges] = useState(false);
   const [fittingChargesPercent, setFittingChargesPercent] = useState(0);
-  const [fittingChargesGst, setFittingChargesGst] = useState(5); // Default 5% GST
+  const [fittingChargesGst, setFittingChargesGst] = useState(0); // Default 0% GST (changed from 5)
+
+  // Global GST % for all items - shortcut to apply same GST to all products
+  const [enableGlobalGst, setEnableGlobalGst] = useState(false);
+  const [globalGstPercent, setGlobalGstPercent] = useState(0);
+
+  // Apply global GST to all items when enabled/changed
+  const applyGlobalGst = (gstPercent) => {
+    setBillItems(prev => prev.map(it => ({
+      ...it,
+      gst_percent: Number(gstPercent) || 0
+    })));
+    // Also update fitting charges GST if enabled
+    if (enableFittingCharges) {
+      setFittingChargesGst(Number(gstPercent) || 0);
+    }
+  };
 
   // Load districts based on selected language
   useEffect(() => {
@@ -837,7 +853,7 @@ const loadProducts = async () => {
       gov_rate: Number(prod.gov_rate || prod.govRate || 0),
       sales_rate: Number(prod.selling_rate || prod.sellingRate || prod.sales_rate || 0),
       uom: prod.unit_of_measure || prod.unit || prod.uom || '',
-      gst_percent: Number(prod.sgst || prod.cgst || prod.gst_percent || 0),
+      gst_percent: 0, // Default GST is 0 for all items (user can enable global GST or set per item)
       qty: 0, // Default qty is 0
       amount: 0,
       spare2: prod.spare2 // Track company_id for filtering
@@ -878,7 +894,7 @@ const loadProductsForCompany = async (companyId) => {
       gov_rate: Number(prod.gov_rate || prod.govRate || 0),
       sales_rate: Number(prod.selling_rate || prod.sellingRate || prod.sales_rate || 0),
       uom: prod.unit_of_measure || prod.unit || prod.uom || '',
-      gst_percent: Number(prod.sgst || prod.cgst || prod.gst_percent || 0),
+      gst_percent: 0, // Default GST is 0 for all items (user can enable global GST or set per item)
       qty: 0,
       amount: 0,
       spare2: prod.spare2
@@ -2768,6 +2784,58 @@ const submitFormAndPrint = async (e) => {
       {console.log('🔍 [RENDER] Bill section rendered with', billItems.length, 'billItems:', billItems.slice(0, 3).map(b => ({ product_id: b.product_id, description: b.description, spare2: b.spare2 })))}
       <h2 className="text-lg font-semibold text-gray-800 mb-3">Products (Enter Qty to include in bill)</h2>
       <p className="text-sm text-gray-500 mb-4">All available products are shown below. Enter quantity to include them in the bill. Items with qty=0 will not be saved.</p>
+
+      {/* Global GST % Shortcut - Apply same GST to all items */}
+      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={enableGlobalGst}
+              onChange={(e) => {
+                setEnableGlobalGst(e.target.checked);
+                if (!e.target.checked) {
+                  // When unchecked, reset all GST to 0
+                  applyGlobalGst(0);
+                  setGlobalGstPercent(0);
+                }
+              }}
+              className="w-4 h-4 accent-yellow-600"
+            />
+            <span className="font-semibold text-gray-700 text-sm md:text-base">सर्व वस्तूंसाठी GST % लागू करा (Apply GST % to all items)</span>
+          </label>
+
+          {enableGlobalGst && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">GST %:</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-20 rounded-md border border-yellow-400 px-2 py-1 text-right focus:ring-1 focus:ring-yellow-500 focus:border-yellow-500 bg-white"
+                value={globalGstPercent}
+                onChange={(e) => {
+                  const newGst = Number(e.target.value) || 0;
+                  setGlobalGstPercent(newGst);
+                  applyGlobalGst(newGst);
+                }}
+                placeholder="0"
+              />
+              <button
+                type="button"
+                onClick={() => applyGlobalGst(globalGstPercent)}
+                className="px-3 py-1 bg-yellow-500 text-white text-sm rounded-md hover:bg-yellow-600 transition"
+              >
+                Apply
+              </button>
+              <span className="text-xs text-gray-500 ml-2">(तुम्ही एकल आयटम GST स्वतंत्रपणे बदलू शकता)</span>
+            </div>
+          )}
+        </div>
+        {!enableGlobalGst && (
+          <p className="text-xs text-gray-500 mt-2">डिफॉल्ट: सर्व आयटमसाठी GST 0% आहे. टिक करा व % टाका सर्वांना लागू करण्यासाठी.</p>
+        )}
+      </div>
 
       {/* Fitting / Installation & Accessories Charges Section Add Fitting / Installation & Accessories Charges */}
       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">

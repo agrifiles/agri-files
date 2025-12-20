@@ -21,105 +21,158 @@ router.get('/ping', (req, res) => res.json({ ok: true, msg: 'bills router alive'
 // GET /api/bills/next-bill-no?owner_id=..&month=..&year=..
 // Returns the next bill number for the given owner and month/year
 // NEW LOGIC: Sequence resets only on 1st April (start of FY), continues throughout the financial year
+// router.get('/next-bill-no', async (req, res) => {
+//   try {
+//     const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
+//     const month = parseInt(req.query.month, 10); // 1-12
+//     const year = parseInt(req.query.year, 10);   // e.g., 2025
+
+//     if (!ownerId || !month || !year) {
+//       return res.status(400).json({ success: false, error: 'owner_id, month, and year are required' });
+//     }
+
+//     // Month names for bill number format
+//     const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+//     const monthStr = monthNames[month - 1];
+//     const prefix = `${year}${monthStr}_`; // e.g., "2025DEC_"
+
+//     // ===== NEW FY-BASED LOGIC =====
+//     // Financial Year runs from April to March
+//     // Determine FY start year: if month >= 4 (Apr-Dec), FY starts this year; if month <= 3 (Jan-Mar), FY started previous year
+//     const fyStartYear = month >= 4 ? year : year - 1;
+//     const fyEndYear = fyStartYear + 1;
+    
+//     // Build list of all month prefixes in this FY (Apr YYYY to Mar YYYY+1)
+//     // FY months: Apr(4), May(5), Jun(6), Jul(7), Aug(8), Sep(9), Oct(10), Nov(11), Dec(12) of fyStartYear
+//     //            Jan(1), Feb(2), Mar(3) of fyEndYear
+//     const fyPrefixes = [];
+//     // Apr to Dec of start year
+//     for (let m = 4; m <= 12; m++) {
+//       fyPrefixes.push(`${fyStartYear}${monthNames[m - 1]}_%`);
+//     }
+//     // Jan to Mar of end year
+//     for (let m = 1; m <= 3; m++) {
+//       fyPrefixes.push(`${fyEndYear}${monthNames[m - 1]}_%`);
+//     }
+    
+//     // Find the latest bill_no for this owner across entire FY
+//     // Use OR conditions to match any FY month prefix
+//     const likeConditions = fyPrefixes.map((_, idx) => `bill_no LIKE $${idx + 2}`).join(' OR ');
+//     const sql = `
+//       SELECT bill_no FROM bills 
+//       WHERE owner_id = $1 
+//         AND (${likeConditions})
+//       ORDER BY 
+//         CASE 
+//           WHEN bill_no ~ '^[0-9]{4}(APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)_' THEN 1
+//           WHEN bill_no ~ '^[0-9]{4}(JAN|FEB|MAR)_' THEN 2
+//         END,
+//    CAST(SPLIT_PART(bill_no, '_', 2) AS INTEGER) DESC
+
+//       LIMIT 1
+//     `;
+//     const { rows } = await pool.query(sql, [ownerId, ...fyPrefixes]);
+// console.log( Date.now() ,'FY Prefixes:', fyPrefixes, 'SQL:', sql, 'Params:', [ownerId, ...fyPrefixes], 'Result Rows:', rows);
+//     let nextSeq = 1;
+//     if (rows.length > 0 && rows[0].bill_no) {
+//       // Extract sequence from bill_no like "2025DEC_05"
+//       const lastBillNo = rows[0].bill_no;
+//       const parts = lastBillNo.split('_');
+//       if (parts.length >= 2) {
+//         const lastSeq = parseInt(parts[parts.length - 1], 10);
+//         if (!isNaN(lastSeq)) {
+//           nextSeq = lastSeq + 1;
+//         }
+//       }
+//     }
+//     // ===== END NEW FY-BASED LOGIC =====
+
+//     /* ===== OLD MONTHLY RESET LOGIC (commented out) =====
+//     // Find the latest bill_no for this owner with matching prefix (resets each month)
+//     const sql = `
+//       SELECT bill_no FROM bills 
+//       WHERE owner_id = $1 
+//         AND bill_no LIKE $2
+//       ORDER BY bill_no DESC
+//       LIMIT 1
+//     `;
+//     const { rows } = await pool.query(sql, [ownerId, `${prefix}%`]);
+
+//     let nextSeq = 1;
+//     if (rows.length > 0 && rows[0].bill_no) {
+//       // Extract sequence from bill_no like "2025DEC_05"
+//       const lastBillNo = rows[0].bill_no;
+//       const parts = lastBillNo.split('_');
+//       if (parts.length >= 2) {
+//         const lastSeq = parseInt(parts[parts.length - 1], 10);
+//         if (!isNaN(lastSeq)) {
+//           nextSeq = lastSeq + 1;
+//         }
+//       }
+//     }
+//     ===== END OLD LOGIC ===== */
+
+//     // Format: 2025DEC_01, 2025DEC_02, etc. (still uses current month in prefix)
+//     const nextBillNo = `${prefix}${String(nextSeq).padStart(2, '0')}`;
+
+//     return res.json({ success: true, bill_no: nextBillNo, sequence: nextSeq, fy: `${fyStartYear}-${fyEndYear}` });
+//   } catch (err) {
+//     console.error('get next-bill-no err', err);
+//     return res.status(500).json({ success: false, error: 'Server error' });
+//   }
+// });
+
 router.get('/next-bill-no', async (req, res) => {
   try {
-    const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
-    const month = parseInt(req.query.month, 10); // 1-12
-    const year = parseInt(req.query.year, 10);   // e.g., 2025
+    const ownerId = parseInt(req.query.owner_id, 10);
+    const month = parseInt(req.query.month, 10);
+    const year = parseInt(req.query.year, 10);
 
     if (!ownerId || !month || !year) {
       return res.status(400).json({ success: false, error: 'owner_id, month, and year are required' });
     }
 
-    // Month names for bill number format
-    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
     const monthStr = monthNames[month - 1];
-    const prefix = `${year}${monthStr}_`; // e.g., "2025DEC_"
+    const prefix = `${year}${monthStr}_`;
 
-    // ===== NEW FY-BASED LOGIC =====
-    // Financial Year runs from April to March
-    // Determine FY start year: if month >= 4 (Apr-Dec), FY starts this year; if month <= 3 (Jan-Mar), FY started previous year
+    // FY logic
     const fyStartYear = month >= 4 ? year : year - 1;
     const fyEndYear = fyStartYear + 1;
-    
-    // Build list of all month prefixes in this FY (Apr YYYY to Mar YYYY+1)
-    // FY months: Apr(4), May(5), Jun(6), Jul(7), Aug(8), Sep(9), Oct(10), Nov(11), Dec(12) of fyStartYear
-    //            Jan(1), Feb(2), Mar(3) of fyEndYear
+
     const fyPrefixes = [];
-    // Apr to Dec of start year
     for (let m = 4; m <= 12; m++) {
       fyPrefixes.push(`${fyStartYear}${monthNames[m - 1]}_%`);
     }
-    // Jan to Mar of end year
     for (let m = 1; m <= 3; m++) {
       fyPrefixes.push(`${fyEndYear}${monthNames[m - 1]}_%`);
     }
-    
-    // Find the latest bill_no for this owner across entire FY
-    // Use OR conditions to match any FY month prefix
-    const likeConditions = fyPrefixes.map((_, idx) => `bill_no LIKE $${idx + 2}`).join(' OR ');
+
     const sql = `
-      SELECT bill_no FROM bills 
-      WHERE owner_id = $1 
-        AND (${likeConditions})
-      ORDER BY 
-        CASE 
-          WHEN bill_no ~ '^[0-9]{4}(APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)_' THEN 1
-          WHEN bill_no ~ '^[0-9]{4}(JAN|FEB|MAR)_' THEN 2
-        END,
-        bill_no DESC
-      LIMIT 1
+      SELECT MAX(CAST(SPLIT_PART(bill_no, '_', 2) AS INTEGER)) AS max_seq
+      FROM bills
+      WHERE owner_id = $1
+        AND bill_no LIKE ANY (ARRAY[${fyPrefixes.map((_, i) => `$${i + 2}`).join(',')}])
     `;
+
     const { rows } = await pool.query(sql, [ownerId, ...fyPrefixes]);
 
-    let nextSeq = 1;
-    if (rows.length > 0 && rows[0].bill_no) {
-      // Extract sequence from bill_no like "2025DEC_05"
-      const lastBillNo = rows[0].bill_no;
-      const parts = lastBillNo.split('_');
-      if (parts.length >= 2) {
-        const lastSeq = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(lastSeq)) {
-          nextSeq = lastSeq + 1;
-        }
-      }
-    }
-    // ===== END NEW FY-BASED LOGIC =====
+    let nextSeq = (rows[0]?.max_seq ?? 0) + 1;
 
-    /* ===== OLD MONTHLY RESET LOGIC (commented out) =====
-    // Find the latest bill_no for this owner with matching prefix (resets each month)
-    const sql = `
-      SELECT bill_no FROM bills 
-      WHERE owner_id = $1 
-        AND bill_no LIKE $2
-      ORDER BY bill_no DESC
-      LIMIT 1
-    `;
-    const { rows } = await pool.query(sql, [ownerId, `${prefix}%`]);
-
-    let nextSeq = 1;
-    if (rows.length > 0 && rows[0].bill_no) {
-      // Extract sequence from bill_no like "2025DEC_05"
-      const lastBillNo = rows[0].bill_no;
-      const parts = lastBillNo.split('_');
-      if (parts.length >= 2) {
-        const lastSeq = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(lastSeq)) {
-          nextSeq = lastSeq + 1;
-        }
-      }
-    }
-    ===== END OLD LOGIC ===== */
-
-    // Format: 2025DEC_01, 2025DEC_02, etc. (still uses current month in prefix)
     const nextBillNo = `${prefix}${String(nextSeq).padStart(2, '0')}`;
-
-    return res.json({ success: true, bill_no: nextBillNo, sequence: nextSeq, fy: `${fyStartYear}-${fyEndYear}` });
+console.log( Date.now() , 'SQL:', sql,  'Result Rows:', rows, nextBillNo);
+    return res.json({
+      success: true,
+      bill_no: nextBillNo,
+      sequence: nextSeq,
+      fy: `${fyStartYear}-${fyEndYear}`
+    });
   } catch (err) {
     console.error('get next-bill-no err', err);
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+
 
 // GET /api/bills?owner_id=..&status=..&unlinked=1&file_id=..
 router.get('/', async (req, res) => {

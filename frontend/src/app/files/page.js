@@ -10,10 +10,59 @@ function FilesPageContent() {
   const router = useRouter();
 
   const API = API_BASE 
-  const [files, setFiles] = useState([]);
+  const [allFiles, setAllFiles] = useState([]);  // Store all files from API
+  const [files, setFiles] = useState([]);        // Filtered files for display
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [ownerId, setOwnerId] = useState(null);    // local user id
+  const [selectedFY, setSelectedFY] = useState('all'); // Financial year filter
+  const [fyOptions, setFyOptions] = useState([]);      // Available financial years
+
+  // Helper to get financial year from a date (April to March)
+  const getFinancialYear = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return null;
+      const year = date.getFullYear();
+      const month = date.getMonth(); // 0-indexed (0=Jan, 3=April)
+      // If month is April (3) or later, FY is current year - next year
+      // If month is before April, FY is previous year - current year
+      if (month >= 3) { // April onwards
+        return `${year}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${year - 1}-${year.toString().slice(-2)}`;
+      }
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Generate list of unique financial years from files
+  const generateFYOptions = (filesList) => {
+    const fySet = new Set();
+    filesList.forEach(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      const fy = getFinancialYear(fileDate);
+      if (fy) fySet.add(fy);
+    });
+    // Sort in descending order (latest FY first)
+    const sorted = Array.from(fySet).sort((a, b) => {
+      const yearA = parseInt(a.split('-')[0]);
+      const yearB = parseInt(b.split('-')[0]);
+      return yearB - yearA;
+    });
+    return sorted;
+  };
+
+  // Filter files based on selected financial year
+  const filterFilesByFY = (filesList, fy) => {
+    if (fy === 'all') return filesList;
+    return filesList.filter(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      return getFinancialYear(fileDate) === fy;
+    });
+  };
 
   // Helper to format date to readable format
   const formatDate = (dateStr) => {
@@ -68,7 +117,12 @@ function FilesPageContent() {
       try { bJson = JSON.parse(bText); } catch (_) {}
       const billsList = bJson?.bills || [];
 
-      setFiles(filesList);
+      // Store all files and generate FY options
+      setAllFiles(filesList);
+      setFyOptions(generateFYOptions(filesList));
+      
+      // Apply current filter
+      setFiles(filterFilesByFY(filesList, selectedFY));
       setBills(billsList);
     } catch (err) {
       console.error("LOAD ERROR", err);
@@ -81,6 +135,13 @@ function FilesPageContent() {
   useEffect(() => {
     if (ownerId) loadData();
   }, [ownerId]);
+
+  // Apply filter when selectedFY changes (local filtering, no API call)
+  useEffect(() => {
+    if (allFiles.length > 0) {
+      setFiles(filterFilesByFY(allFiles, selectedFY));
+    }
+  }, [selectedFY, allFiles]);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -168,6 +229,24 @@ function FilesPageContent() {
         >
           + New File
         </button>
+      </div>
+
+      {/* Financial Year Filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <label className="text-sm font-medium text-gray-700">Financial Year:</label>
+        <select
+          value={selectedFY}
+          onChange={(e) => setSelectedFY(e.target.value)}
+          className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        >
+          <option value="all">All</option>
+          {fyOptions.map(fy => (
+            <option key={fy} value={fy}>FY {fy}</option>
+          ))}
+        </select>
+        <span className="text-xs text-gray-500">
+          Showing {files.length} of {allFiles.length} files
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200">
