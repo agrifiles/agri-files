@@ -230,29 +230,97 @@ router.put('/:id', async (req, res) => {
 });
 
 // POST /api/files/:id/delete - Soft delete (sets status to 'deleted')
-router.post('/:id/delete', async (req, res) => {
-  try {
-    console.log('Soft delete request for file id:', req.params.id);
-    const id = req.params.id;
-    const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
+// router.post('/:id/delete', async (req, res) => {
+//   try {
+//     console.log('Soft delete request for file id:', req.params.id);
+//     const id = req.params.id;
+//     const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
     
-    // Soft delete: set status to 'deleted'
-    const result = await pool.query(
-      'UPDATE files SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING id',
-      ['deleted', id]
+//     // Soft delete: set status to 'deleted'
+//     const result = await pool.query(
+//       'UPDATE files SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING id',
+//       ['deleted', id]
+//     );
+
+//     console.log('✅ File soft deleted (id):', id);
+//     if (!result.rows.length) {
+//       return res.status(404).json({ success: false, error: 'File not found' });
+//     }
+
+//     return res.json({ success: true, message: 'File deleted successfully' });
+//   } catch (err) {
+//     console.error('❌ Soft delete file err', err);
+//     return res.status(500).json({ success: false, error: 'Server error' });
+//   }
+// });
+
+router.post('/:id/delete', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const fileId = parseInt(req.params.id, 10);
+
+    await client.query('BEGIN');
+
+    // 1️⃣ Soft delete file & fetch owner_id + bill_no
+    const { rows } = await client.query(
+      `
+      UPDATE files
+      SET status = 'deleted',
+          updated_at = NOW()
+      WHERE id = $1
+        AND status <> 'deleted'
+      RETURNING id, owner_id, bill_no
+      `,
+      [fileId]
     );
 
-    console.log('✅ File soft deleted (id):', id);
-    if (!result.rows.length) {
-      return res.status(404).json({ success: false, error: 'File not found' });
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: 'File not found or already deleted'
+      });
     }
 
-    return res.json({ success: true, message: 'File deleted successfully' });
+    const { owner_id, bill_no } = rows[0];
+
+    // 2️⃣ Delete bill(s) safely using composite condition
+    if (bill_no) {
+      await client.query(
+        `
+        DELETE FROM bills
+        WHERE owner_id = $1
+          AND bill_no = $2
+        `,
+        [owner_id, bill_no]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    console.log('✅ File soft-deleted and related bill removed:', {
+      fileId,
+      owner_id,
+      bill_no
+    });
+
+    return res.json({
+      success: true,
+      message: 'File deleted and bill cleaned up successfully'
+    });
+
   } catch (err) {
-    console.error('❌ Soft delete file err', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
+    await client.query('ROLLBACK');
+    console.error('❌ Delete file err', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Server error'
+    });
+  } finally {
+    client.release();
   }
 });
+
 
 // GET /api/files/:id  -> fetch file (handy for rehydration)
 router.get('/:id', async (req, res) => {
