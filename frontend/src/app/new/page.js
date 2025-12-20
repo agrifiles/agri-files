@@ -121,9 +121,13 @@ function NewFilePageContent() {
     w2Name: '', w2Village: '', place: '', billAmount: '',
     // Bank details
     bankName: '', accountName: '', accountNumber: '', ifsc: '',
+    // Common area and scheme details
+    isCommonArea: false, schemeName: '', giverNames: '', customSchemeName: '',
     // engineer details (auto-populated from company selection)
     engineerDesignation: '', engineerMobile: ''
   });
+  
+  const [giverNamesList, setGiverNamesList] = useState(['']); // Track individual giver names
   
   const [originalCompany, setOriginalCompany] = useState(''); // Track original company for edit mode
 
@@ -223,6 +227,52 @@ function NewFilePageContent() {
     return updatedForm;
   });
 };
+
+  // Handle common area checkbox toggle
+  const handleCommonAreaToggle = (e) => {
+    const isChecked = e.target.checked;
+    setForm(prev => ({
+      ...prev,
+      isCommonArea: isChecked,
+      giverNames: isChecked ? prev.giverNames : '', // Clear giver names if unchecked
+      schemeName: isChecked ? prev.schemeName : '' // Clear scheme name if unchecked
+    }));
+    if (isChecked) {
+      setGiverNamesList(['']); // Start with one empty giver name
+    } else {
+      setGiverNamesList(['']);
+    }
+  };
+
+  // Handle individual giver name change
+  const handleGiverNameChange = (index, value) => {
+    const updatedList = [...giverNamesList];
+    updatedList[index] = value;
+    setGiverNamesList(updatedList);
+    // Update form giverNames with comma-separated values (filter out empty strings)
+    const giverNamesStr = updatedList.filter(name => name.trim()).join(',');
+    setForm(prev => ({
+      ...prev,
+      giverNames: giverNamesStr
+    }));
+  };
+
+  // Add new giver name input field
+  const addGiverNameField = () => {
+    setGiverNamesList([...giverNamesList, '']);
+  };
+
+  // Remove giver name input field
+  const removeGiverNameField = (index) => {
+    const updatedList = giverNamesList.filter((_, i) => i !== index);
+    setGiverNamesList(updatedList);
+    // Update form giverNames
+    const giverNamesStr = updatedList.filter(name => name.trim()).join(',');
+    setForm(prev => ({
+      ...prev,
+      giverNames: giverNamesStr
+    }));
+  };
 
   const stageRef = useRef(null);
   const trRef = useRef(null);
@@ -458,7 +508,12 @@ function NewFilePageContent() {
           accountName: file.account_name ?? prev.accountName,
           accountNumber: file.account_number ?? prev.accountNumber,
           ifsc: file.ifsc ?? prev.ifsc,
-          billAmount: file.bill_amount ?? prev.billAmount
+          billAmount: file.bill_amount ?? prev.billAmount,
+          // Common area and scheme details
+          isCommonArea: file.is_common_area ?? prev.isCommonArea,
+          schemeName: file.scheme_name || '',
+          giverNames: file.giver_names || '',
+          customSchemeName: ''
         }));
 
         // Update talukas dropdown for the loaded district
@@ -529,6 +584,14 @@ function NewFilePageContent() {
           setShapes(Array.isArray(parsed) ? parsed : []);
           // standardGroup no longer used - everything is flattened
           setStandardGroup(null);
+
+          // Populate giver names list if common area is enabled
+          if (file.is_common_area && file.giver_names) {
+            const giverNamesArray = file.giver_names.split(',').map(name => name.trim());
+            setGiverNamesList(giverNamesArray);
+          } else {
+            setGiverNamesList(['']);
+          }
         } catch (e) {
           console.warn('Failed to parse shapes_json for file', id, e);
           setShapes([]);
@@ -782,9 +845,12 @@ function NewFilePageContent() {
     place: '', billAmount: '',
     // Bank details
     bankName: '', accountName: '', accountNumber: '', ifsc: '',
+    // Common area and scheme details
+    isCommonArea: false, schemeName: '', giverNames: '', customSchemeName: '',
     engineerDesignation: '', engineerMobile: ''
   });
 
+  setGiverNamesList(['']); // Reset giver names list
   setShapes([]);       // clear canvas
   setSavedFileId(null); // reset file id, so next SAVE is fresh POST
 };
@@ -1112,6 +1178,10 @@ const submitForm = async (e) => {
   console.log('📊 Bill totals calculated:', billTotals);
   console.log('📊 actualBillAmount:', actualBillAmount);
   console.log('📊 formWithBillData.billAmount:', formWithBillData.billAmount);
+  console.log('🔍 Common area fields:');
+  console.log('   form.isCommonArea:', form.isCommonArea);
+  console.log('   form.schemeName:', form.schemeName);
+  console.log('   form.giverNames:', form.giverNames);
 
   try {
     setSaving(true);
@@ -1867,6 +1937,80 @@ const submitFormAndPrint = async (e) => {
                 ))}
               </select>
             </div>
+
+            {/* Common Area Checkbox */}
+            <div className="col-span-1 md:col-span-2 flex items-center gap-2 p-3 bg-yellow-100 border border-yellow-400 rounded-lg">
+              <input 
+                type="checkbox" 
+                id="isCommonArea" 
+                checked={form.isCommonArea} 
+                onChange={handleCommonAreaToggle}
+                className="w-5 h-5 accent-yellow-600 cursor-pointer"
+              />
+              <label htmlFor="isCommonArea" className="text-sm md:text-base font-semibold cursor-pointer text-gray-700">
+                {lang === 'en' ? 'Common Area - Multiple Farmers in Same Gut No.' : t.commonArea}
+              </label>
+            </div>
+
+            {/* Conditional Fields for Common Area */}
+            {form.isCommonArea && (
+              <>
+                {/* Scheme Name Dropdown - Static Options Only */}
+                <div className="col-span-1 md:col-span-2">
+                  <label className="font-semibold mb-1 text-sm md:text-base">{lang === 'en' ? 'Scheme Name' : t.schemeName}</label>
+                  <select 
+                    value={form.schemeName || (lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault)} 
+                    onChange={(e) => setForm({...form, schemeName: e.target.value})}
+                    className="input"
+                    defaultValue={lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault}
+                  >
+                    {/* <option value="">{lang === 'en' ? 'Select Scheme' : 'योजना निवडा'}</option> */}
+                    <option value={lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault}>
+                      {lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault}
+                    </option>
+                    <option value={lang === 'en' ? 'Per Drop More Crop (PDMC)' : t.scheme2}>
+                      {lang === 'en' ? 'Per Drop More Crop (PDMC)' : t.scheme2}
+                    </option>
+                  </select>
+                </div>
+
+                {/* Giver Names */}
+                <div className="col-span-1 md:col-span-2">
+                  <label className="font-semibold mb-2 text-sm md:text-base">{lang === 'en' ? 'Giver Names (Co-Farmers)' : t.giverNames + ' (सह-शेतकरी)'}</label>
+                  <div className="space-y-2">
+                    {giverNamesList.map((name, index) => (
+                      <div key={index} className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <input 
+                            type="text" 
+                            value={name} 
+                            onChange={(e) => handleGiverNameChange(index, e.target.value)}
+                            className="input" 
+                            placeholder={lang === 'en' ? `Farmer ${index + 1} Name` : `शेतकरी ${index + 1} नाव`}
+                          />
+                        </div>
+                        {giverNamesList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeGiverNameField(index)}
+                            className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addGiverNameField}
+                    className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+                  >
+                    {lang === 'en' ? '+ Add Farmer' : '+ शेतकरी जोडा'}
+                  </button>
+                </div>
+              </>
+            )}
 
           </div>
         </div>

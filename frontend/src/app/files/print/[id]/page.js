@@ -422,7 +422,8 @@ function FilePrintPageContent({ params }) {
     
     const fetchFile = async () => {
       try {
-        const res = await fetch(`${API}/api/files/${routeId}`);
+        // Use v2 API to ensure all fields are returned (including new common area fields)
+        const res = await fetch(`${API}/api/v2/files/${routeId}`);
         const data = await res.json();
         const fileData = data.file || data;
         console.log('Fetched file data:', fileData);
@@ -444,12 +445,12 @@ function FilePrintPageContent({ params }) {
         // Fetch linked bill
         if (fileData.id) {
           try {
-            const billListRes = await fetch(`${API}/api/bills?file_id=${fileData.id}`);
+            const billListRes = await fetch(`${API}/api/v2/bills?file_id=${fileData.id}`);
             const billListResult = await billListRes.json();
             console.log('Fetched bill list for file psa:', fileData.id, billListRes);
             if (billListResult.success && billListResult.bills && billListResult.bills.length > 0) {
               const linkedBillId = billListResult.bills[0].bill_id;
-              const billRes = await fetch(`${API}/api/bills/${linkedBillId}`);
+              const billRes = await fetch(`${API}/api/v2/bills/${linkedBillId}`);
               const billData = await billRes.json();
               console.log('Fetched linked bill data psa:', linkedBillId, billData);
               if (billData.success && billData.bill) {
@@ -1154,7 +1155,73 @@ function FilePrintPageContent({ params }) {
           </div>
         </div>
 
-                {/* Quotation Invoice Section */}
+        {/* Common Area Consent Letter - Only if isCommonArea is true */}
+        {file?.is_common_area && (
+          <div
+            className="sheet mx-auto bg-white my-6 shadow-lg border-4 border-black"
+            style={{
+              width: "210mm",
+              height: "297mm",
+              minHeight: "297mm",
+              maxHeight: "297mm",
+              fontSize: "10px",
+              padding: "10mm",
+              position: "relative",
+              boxSizing: "border-box",
+              overflow: "hidden",
+            }}
+          >
+            <h2 className="text-center text-lg font-bold">सामाईक क्षेत्र असलेल्या शेतक-याने इतर खातेदारांचे घ्यावयाचे संमती पत्र</h2>
+            
+            <div className="text-right text-xs mt-2 mb-4">
+              दिनांक : {formatDate(file?.file_date) || '________'}
+            </div>
+
+            <div className="mt-4 text-xs leading-relaxed">
+              <h3 className="font-bold mt-3 mb-2">संमती पत्र लिहुन घेणारः</h3>
+              
+              <p className="text-justify mb-3">
+                मी श्री/श्रीमती <span className="font-bold">{file?.farmer_name || '________'}</span> रा.<span className="font-bold">{file?.village || '________'}</span> येथील रहिवाशी असून, मौजे <span className="font-bold">{file?.village || '________'}</span> या गावामधील सामाईक मालकीच्या शेतजमीनवरील गट क्रमांक <span className="font-bold">{file?.gut_no || '________'}</span> मध्ये नानाजी देशमुख कृषि संजीवनी प्रकल्पाअंतर्गत <span className="font-bold">{file?.irrigation_area || '________'}</span> हेक्टर क्षेत्रावर <span className="font-bold">{file?.scheme_name || '________'}</span> या घटकासाठी अनुदानाचा लाभ घेऊ इच्छितो / इच्छिते.
+              </p>
+
+              <p className="text-justify mb-3">
+                सदर क्षेत्रावर या घटकाची अंमलबजावणी करणे व मिळणारे अनुदान माझ्या आधार संलग्न बँक खात्यावर जमा करणेसाठी सामाईक मालकीच्या गट नंबर मधील इतर खातेदाराचे संमती पत्र खालील प्रमाणे देत आहे.
+              </p>
+
+              <h3 className="font-bold mt-4 mb-2">संमती पत्र लिहुन देणार :-</h3>
+              
+              <p className="text-justify mb-3">
+                मी/आम्ही स्वखुशीने संमतीपत्र लिहुन देतो की, मौजे <span className="font-bold">{file?.village || '________'}</span> या गावामधील गट नंबर <span className="font-bold">{file?.gut_no || '________'}</span> असलेली जमीन आमचे सामाईक मालकीची असुन मी/आम्ही सर्व खाली सही करणार/ करणारे श्री/श्रीमती <span className="font-bold">{file?.farmer_name || '________'}</span> यांना सदरील गट नंबर मधील <span className="font-bold">{file?.irrigation_area || '________'}</span> हेक्टर क्षेत्रावर <span className="font-bold">{file?.scheme_name || '________'}</span> या घटकाची अंमलबजावणी करणे व प्रकल्पाअंतर्गत नियमाप्रमाणे मिळणारे शासकीय अनुदान त्यांचे आधार संलग्न बँक खात्यावर जमा करणेस आमची कुठलीही हरकत नाही. करीता सदर संमतीपत्र लिहुन देत आहोत.
+              </p>
+
+              <h3 className="font-bold mt-6 mb-3">लिहून घेणार (लाभार्थी शेतकरी) :</h3>
+              <div className="flex justify-between items-start mt-8 mb-6">
+                <div className="text-xs">स्वाक्षरी</div>
+                <div className="text-center">
+                  <div className="text-xs mb-6">श्री/श्रीमती {file?.farmer_name || '________'}</div>
+                  <div style={{ height: "35px", width: "120px", border: "1px solid #000" }}></div>
+                </div>
+              </div>
+
+              <h3 className="font-bold mt-6 mb-3">लिहून देणार :</h3>
+              <div className="space-y-6">
+                {file?.giver_names ? (
+                  file.giver_names.split(',').map((name, index) => (
+                    <div key={index} className="flex justify-between items-start">
+                      <div className="text-xs">श्री/श्रीमती {name.trim()}</div>
+                      <div style={{ height: "35px", width: "120px", border: "1px solid #000" }}></div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500">कोणतीही नाव नाही</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* Quotation Invoice Section */}
         <div 
           className="quotation-section mx-auto bg-white shadow-lg border-4 border-blue-800"
           style={{

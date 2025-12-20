@@ -56,6 +56,10 @@ function mapFormToDb(form = {}) {
     account_name: form.accountName || null,
     account_number: form.accountNumber || null,
     ifsc: form.ifsc || null,
+    // Common area fields
+    is_common_area: form.isCommonArea ?? false,
+    scheme_name: form.schemeName || null,
+    giver_names: form.giverNames || null,
     // W1 witness fields
     w1_name: form.w1Name || null,
     w1_village: form.w1Village || null,

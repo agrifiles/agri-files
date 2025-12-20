@@ -605,7 +605,16 @@ fillNewFileFeatureLayout: "शेत लेआउट मॅपिंग",
   // Quotations table headers - Marathi
   "customer": "ग्राहक",
   "date": "तारीख",
-  "amount": "रक्कम"
+  "amount": "रक्कम",
+  "commonArea": "सामान्य क्षेत्र - समान गट नंबरमध्ये एकाधिक शेतकरी",
+  "schemeName": "योजनेचे नाव",
+  "giverNames": "देणार्याचि नावे",
+  "schemeDefault": "प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत केंद्र पुरस्कृत सिंचन योजना",
+  "scheme1": "प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत केंद्र पुरस्कृत सिंचन योजना",
+  "scheme2": "प्रति थेंब अधिक पीक (PER DROP MORE CROP)",
+  "schemeOther": "इतर",
+  "specifyScheme": "योजनेचे नाव निर्दिष्ट करा",
+  "addFarmer": "शेतकरी जोडा"
 
   },
 };
