@@ -58,6 +58,7 @@ function NewFilePageContent() {
   const [mounted, setMounted] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const formRef = useRef(null);
+  const billDateRef = useRef(null);
 
   // Auto-switch to Marathi when on file creation/update page
   useEffect(() => {
@@ -1735,13 +1736,23 @@ const submitFormAndPrint = async (e) => {
   </button>
   <button
     type="button"
+    // onClick={() => {
+    //   if (!form.company) {
+    //     alert('⚠️ Please select a company first');
+    //     return;
+    //   }
+    //   setActiveSection('bill');
+    // }}
     onClick={() => {
-      if (!form.company) {
-        alert('⚠️ Please select a company first');
-        return;
-      }
-      setActiveSection('bill');
-    }}
+  if (!form.company) {
+    alert('⚠️ Please select a company first');
+    return;
+  }
+  setActiveSection('bill');
+  setTimeout(() => {
+    billDateRef.current?.focus();
+  }, 300); // Delay to ensure section is rendered
+}}
     disabled={!form.company}
     className={`px-4 md:px-6 py-3 font-semibold text-base md:text-lg transition-colors duration-200 ${
       !form.company
@@ -2718,6 +2729,24 @@ const submitFormAndPrint = async (e) => {
     className="input"
   />
 </div>
+  <button
+    type="button"
+onClick={() => {
+  if (!form.company) {
+    alert('⚠️ Please select a company first');
+    return;
+  }
+  setActiveSection('bill');
+  
+  setTimeout(() => {
+    billDateRef.current?.focus();
+  }, 100); // Delay to ensure section is rendered
+}}
+    disabled={!form.company}
+    className="mt-4 w-50 px-4 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 disabled:bg-gray-400"
+  >
+    💰 Go to Bill 
+  </button>
           </div>
         </div>
   </div>
@@ -2752,11 +2781,12 @@ const submitFormAndPrint = async (e) => {
           type="date"
           className="mt-1 block w-full rounded-md border border-gray-200 shadow-sm px-3 py-2 bg-white"
           value={billDate}
+           ref={billDateRef}
           onChange={(e) => handleBillDateChange(e.target.value)}
         />
       </div>
 
-      <div>
+      {/* <div>
         <label className="block text-sm font-semibold text-gray-700 mb-1">Customer/Farmer Name</label>
         <input
           className="mt-1 block w-full rounded-md border border-gray-200 shadow-sm px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
@@ -2776,7 +2806,7 @@ const submitFormAndPrint = async (e) => {
           placeholder="Auto-populated from File Details"
         />
         <p className="text-xs text-gray-400 mt-1">Auto-synced from File Details - Edit in File Details tab</p>
-      </div>
+      </div> */}
     </div>
 
     {/* Bill Items Section - All Products with Qty Inputs */}
@@ -3077,6 +3107,15 @@ const submitFormAndPrint = async (e) => {
           </div>
         </div>
       </div>
+        <button
+    type="button"
+onClick={() => {
+  setActiveSection('file');
+}}
+       className="mt-4 w-50 px-4 py-2 bg-orange-600 text-white font-semibold rounded hover:bg-orange-700"
+  >
+    💰 Go to Files 
+  </button>
     </div>
 
   </div>
