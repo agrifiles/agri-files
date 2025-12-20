@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE, getCurrentUserId } from '../../lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { LangContext } from '../layout';
 
 function FilesPageContent() {
   const router = useRouter();
+  const langContext = useContext(LangContext);
+  const { lang, t } = langContext || { lang: 'en', t: {} };
 
   const API = API_BASE 
   const [allFiles, setAllFiles] = useState([]);  // Store all files from API
@@ -104,11 +107,19 @@ function FilesPageContent() {
       try { fJson = JSON.parse(fText); } catch (_) {}
       let filesList = fJson?.files || [];
 
-      // Sort files by created_at (oldest first, new files at bottom)
+      // Sort files by file_date (oldest first, new files at bottom)
+      // OLD LOGIC: Sort by created_at (commented below)
+      // filesList.sort((a, b) => {
+      //   const dateA = new Date(a.created_at || 0);
+      //   const dateB = new Date(b.created_at || 0);
+      //   return dateA.getTime() - dateB.getTime(); // Oldest first (new at bottom)
+      // });
+
+      // NEW LOGIC: Sort by file_date (oldest at top)
       filesList.sort((a, b) => {
-        const dateA = new Date(a.created_at || 0);
-        const dateB = new Date(b.created_at || 0);
-        return dateA.getTime() - dateB.getTime(); // Oldest first (new at bottom)
+        const dateA = new Date(a.file_date || a.fileDate || 0);
+        const dateB = new Date(b.file_date || b.fileDate || 0);
+        return dateA.getTime() - dateB.getTime(); // Oldest first (top)
       });
 
       const bRes = await fetch(`${API}/api/bills?owner_id=${ownerId}`);
@@ -219,33 +230,142 @@ function FilesPageContent() {
     }
   };
 
+  // Calculate insights
+  const getInsights = () => {
+    const totalFiles = allFiles.length;
+    
+    // Files in current month
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const filesThisMonth = allFiles.filter(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      if (!fileDate) return false;
+      const date = new Date(fileDate);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }).length;
+
+    // Get latest file date
+    let latestDate = null;
+    if (allFiles.length > 0) {
+      const dates = allFiles
+        .map(f => f.file_date ?? f.fileDate)
+        .filter(d => d)
+        .map(d => new Date(d))
+        .filter(d => !isNaN(d.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime());
+      if (dates.length > 0) latestDate = dates[0];
+    }
+
+    // Files by last 3 months
+    const filesByMonth = {};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    for (let i = 0; i < 3; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthKey = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      filesByMonth[monthKey] = 0;
+    }
+
+    allFiles.forEach(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      if (!fileDate) return;
+      const date = new Date(fileDate);
+      if (isNaN(date.getTime())) return;
+      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      if (filesByMonth[monthKey] !== undefined) {
+        filesByMonth[monthKey]++;
+      }
+    });
+
+    return { totalFiles, filesThisMonth, latestDate, filesByMonth };
+  };
+
+  const insights = getInsights();
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">Files</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">{t.files}</h1>
         <button
           className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:cursor-pointer transition"
           onClick={() => router.push('/new')}
         >
-          + New File
+          + {t.newFile}
         </button>
+      </div>
+
+      {/* Insights Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3 mb-4">
+        {/* Total Files Card */}
+        <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-blue-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-blue-100 uppercase tracking-widest">{t.totalFiles}</div>
+            <div className="text-xl md:text-lg">📁</div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black mt-0.5">{insights.totalFiles}</div>
+          <div className="text-xs text-blue-100 mt-1 font-medium">{t.allTime}</div>
+        </div>
+
+        {/* Files This Month Card */}
+        <div className="bg-gradient-to-br from-green-500 via-emerald-500 to-teal-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-green-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-green-100 uppercase tracking-widest">{t.thisMonth}</div>
+            <div className="text-xl md:text-lg">📅</div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black mt-0.5">{insights.filesThisMonth}</div>
+          <div className="text-xs text-green-100 mt-1 font-medium">
+            {new Date().toLocaleDateString('en-IN', { month: 'short' })}
+          </div>
+        </div>
+
+        {/* Latest File Date Card */}
+        <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-orange-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-orange-100 uppercase tracking-widest">{t.latestFile}</div>
+            <div className="text-xl md:text-lg">⚡</div>
+          </div>
+          <div className="text-xl md:text-2xl font-black mt-0.5 break-words">
+            {insights.latestDate ? insights.latestDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '-'}
+          </div>
+          <div className="text-xs text-orange-100 mt-1 font-medium">
+            {insights.latestDate ? insights.latestDate.getFullYear() : t.noFiles}
+          </div>
+        </div>
+
+        {/* Quick Stats Card */}
+        <div className="bg-gradient-to-br from-purple-600 via-violet-500 to-pink-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-purple-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-purple-100 uppercase tracking-widest">{t.byMonth}</div>
+            <div className="text-xl md:text-lg">📊</div>
+          </div>
+          <div className="mt-1 md:mt-1 space-y-1 text-xs">
+            {Object.entries(insights.filesByMonth).map(([month, count]) => (
+              <div key={month} className="flex justify-between items-center bg-opacity-20 rounded px-2 py-0.5">
+                <span className="text-purple-100 font-medium text-xs">{month}</span>
+                <span className="font-black text-xs bg-purple-600 bg-opacity-30 px-1.5 py-0.5 rounded">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Financial Year Filter */}
       <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-        <label className="text-sm font-medium text-gray-700">Financial Year:</label>
+        <label className="text-sm font-medium text-gray-700">{t.financialYear}:</label>
         <select
           value={selectedFY}
           onChange={(e) => setSelectedFY(e.target.value)}
           className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         >
-          <option value="all">All</option>
+          <option value="all">{t.all || 'All'}</option>
           {fyOptions.map(fy => (
             <option key={fy} value={fy}>FY {fy}</option>
           ))}
         </select>
         <span className="text-xs text-gray-500">
-          Showing {files.length} of {allFiles.length} files
+          {t.showing} {files.length} {t.of} {allFiles.length} {t.files}
         </span>
       </div>
 
@@ -255,12 +375,12 @@ function FilesPageContent() {
           {/* Table Head */}
           <thead className="bg-gradient-to-r from-green-800 to-green-600 text-white hidden md:table-header-group">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Sr No</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Farmer</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Mobile</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">File Date</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Bill No</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.srNo}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.farmer}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.mobile}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.fileDate}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.billNo}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.actions}</th>
             </tr>
           </thead>
 
@@ -318,29 +438,29 @@ function FilesPageContent() {
                         onClick={() => editFile(id)}
                         className="flex-1 md:flex-auto text-blue-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-blue-800 text-xs md:text-sm font-medium"
                       >
-                        Edit file
+                        {t.edit}
                       </button>
 
                       <button
                         onClick={() => router.push(`/new?id=${id}&section=bill`)}
                         className="flex-1 md:flex-auto text-purple-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-purple-800 text-xs md:text-sm font-medium"
                       >
-                        Direct Edit Bill
+                        {t.linkBill}
                       </button>
 
                       <button
                         onClick={() => router.push(`/files/print/${id}`)}
                         className="flex-1 md:flex-auto text-green-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-green-800 text-xs md:text-sm font-medium"
                       >
-                        Print
+                        {t.quotationFeaturePrint}
                       </button>
 
-                      <button
+                      {/* <button
                         onClick={() => deleteFile(id)}
                         className="flex-1 md:flex-auto text-red-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:text-red-900 hover:cursor-pointer text-xs md:text-sm font-medium"
                       >
                         Delete
-                      </button>
+                      </button> */}
                     </div>
                   </td>
                 </tr>
@@ -356,19 +476,19 @@ function FilesPageContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
             <h2 className="text-xl font-bold mb-4 text-gray-800">
-              {(files.find(f => f.id === modalFileId)?.bill_no || bills.find(b => (b.file_id ?? b.fileId) === modalFileId)) ? "Update Bill" : "Link Bill"}
+              {t.linkBill}
             </h2>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Bill
+                {t.selectBill}
               </label>
               <select
                 value={selectedBillId}
                 onChange={(e) => setSelectedBillId(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                <option value="">-- Select a bill --</option>
+                <option value="">-- {t.selectBill} --</option>
                 {bills.map(b => (
                   <option key={b.bill_id ?? b.id} value={b.bill_id ?? b.id}>
                     {b.bill_no} - {b.farmer_name}
@@ -383,7 +503,7 @@ function FilesPageContent() {
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                 disabled={isLinking}
               >
-                Cancel
+                {t.close}
               </button>
               {/* <button
                 onClick={linkBill}

@@ -51,6 +51,11 @@ function mapFormToDb(form = {}) {
     pump_type: form.pumpType || null,
     two_nozzel_distance: form.twoNozzelDistance || null,
     bill_amount: (form.billAmount !== null && form.billAmount !== undefined && form.billAmount !== '') ? Number(form.billAmount) : null,
+    // Bank details
+    bank_name: form.bankName || null,
+    account_name: form.accountName || null,
+    account_number: form.accountNumber || null,
+    ifsc: form.ifsc || null,
     // W1 witness fields
     w1_name: form.w1Name || null,
     w1_village: form.w1Village || null,

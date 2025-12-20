@@ -119,6 +119,8 @@ function NewFilePageContent() {
     // optional other fields referenced in UI
     salesEngg: '', pumpType: '', twoNozzelDistance: '', w1Name: '', w1Village: '',
     w2Name: '', w2Village: '', place: '', billAmount: '',
+    // Bank details
+    bankName: '', accountName: '', accountNumber: '', ifsc: '',
     // engineer details (auto-populated from company selection)
     engineerDesignation: '', engineerMobile: ''
   });
@@ -451,6 +453,11 @@ function NewFilePageContent() {
           w2District: file.district ?? prev.w2District,
           w2Taluka: file.taluka ?? prev.w2Taluka,
           place: file.place ?? prev.place,
+          // Bank details
+          bankName: file.bank_name ?? prev.bankName,
+          accountName: file.account_name ?? prev.accountName,
+          accountNumber: file.account_number ?? prev.accountNumber,
+          ifsc: file.ifsc ?? prev.ifsc,
           billAmount: file.bill_amount ?? prev.billAmount
         }));
 
@@ -773,6 +780,8 @@ function NewFilePageContent() {
     w1Name: '', w1Village: '',
     w2Name: '', w2Village: '',
     place: '', billAmount: '',
+    // Bank details
+    bankName: '', accountName: '', accountNumber: '', ifsc: '',
     engineerDesignation: '', engineerMobile: ''
   });
 
@@ -2729,25 +2738,51 @@ const submitFormAndPrint = async (e) => {
     className="input"
   />
 </div>
-  <button
-    type="button"
-onClick={() => {
-  if (!form.company) {
-    alert('⚠️ Please select a company first');
-    return;
-  }
-  setActiveSection('bill');
-  
-  setTimeout(() => {
-    billDateRef.current?.focus();
-  }, 100); // Delay to ensure section is rendered
-}}
-    disabled={!form.company}
-    className="mt-4 w-50 px-4 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 disabled:bg-gray-400"
-  >
-    💰 Go to Bill 
-  </button>
+{/* Bank details section - Part of Step 4 */}
+<div className="col-span-2 border-t-2 border-gray-200 pt-6 mt-6">
+  <h4 className="text-base md:text-lg font-semibold text-cyan-700 mb-4">{t.bankDetailsTitle || 'Bank Details'}</h4>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.bankName || 'Bank Name'}</label>
+      <input name="bankName" value={form.bankName} onChange={handleChange} className="input" />
+    </div>
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.accountName || 'Account Name'}</label>
+      <input name="accountName" value={form.accountName} onChange={handleChange} className="input" />
+    </div>
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.accountNumber || 'Account Number'}</label>
+      <input name="accountNumber" value={form.accountNumber} onChange={handleChange} className="input" />
+    </div>
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.ifsc || 'IFSC'}</label>
+      <input name="ifsc" value={form.ifsc} onChange={handleChange} className="input" />
+    </div>
+  </div>
+</div>
           </div>
+        </div>
+
+        {/* Go to Bill Button - Outside form grid */}
+        <div className="flex justify-end mt-6">
+          <button
+            type="button"
+    onClick={() => {
+      if (!form.company) {
+        alert('⚠️ Please select a company first');
+        return;
+      }
+      setActiveSection('bill');
+      
+      setTimeout(() => {
+        billDateRef.current?.focus();
+      }, 100); // Delay to ensure section is rendered
+    }}
+            disabled={!form.company}
+            className="px-6 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 disabled:bg-gray-400"
+          >
+            💰 Go to Bill 
+          </button>
         </div>
   </div>
 )}

@@ -261,7 +261,53 @@ place: "Place",
   "statusAccepted": "Accepted",
   "statusRejected": "Rejected",
   "statusExpired": "Expired",
-  "statusConverted": "Converted"
+  "statusConverted": "Converted",
+
+  // Files Page - English
+  "files": "Files",
+  "newFile": "New File",
+  "totalFiles": "Total Files",
+  "allTime": "All Time",
+  "thisMonth": "This Month",
+  "latestFile": "Latest File",
+  "noFiles": "No Files",
+  "byMonth": "By Month",
+  "financialYear": "Financial Year",
+  "showing": "Showing",
+  "of": "of",
+  "srNo": "Sr No",
+  "farmer": "Farmer",
+  "fileDate": "File Date",
+  // Bank labels
+  "bankDetailsTitle": "Bank Details",
+  "bankName": "Bank Name",
+  "accountName": "Account Name",
+  "accountNumber": "Account Number",
+  "ifsc": "IFSC",
+  "linkBill": "Edit Bill",
+  "edit": "Edit",
+  "delete": "Delete",
+  "confirmDelete": "Delete this file? This action cannot be undone.",
+  "linked": "Linked",
+  "notLinked": "Not Linked",
+  "selectBill": "Select Bill",
+  "link": "Link",
+  "close": "Close",
+  "success": "Success",
+  "error": "Error",
+  "deleted": "Deleted",
+  "all": "All",
+
+  // Quotations Page - English
+  "totalQuotations": "Total Quotations",
+  "latestQuotation": "Latest Quotation",
+  "noQuotations": "No Quotations"
+  ,
+  // Quotations table headers
+  "quotationNo": "Quotation No",
+  "customer": "Customer",
+  "date": "Date",
+  "amount": "Amount",
  },
 
 
@@ -520,7 +566,46 @@ fillNewFileFeatureLayout: "शेत लेआउट मॅपिंग",
   "statusAccepted": "स्वीकृत",
   "statusRejected": "नाकारले",
   "statusExpired": "मुदत संपली",
-  "statusConverted": "बिलात रूपांतरित"
+  "statusConverted": "बिलात रूपांतरित",
+
+  // Files Page - Marathi
+  "files": "फाईल्स",
+  "newFile": "नवीन फाईल",
+  "totalFiles": "एकूण फाईल्स",
+  "allTime": "पूर्ण वेळ",
+  "thisMonth": "हा महिना",
+  "latestFile": "सर्वात नवीन फाइल ",
+  "noFiles": "फाईल्स नाहीत",
+  "byMonth": "महिनानुसार आकडेवारी",
+  "financialYear": "आर्थिक वर्ष",
+  "showing": "दाखवत आहे",
+  "of": "पैकी",
+  "srNo": "क्र.नं.",
+  "farmer": "शेतकरी",
+  "fileDate": "फाईल दिनांक",
+  "linkBill": "बिल एडिट",
+  "edit": "एडिट",
+  "delete": "हटवा",
+  "confirmDelete": "हा फाईल हटवायचे? हे क्रिया रद्द करता येत नाही।",
+  "linked": "लिंक केले",
+  "notLinked": "लिंक नाही",
+  "selectBill": "बिल निवडा",
+  "link": "लिंक",
+  "close": "बंद करा",
+  "success": "यशस्वी",
+  "error": "त्रुटी",
+  "deleted": "हटवले गेले"
+  ,
+  // Quotations Page - Marathi
+  "totalQuotations": "एकूण कोटेशन्स",
+  "latestQuotation": "सर्वात नवीन कोटेशन",
+  "noQuotations": "कोटेशन्स नाहीत"
+
+  ,
+  // Quotations table headers - Marathi
+  "customer": "ग्राहक",
+  "date": "तारीख",
+  "amount": "रक्कम"
 
   },
 };

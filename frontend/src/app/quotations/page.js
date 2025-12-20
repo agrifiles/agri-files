@@ -105,6 +105,60 @@ function QuotationsPageContent() {
     }
   };
 
+  // Calculate insights
+  const getInsights = () => {
+    const totalQuotations = quotations.length;
+    
+    // Quotations in current month
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const quotationsThisMonth = quotations.filter(q => {
+      const qDate = q.quotation_date || q.quotationDate;
+      if (!qDate) return false;
+      const date = new Date(qDate);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }).length;
+
+    // Get latest quotation date
+    let latestDate = null;
+    if (quotations.length > 0) {
+      const dates = quotations
+        .map(q => q.quotation_date || q.quotationDate)
+        .filter(d => d)
+        .map(d => new Date(d))
+        .filter(d => !isNaN(d.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime());
+      if (dates.length > 0) latestDate = dates[0];
+    }
+
+    // Quotations by last 3 months
+    const quotationsByMonth = {};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    for (let i = 0; i < 3; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthKey = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      quotationsByMonth[monthKey] = 0;
+    }
+
+    quotations.forEach(q => {
+      const qDate = q.quotation_date || q.quotationDate;
+      if (!qDate) return;
+      const date = new Date(qDate);
+      if (isNaN(date.getTime())) return;
+      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      if (quotationsByMonth[monthKey] !== undefined) {
+        quotationsByMonth[monthKey]++;
+      }
+    });
+
+    return { totalQuotations, quotationsThisMonth, latestDate, quotationsByMonth };
+  };
+
+  const insights = getInsights();
+
   // Delete quotation
   const deleteQuotation = async (id) => {
     if (!confirm("Delete this quotation? / हे कोटेशन हटवायचे?")) return;
@@ -146,7 +200,7 @@ function QuotationsPageContent() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-blue-800">
-          📋 {t.quotations || 'Quotations'} / कोटेशन
+          📋 {t.quotations || 'Quotations'}
         </h1>
         <button
           className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:cursor-pointer transition"
@@ -156,20 +210,75 @@ function QuotationsPageContent() {
         </button>
       </div>
 
+      {/* Insights Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3 mb-4">
+        {/* Total Quotations Card */}
+        <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-blue-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-blue-100 uppercase tracking-widest">{t.totalQuotations || 'Total'}</div>
+            <div className="text-xl md:text-lg">📋</div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black mt-0.5">{insights.totalQuotations}</div>
+          <div className="text-xs text-blue-100 mt-1 font-medium">{t.allTime || 'All Time'}</div>
+        </div>
+
+        {/* Quotations This Month Card */}
+        <div className="bg-gradient-to-br from-green-500 via-emerald-500 to-teal-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-green-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-green-100 uppercase tracking-widest">{t.thisMonth || 'This Month'}</div>
+            <div className="text-xl md:text-lg">📅</div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black mt-0.5">{insights.quotationsThisMonth}</div>
+          <div className="text-xs text-green-100 mt-1 font-medium">
+            {new Date().toLocaleDateString('en-IN', { month: 'short' })}
+          </div>
+        </div>
+
+        {/* Latest Quotation Date Card */}
+        <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-orange-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-orange-100 uppercase tracking-widest">{t.latestQuotation || 'Latest'}</div>
+            <div className="text-xl md:text-lg">⚡</div>
+          </div>
+          <div className="text-xl md:text-2xl font-black mt-0.5 break-words">
+            {insights.latestDate ? insights.latestDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '-'}
+          </div>
+          <div className="text-xs text-orange-100 mt-1 font-medium">
+            {insights.latestDate ? insights.latestDate.getFullYear() : t.noQuotations || 'No quotations'}
+          </div>
+        </div>
+
+        {/* Quick Stats Card */}
+        <div className="bg-gradient-to-br from-purple-600 via-violet-500 to-pink-400 text-white rounded-xl p-4 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-purple-300">
+          <div className="flex items-center justify-between mb-1 md:mb-1">
+            <div className="text-xs font-bold text-purple-100 uppercase tracking-widest">{t.byMonth || 'Monthly'}</div>
+            <div className="text-xl md:text-lg">📊</div>
+          </div>
+          <div className="mt-1 md:mt-1 space-y-1 text-xs">
+            {Object.entries(insights.quotationsByMonth).map(([month, count]) => (
+              <div key={month} className="flex justify-between items-center bg-opacity-20 rounded px-2 py-0.5">
+                <span className="text-purple-100 font-medium text-xs">{month}</span>
+                <span className="font-black text-xs bg-purple-600 bg-opacity-30 px-1.5 py-0.5 rounded">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200">
         <table className="w-full bg-white min-w-max md:min-w-full">
           
           {/* Table Head */}
           <thead className="bg-gradient-to-r from-blue-800 to-blue-600 text-white hidden md:table-header-group">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Sr No</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Quotation No</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Mobile</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Amount</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.srNo || 'Sr No'}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.quotationNo || 'Quotation No'}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.customer || 'Customer'}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.mobile || 'Mobile'}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.date || 'Date'}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.amount || 'Amount'}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.status || 'Status'}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.actions || 'Actions'}</th>
             </tr>
           </thead>
 
@@ -243,14 +352,14 @@ function QuotationsPageContent() {
                         onClick={() => router.push(`/quotations/new?id=${id}`)}
                         className="flex-1 md:flex-auto text-blue-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-blue-800 text-xs md:text-sm font-medium"
                       >
-                        Edit
+                        {t.edit || 'Edit'}
                       </button>
 
                       <button
                         onClick={() => router.push(`/quotation/print/${id}`)}
                         className="flex-1 md:flex-auto text-green-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-green-800 text-xs md:text-sm font-medium"
                       >
-                        Print
+                        {t.quotationFeaturePrint || 'Print'}
                       </button>
 
                       {/* {q.status !== 'converted' && (
@@ -266,7 +375,7 @@ function QuotationsPageContent() {
                         onClick={() => deleteQuotation(id)}
                         className="flex-1 md:flex-auto text-red-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:text-red-900 hover:cursor-pointer text-xs md:text-sm font-medium"
                       >
-                        Delete
+                        {t.delete || 'Delete'}
                       </button>
                     </div>
                   </td>
