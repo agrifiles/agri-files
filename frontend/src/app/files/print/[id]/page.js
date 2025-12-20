@@ -1054,6 +1054,106 @@ function FilePrintPageContent({ params }) {
           </div>
         </div>
 
+        {/* Page 6 - Self Declaration (ओलीता बाबत स्वयंघोषणापत्र) */}
+        <div
+          className="sheet mx-auto bg-white my-6 shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "10mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: "100%", textAlign: "center" }}>
+            <h2 className="text-lg font-bold m-0">ओलीता बाबत स्वयंघोषणापत्र</h2>
+            <h4 className="text-sm font-semibold mt-1">(शासन निर्णय क्रमांक: प्रसुधा १६१४/३४५/प्र.क्र.७१/१८ अ)</h4>
+          </div>
+
+          <div className="mt-4 text-xs leading-relaxed" style={{ width: "100%", maxWidth: "180mm" }}>
+            <p className="mb-2 text-sm">
+              मी <span className="font-bold">{file?.farmer_name || '________'}</span> आधार नंबर <span className="font-bold">{file?.aadhaar_no || '________'}</span> मोजे <span className="font-bold">{file?.village || '________'}</span> तालुका <span className="font-bold">{file?.taluka || '________'}</span> जिल्हा <span className="font-bold">{file?.district || '________'}</span> येथिल रहिवासी असून माझ्या नावाने / कुटुंबात मौजे <span className="font-bold">{file?.village || '________'}</span> येथे गट नंबर <span className="font-bold">{file?.gut_no || file?.survey_no || '________'}</span> क्षेत्र <span className="font-bold">{file?.area8a || '________'}</span> हे. शेतजमीन असुन मी विहीर/नाला/तलाव/बोअरवेले वरून ओलीत करतो.
+            </p>
+
+            <p className="mb-2 text-sm  ">
+              मी याव्दारे घोषित करतो/करते की, वरील सर्व माहीती माझ्या व्यक्तीगत माहिती व समजूतीनुसार खरी आहे. सदर माहीती खोटी आढळून आल्यास, भारतीय दंड संहिता अन्वये आणि / किंवा संबंधित कायदयानुसार माझ्यावर खटला भरला जाईल व त्यानुसार मी शिक्षेस पात्र राहीन याची मला पूर्ण जाणीव आहे. करीता स्वयंघोषणापत्र लिहून दिले आहे.
+            </p>
+
+            {/* Signature Section */}
+            <div className="mt-6 flex justify-between items-end">
+              <div>
+                <p className="mb-1 text-sm">दिनांक: <span className="font-bold">{formatDate(file?.file_date) || '________'}</span></p>
+                <p className="mb-1 text-sm">स्थळ: <span className="font-bold">{file?.village || '________'}</span></p>
+              </div>
+              <div className="flex flex-col border border-black p-2 mt-5 h-30 w-40">
+                <div className="h-12 flex-1" />
+                <div className="text-sm border-t-2 border-black pt-1 text-center leading-normal">
+                  <div className="text-sm">सही / अंगठा</div>
+                  <div className="font-bold text-sm">{file?.farmer_name || '________'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Page 7 - Certificate of Not Availing Benefits (लाभ न घेतल्या बाबतचे प्रमाणपत्र) */}
+        <div
+          className="sheet mx-auto bg-white my-6 shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "10mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: "100%", textAlign: "center" }}>
+            <h2 className="text-lg font-bold m-0">लाभ न घेतल्या बाबतचे प्रमाणपत्र</h2>
+          </div>
+
+          <div className="mt-4 text-xs leading-relaxed" style={{ width: "100%", maxWidth: "180mm" }}>
+            <p className="mb-2 text-sm">
+              मी <span className="font-bold">{file?.farmer_name || '________'}</span> मौजे <span className="font-bold">{file?.village || '________'}</span> तालुका <span className="font-bold">{file?.taluka || '________'}</span> जिल्हा <span className="font-bold">{file?.district || '________'}</span> येथील रहिवासी असून मौजे <span className="font-bold">{file?.village || '________'}</span> येथे माझी गट नंबर <span className="font-bold">{file?.gut_no || file?.survey_no || '________'}</span> मध्ये जमीन आहे.
+            </p>
+
+            <p className="mb-2 text-sm">
+              तरी मी लिहून देतो की मी आतापर्यंत कृषी विभागाच्या कोणत्याही योजनेअंतर्गत कांदा चाळ / कृषी यांत्रिकीकरण / ठिबक सिंचन / फळबाग/ शेततळे / शेततळे अस्तरीकरण / शेडनेट या बाबीचा लाभ घेतला नाही. वरील माहिती सत्य असून ह्यात काही चुकीची माहिती आढळून आल्यास योजनेचा कोणताही टप्प्यावर होणाऱ्या कारवाईस मी पात्र राहील याची मला कल्पना आहे.
+            </p>
+
+            {/* Signature Section */}
+            <div className="mt-8 flex justify-between items-end">
+              <div>
+                <p className="mb-1 text-sm">दिनांक:- <span className="font-bold">{formatDate(file?.file_date) || '________'}</span></p>
+              </div>
+              <div className="flex flex-col border border-black p-2 h-45 w-70">
+                <div className="h-12 flex-1" />
+                <div className="text-sm border-t-2 border-black pt-1 text-center leading-normal">
+                  <div className="text-xs">सही / अंगठा</div>
+                  <div >   <p className="text-sm font-semibold">लाभार्थी पूर्ण नाव:- <span className="font-bold">{file?.farmer_name || '________'}</span></p>
+              <p className="text-sm font-semibold">लाभार्थी गाव:- <span className="font-bold">{file?.village || '________'}</span></p></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
                 {/* Quotation Invoice Section */}
         <div 
           className="quotation-section mx-auto bg-white shadow-lg border-4 border-blue-800"
