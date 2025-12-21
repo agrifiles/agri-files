@@ -507,6 +507,167 @@ function FilePrintPageContent({ params }) {
         >
           {/* Header Row */}
                       <div className='text-center' >
+                          <h1 className="text-4xl font-black mb-1">नानाजी देशमुख कृषी संजवणी प्रकल्प</h1>
+                           <h2 className="text-lg  mt-5 font-black">सन {toDevanagariDigits(file.fy_year || '')}</h2>
+              {/* <h1 className="text-xl font-black mb-1">केंद्र पुरस्कृत सिंचन योजना</h1>
+              <h5 className="text-sm font-semibold mb-2">प्रति थेंब अधिक पीक (PER DROP MORE CROP)</h5> */}
+              <hr className="border-black my-2" />
+                            <h2 className="text-4xl font-black">अनुदान मागणी प्रस्ताव</h2>
+             
+               </div>
+          <div className="flex justify-between items-start">
+            {/* Left Box */}
+            <div className="text-left" >
+              <div className="flex flex-col items-center gap-2">
+                {/* POCRA Logo */}
+                <div className="w-32 h-32 flex items-center justify-center bg-white rounded-lg border border-gray-300">
+                  <img src="/pocra_logo.png" alt="POCRA Logo" className="w-full h-full object-contain p-1" />
+                </div>
+                <div className="p-2 text-center text-xs mb-1" style={{minWidth: "220px"}}>
+                  <div className='p-2 text-md font-bold border border-black'>APPLICATION ID</div>
+                  <div className=" p-2 text-xl border border-black border-t-0 font-bold">{file.application_id}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Center */}
+
+            <div className="text-center flex-2">
+
+
+              
+              {/* Emblem */}
+              <div className="flex flex-col items-center mt-4">
+                <div className="p-2 mt-5 w-60 h-74 flex items-center justify-center bg-white">
+                  <img src="/emblem1.png" alt="Indian Emblem" className=" object-contain" />
+                </div>
+
+              </div>
+            </div>
+
+            {/* Right Box */}
+            <div className="text-right">
+              <div className="flex flex-col items-center gap-2">
+                {/* Farm Department Logo */}
+                <div className="w-32 h-32 flex items-center justify-center bg-white rounded-lg border border-gray-300">
+                  <img src="/farm_dept_logo.png" alt="Farm Dept Logo" className="w-full h-full object-contain p-1" />
+                </div>
+                <div className="p-2 text-center text-xs mb-1" style={{minWidth: "220px"}}>
+                  <div className='p-2 text-md font-bold border border-black'>FARMER ID</div>
+                  <div className=" p-2 text-xl border border-black border-t-0 font-bold">{file.farmer_id}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+                          <div className="text-center mt-2">
+                  <h2 className="text-2xl m-2 font-bold">महाराष्ट्र शासन</h2>
+                  <h2 className="text-xl font-bold">कृषि विभाग</h2>
+                  <h2 className="text-lg font-bold">तालुका कृषी अधिकारी </h2>
+                  <div className="flex-1  border-black px-2 py-1 font-bold text-xl"> {file.taluka || 'N/A'} जिल्हा: {file.district || 'N/A'}</div>
+                </div>
+
+          {/* Farmer Identity Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-2 gap-1">
+              <div className="flex gap-1 items-center col-span-2">
+                <div className=" text-lg  w-35">शेतकऱ्याचे नाव :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">श्री/श्रीमती {file.farmer_name || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className=" text-lg w-35">आधार क्रमांक :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.aadhaar_no || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center ">
+                <div className="text-lg  w-35">मोबाईल क्रमांक :</div>
+                <div className="flex-1  font-bold text-base border-b border-black px-2 py-1">{file.mobile || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Address Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-3 gap-1">
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-10">गाव :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.village || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-15 ">तालुका :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.taluka || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-13 ">जिल्हा :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.district || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Land Details Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-2 gap-1">
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-30">८अ क्षेत्रफळ :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.area8a || 'N/A'} हेक्टर</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-30">गट/सर्व्हे क्रमांक :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.gut_no || file.survey_no || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-30">सिंचन क्षेत्र :</div>
+
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.irrigation_area || 'N/A'} हेक्टर </div>
+
+              </div>
+                            <div className="flex gap-1 items-center">
+                
+                <div className="text-lg w-30">पीक प्रकार:</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.crop_name || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+          {/* Company Box */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="flex gap-1 items-center">
+              <div className="text-lg w-35">कंपनीचे नाव :</div>
+              <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.company || 'N/A'}</div>
+            </div>
+          </div>
+
+          {/* Owner Details (from user data) */}
+          <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="grid grid-cols-1 gap-1">
+              <div className="flex gap-1 items-center">
+                <div className="text-lg w-35">वितरकाचे नाव :</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{userData?.business_name || 'N/A'}</div>
+              </div>
+              <div className="flex gap-1 items-center col-span-2">
+                <div className="text-lg w-35">पत्ता:</div>
+                <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{userData?.short_address}, {userData?.taluka}, {userData?.district}, मो नं: {userData?.mobile || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-xs text-gray-700 mt-7">AgriFiles - 8055554030, 7057878572</div>
+        </div>
+
+        {/* Page 1 - Application Header */}
+        <div
+          className="sheet mx-auto bg-white shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            height: "297mm",
+            minHeight: "297mm",
+            maxHeight: "297mm",
+            fontSize: "11px",
+            padding: "5mm",
+            position: "relative",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
+          {/* Header Row */}
+                      <div className='text-center' >
                           <h1 className="text-xl font-black mb-1">प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत</h1>
               <h1 className="text-xl font-black mb-1">केंद्र पुरस्कृत सिंचन योजना</h1>
               <h5 className="text-sm font-semibold mb-2">प्रति थेंब अधिक पीक (PER DROP MORE CROP)</h5>

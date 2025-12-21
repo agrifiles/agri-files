@@ -117,7 +117,7 @@ router.get("/list", async (req, res) => {
         FROM products
         WHERE is_deleted = FALSE
           AND (spare1 = $1 OR spare1 = 'master_User')
-        ORDER BY product_id DESC
+        ORDER BY product_id ASC
       `;
       console.log('Query with param. Params:', [userId]);
       const result = await pool.query(q, [userId]);   // <-- pass parameter here

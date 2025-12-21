@@ -1959,17 +1959,16 @@ const submitFormAndPrint = async (e) => {
                 <div className="col-span-1 md:col-span-2">
                   <label className="font-semibold mb-1 text-sm md:text-base">{lang === 'en' ? 'Scheme Name' : t.schemeName}</label>
                   <select 
-                    value={form.schemeName || (lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault)} 
+                    value={form.schemeName || (lang === 'en' ? 'प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत केंद्र पुरस्कृत सिंचन योजना' : t.schemeDefault)} 
                     onChange={(e) => setForm({...form, schemeName: e.target.value})}
                     className="input"
-                    defaultValue={lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault}
                   >
                     {/* <option value="">{lang === 'en' ? 'Select Scheme' : 'योजना निवडा'}</option> */}
-                    <option value={lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault}>
-                      {lang === 'en' ? 'Prime Minister Krishi Sinchayee Yojana' : t.schemeDefault}
+                    <option value={lang === 'en' ? 'प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत केंद्र पुरस्कृत सिंचन योजना' : t.schemeDefault}>
+                      {lang === 'en' ? 'प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत केंद्र पुरस्कृत सिंचन योजना' : t.schemeDefault}
                     </option>
-                    <option value={lang === 'en' ? 'Per Drop More Crop (PDMC)' : t.scheme2}>
-                      {lang === 'en' ? 'Per Drop More Crop (PDMC)' : t.scheme2}
+                    <option value={lang === 'en' ? 'नानाजी देशमुख कृषी संजवणी प्रकल्प' : t.scheme2}>
+                      {lang === 'en' ? 'नानाजी देशमुख कृषी संजवणी प्रकल्प' : t.scheme2}
                     </option>
                   </select>
                 </div>
@@ -2004,9 +2003,9 @@ const submitFormAndPrint = async (e) => {
                   <button
                     type="button"
                     onClick={addGiverNameField}
-                    className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+                    className="mt-2 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-700 text-sm font-semibold"
                   >
-                    {lang === 'en' ? '+ Add Farmer' : '+ शेतकरी जोडा'}
+                    {lang === 'en' ? '+ Add Farmer' : t.addFarmer}
                   </button>
                 </div>
               </>
