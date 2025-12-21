@@ -297,7 +297,7 @@ export default function RegisterPage() {
               <input name="account_name" onChange={handle} value={form.account_name} placeholder={t.accountName} className="input-enhanced-green" />
               <input name="account_number" onChange={handle} value={form.account_number} placeholder={t.accountNumber} className="input-enhanced-green" />
               <input name="ifsc" onChange={handle} value={form.ifsc} placeholder={t.ifsc} className="input-enhanced-green" />
-              <input name="bank_branch" onChange={handle} value={form.bank_branch} placeholder={t.accountBranch || 'Bank Branch'} className="input-enhanced-green col-span-1 md:col-span-2" />
+              <input name="bank_branch" onChange={handle} value={form.bank_branch} placeholder={t.branch || 'Bank Branch'} className="input-enhanced-green col-span-1 md:col-span-2" />
             </div>
 
             {/* Buttons */}

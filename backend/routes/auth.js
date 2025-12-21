@@ -35,6 +35,8 @@ router.post('/register', async (req, res) => {
       ifsc, bank_branch, gst_no, gst_state, password
     } = req.body;
 
+    // Debug log
+    console.log('📝 Register Request:', { bank_name, account_name, account_number, ifsc, bank_branch });
     // Basic validation
     if (!name || !business_name || !email || !mobile || !district || !taluka || !gst_no || !gst_state || !password) {
       return res.status(400).json({ error: 'Missing required fields' });
