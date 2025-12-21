@@ -71,7 +71,9 @@ function mapFormToDb(form = {}) {
     w2_taluka: form.taluka || null,  // Same as farmer taluka
     w2_district: form.district || null,  // Same as farmer district
     place: form.place || null,
-    file_date: form.fileDate || null
+    file_date: form.fileDate || null,
+    // File type field
+    file_type: form.fileType || null
   };
 }
 

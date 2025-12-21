@@ -124,7 +124,9 @@ function NewFilePageContent() {
     // Common area and scheme details
     isCommonArea: false, schemeName: '', giverNames: '', customSchemeName: '',
     // engineer details (auto-populated from company selection)
-    engineerDesignation: '', engineerMobile: ''
+    engineerDesignation: '', engineerMobile: '',
+    // File type (POCRA or MAHADBT)
+    fileType: ''
   });
   
   const [giverNamesList, setGiverNamesList] = useState(['']); // Track individual giver names
@@ -1914,6 +1916,37 @@ const submitFormAndPrint = async (e) => {
               <label className="font-semibold mb-1 text-sm md:text-base">{t.village}</label>
               <input name="village" value={form.village} onChange={handleChange} className="input" />
             </div>
+
+            {/* File Type Radio Buttons */}
+            <div className="col-span-1 md:col-span-2 flex flex-col gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <label className="font-semibold text-sm md:text-base text-gray-700">{lang === 'en' ? 'File Type' : 'फाइल प्रकार'}</label>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="fileType" 
+                    value="POCRA" 
+                    checked={form.fileType === 'POCRA'}
+                    onChange={(e) => setForm({...form, fileType: e.target.value})}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm md:text-base font-semibold text-gray-700">POCRA</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="fileType" 
+                    value="MAHADBT" 
+                    checked={form.fileType === 'MAHADBT'}
+                    onChange={(e) => setForm({...form, fileType: e.target.value})}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm md:text-base font-semibold text-gray-700">MAHADBT</span>
+                </label>
+              </div>
+            </div>
+
+            
 
 
 

@@ -490,7 +490,8 @@ function FilePrintPageContent({ params }) {
   return (
     <div className="bg-gray-100 min-h-screen" style={{ backgroundColor: "#f5f5f5", padding: "20px 0" }}>
       <div id="file-content" className="w-screen px-6">
-        {/* Page 1 - Application Header */}
+        {/* Page 1 - POCRA: Show if fileType is POCRA or NULL/undefined */}
+        {(file.file_type === 'POCRA' || !file.file_type) && (
         <div
           className="sheet mx-auto bg-white shadow-lg border-4 border-black"
           style={{
@@ -650,10 +651,12 @@ function FilePrintPageContent({ params }) {
 
           <div className="text-xs text-gray-700 mt-7">AgriFiles - 8055554030, 7057878572</div>
         </div>
+        )}
 
-        {/* Page 1 - Application Header */}
+        {/* Page 2 - MAHADBT: Show if fileType is MAHADBT or NULL/undefined */}
+        {(file.file_type === 'MAHADBT' || !file.file_type) && (
         <div
-          className="sheet mx-auto bg-white shadow-lg border-4 border-black"
+          className="sheet mx-auto bg-white my-2 shadow-lg border-4 border-black"
           style={{
             width: "210mm",
             height: "297mm",
@@ -799,10 +802,21 @@ function FilePrintPageContent({ params }) {
             </div>
           </div>
 
+          {/* File Type Box */}
+          {/* <div className="border border-black pb-1.5 p-1 mt-1">
+            <div className="flex gap-1 items-center">
+              <div className="text-lg w-35">फाइल प्रकार :</div>
+              <div className="flex-1 font-bold text-base border-b border-black px-2 py-1">{file.file_type || 'N/A'}</div>
+            </div>
+          </div> */}
+
           <div className="text-xs text-gray-700 mt-7">AgriFiles - 8055554030, 7057878572</div>
         </div>
+        )}
 
-        {/* Page 2 - Signature Page */}
+     
+
+        {/* Page 3 - Signature Page */}
         <div
           className="sheet mx-auto bg-white my-2 shadow-lg border-4 border-black"
           style={{
@@ -928,18 +942,18 @@ function FilePrintPageContent({ params }) {
             <h3 className="text-base text-center font-bold">कंपनी प्रतिनिधीने तयार केलेल्या सूक्ष्म सिंचन आराखडा व प्रमाणपत्र</h3>
 
             <div className="text-xs leading-relaxed">
-              <p className="mb-3 text-xs ">प्रति ,</p>
+              <p className="mb-2 text-sm leading-relaxed">प्रति ,</p>
 
-              <p className="text-xs leading-normal">
+              <p className="text-sm leading-relaxed">
                 शेतकऱ्याचे नाव: <span className="font-bold">{file.farmer_name || '________'}</span>, गाव : <span className="font-bold">{file.village || '________'}</span>, तालुका : <span className="font-bold">{file.taluka || '________'}</span>, जिल्हा: <span className="font-bold">{file.district || '________'}</span>
               </p>
 
-              <div className=" text-xs leading-normal ">
+              <div className="text-sm leading-relaxed">
                 <p>८ अ प्रमाणे क्षेत्र : <span className="font-bold">{file.area8a || '________'}</span> हेक्टर, सिंचना खालील क्षेत्र : <span className="font-bold">{file.irrigation_area || '________'}</span> हेक्टर पिकाचे नाव : <span className="font-bold">{file.crop_name || '________'}</span></p>
               </div>
 
 
-              <p className="mb-3 mt-1">
+              <p className="mb-3 mt-3 text-sm leading-relaxed">
                      आपले शेतातील सर्वे नंबर / गट नंबर: <span className="font-bold">{file.gut_no || file.survey_no || '________'}</span> मध्ये सूक्ष्म सिंचन संच घटक बसवण्या करता मी <span className="font-bold">{file.company || '________'}</span> या कंपनीचा तांत्रिक प्रतिनिधी म्हणून आपले समक्ष सर्वेक्षण केले असून खालील प्रमाणे आराखडा तयार करण्यात आला असून आपणास सिंचन संच बनविण्या करता उपलब्ध करून देण्यात येत आहे.
               </p>
             </div>
@@ -1338,39 +1352,43 @@ function FilePrintPageContent({ params }) {
               दिनांक : {formatDate(file?.file_date) || '________'}
             </div>
 
-            <div className="mt-4 text-xs leading-relaxed">
+            <div className="mt-4 text-sm leading-relaxed">
               <h3 className="font-bold mt-3 mb-2">संमती पत्र लिहुन घेणारः</h3>
               
-              <p className="text-justify mb-3">
-                मी श्री/श्रीमती <span className="font-bold">{file?.farmer_name || '________'}</span> रा.<span className="font-bold">{file?.village || '________'}</span> येथील रहिवाशी असून, मौजे <span className="font-bold">{file?.village || '________'}</span> या गावामधील सामाईक मालकीच्या शेतजमीनवरील गट क्रमांक <span className="font-bold">{file?.gut_no || '________'}</span> मध्ये नानाजी देशमुख कृषि संजीवनी प्रकल्पाअंतर्गत <span className="font-bold">{file?.irrigation_area || '________'}</span> हेक्टर क्षेत्रावर <span className="font-bold">{file?.scheme_name || '________'}</span> या घटकासाठी अनुदानाचा लाभ घेऊ इच्छितो / इच्छिते.
+              <p className="text-justify mb-3 text-sm">
+                मी श्री/श्रीमती <span className="font-bold">{file?.farmer_name || '________'}</span> रा.<span className="font-bold">{file?.village || '________'}</span> येथील रहिवाशी असून, मौजे <span className="font-bold">{file?.village || '________'}</span> या गावामधील सामाईक मालकीच्या शेतजमीनवरील गट क्रमांक <span className="font-bold">{file?.gut_no || '________'}</span> मध्ये <span className="font-bold">{file?.scheme_name || '________'}</span> अंतर्गत <span className="font-bold">{file?.irrigation_area || '________'}</span> हेक्टर क्षेत्रावर <span className="font-bold">{file?.dripline_product || '________'}</span> या घटकासाठी अनुदानाचा लाभ घेऊ इच्छितो / इच्छिते.
               </p>
 
-              <p className="text-justify mb-3">
+              <p className="text-justify mb-3 text-sm">
                 सदर क्षेत्रावर या घटकाची अंमलबजावणी करणे व मिळणारे अनुदान माझ्या आधार संलग्न बँक खात्यावर जमा करणेसाठी सामाईक मालकीच्या गट नंबर मधील इतर खातेदाराचे संमती पत्र खालील प्रमाणे देत आहे.
               </p>
 
               <h3 className="font-bold mt-4 mb-2">संमती पत्र लिहुन देणार :-</h3>
               
-              <p className="text-justify mb-3">
-                मी/आम्ही स्वखुशीने संमतीपत्र लिहुन देतो की, मौजे <span className="font-bold">{file?.village || '________'}</span> या गावामधील गट नंबर <span className="font-bold">{file?.gut_no || '________'}</span> असलेली जमीन आमचे सामाईक मालकीची असुन मी/आम्ही सर्व खाली सही करणार/ करणारे श्री/श्रीमती <span className="font-bold">{file?.farmer_name || '________'}</span> यांना सदरील गट नंबर मधील <span className="font-bold">{file?.irrigation_area || '________'}</span> हेक्टर क्षेत्रावर <span className="font-bold">{file?.scheme_name || '________'}</span> या घटकाची अंमलबजावणी करणे व प्रकल्पाअंतर्गत नियमाप्रमाणे मिळणारे शासकीय अनुदान त्यांचे आधार संलग्न बँक खात्यावर जमा करणेस आमची कुठलीही हरकत नाही. करीता सदर संमतीपत्र लिहुन देत आहोत.
+              <p className="text-justify mb-3 text-sm">
+                मी/आम्ही स्वखुशीने संमतीपत्र लिहुन देतो की, मौजे <span className="font-bold">{file?.village || '________'}</span> या गावामधील गट नंबर <span className="font-bold">{file?.gut_no || '________'}</span> असलेली जमीन आमचे सामाईक मालकीची असुन मी/आम्ही सर्व खाली सही करणार/ करणारे श्री/श्रीमती <span className="font-bold">{file?.farmer_name || '________'}</span> यांना सदरील गट नंबर मधील <span className="font-bold">{file?.irrigation_area || '________'}</span> हेक्टर क्षेत्रावर <span className="font-bold">{file?.dripline_product || '________'}</span> या घटकाची अंमलबजावणी करणे व प्रकल्पाअंतर्गत नियमाप्रमाणे मिळणारे शासकीय अनुदान त्यांचे आधार संलग्न बँक खात्यावर जमा करणेस आमची कुठलीही हरकत नाही. करीता सदर संमतीपत्र लिहुन देत आहोत.
               </p>
 
               <h3 className="font-bold mt-6 mb-3">लिहून घेणार (लाभार्थी शेतकरी) :</h3>
-              <div className="flex justify-between items-start mt-8 mb-6">
-                <div className="text-xs">स्वाक्षरी</div>
-                <div className="text-center">
-                  <div className="text-xs mb-6">श्री/श्रीमती {file?.farmer_name || '________'}</div>
-                  <div style={{ height: "35px", width: "120px", border: "1px solid #000" }}></div>
+              <div className="flex justify-end mt-8 mb-6">
+               
+                <div>
+                  <div className="border border-black w-70 h-18 bg-white mb-2"></div>
+                  <div className="text-xs text-center">स्वाक्षरी</div>
+                   <div className="text-sm text-center font-bold">श्री/श्रीमती {file?.farmer_name || '________'}</div>
                 </div>
               </div>
 
-              <h3 className="font-bold mt-6 mb-3">लिहून देणार :</h3>
-              <div className="space-y-6">
+              <h3 className="font-bold mt-8 mb-6">लिहून देणार :</h3>
+              <div className="space-y-2">
                 {file?.giver_names ? (
                   file.giver_names.split(',').map((name, index) => (
-                    <div key={index} className="flex justify-between items-start">
-                      <div className="text-xs">श्री/श्रीमती {name.trim()}</div>
-                      <div style={{ height: "35px", width: "120px", border: "1px solid #000" }}></div>
+                    <div key={index} className="flex justify-between">
+                      <div className="text-sm font-bold">श्री/श्रीमती {name.trim()}</div>
+                      <div>
+                        <div className="border border-black w-80 h-15 bg-white mb-2"></div>
+                        {/* <div className="text-xs text-center">स्वाक्षरी</div> */}
+                      </div>
                     </div>
                   ))
                 ) : (

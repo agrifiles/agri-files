@@ -146,7 +146,8 @@ function mapFormToDb(form = {}) {
     w2_taluka: form.w2Taluka || null,
     w2_district: form.w2District || null,
     place: form.place || null,
-    file_date: form.fileDate || null
+    file_date: form.fileDate || null,
+    file_type: form.fileType || null
   };
 }
 
