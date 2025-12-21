@@ -127,6 +127,7 @@ export default function RegisterPage() {
     account_name: '',
     account_number: '',
     ifsc: '',
+    bank_branch: '',
     gst_no: '',
     gst_state: '',
     password: ''
@@ -136,11 +137,11 @@ export default function RegisterPage() {
   const [msg, setMsg] = useState('');
   const [districts, setDistricts] = useState([]);
   const [talukas, setTalukas] = useState([]);
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpMsg, setOtpMsg] = useState('');
-  const [registeredEmail, setRegisteredEmail] = useState('');
+  // const [showOtpModal, setShowOtpModal] = useState(false);
+  // const [otp, setOtp] = useState('');
+  // const [otpLoading, setOtpLoading] = useState(false);
+  // const [otpMsg, setOtpMsg] = useState('');
+  // const [registeredEmail, setRegisteredEmail] = useState('');
 
   // Load districts based on language
   useEffect(() => {
@@ -176,42 +177,48 @@ export default function RegisterPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      setMsg(t.registrationSuccess);
-      setRegisteredEmail(form.email);
-      setShowOtpModal(true);
-      setOtp('');
-      setOtpMsg('');
+      if (!res.ok) {
+        const errorMsg = data.error || 'Failed to register';
+        // Show error in alert
+        alert(`${lang === 'mr' ? '⚠️ त्रुटी' : '⚠️ Error'}\n${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+      // Show success alert and redirect to login
+      const successMsg = lang === 'mr' ? '✅ नोंदणी यशस्वी!\n\nलॉगिन पृष्ठावर पुनः दिशित केले जात आहे...' : '✅ Registration Successful!\n\nRedirecting to login...';
+      alert(successMsg);
+      setTimeout(() => {
+        router.push('/');
+      }, 1500);
     } catch (err) {
-      setMsg(err.message);
+      setLoading(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const verifyOtp = async (e) => {
-    e.preventDefault();
-    setOtpLoading(true);
-    setOtpMsg('');
-    try {
-      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: registeredEmail, otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Invalid OTP');
-      setOtpMsg('✅ ' + (t.verifiedOtp || 'OTP verified successfully!'));
-      setTimeout(() => {
-        setShowOtpModal(false);
-        router.push('/dashboard');
-      }, 1500);
-    } catch (err) {
-      setOtpMsg('⚠️ ' + err.message);
-    } finally {
-      setOtpLoading(false);
-    }
-  };
+  // const verifyOtp = async (e) => {
+  //   e.preventDefault();
+  //   setOtpLoading(true);
+  //   setOtpMsg('');
+  //   try {
+  //     const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ target: registeredEmail, otp }),
+  //     });
+  //     const data = await res.json();
+  //     if (!res.ok) throw new Error(data.error || 'Invalid OTP');
+  //     setOtpMsg('✅ ' + (t.verifiedOtp || 'OTP verified successfully!'));
+  //     setTimeout(() => {
+  //       setShowOtpModal(false);
+  //       router.push('/dashboard');
+  //     }, 1500);
+  //   } catch (err) {
+  //     setOtpMsg('⚠️ ' + err.message);
+  //   } finally {
+  //     setOtpLoading(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
@@ -290,6 +297,7 @@ export default function RegisterPage() {
               <input name="account_name" onChange={handle} value={form.account_name} placeholder={t.accountName} className="input-enhanced-green" />
               <input name="account_number" onChange={handle} value={form.account_number} placeholder={t.accountNumber} className="input-enhanced-green" />
               <input name="ifsc" onChange={handle} value={form.ifsc} placeholder={t.ifsc} className="input-enhanced-green" />
+              <input name="bank_branch" onChange={handle} value={form.bank_branch} placeholder={t.accountBranch || 'Bank Branch'} className="input-enhanced-green col-span-1 md:col-span-2" />
             </div>
 
             {/* Buttons */}
@@ -305,7 +313,7 @@ export default function RegisterPage() {
                   background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
                 }}></div>
                 <span className="relative flex items-center justify-center gap-2">
-                  {loading ? '⏳ ' + t.waitRegister : '🚀 ' + t.sendOtp}
+                  {loading ? '⏳ ' + t.waitRegister : '🚀 ' + (t.sendOtp || 'Register Now')}
                 </span>
               </button>
 
@@ -323,15 +331,6 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* Error Message */}
-            {msg && (
-              <div className={`mt-6 p-4 border-l-4 rounded-lg animate-pulse-error ${msg.includes('success') || msg.includes('Success') ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'}`}>
-                <p className={`${msg.includes('success') || msg.includes('Success') ? 'text-green-700' : 'text-red-700'} font-semibold text-sm`}>
-                  {msg.includes('success') || msg.includes('Success') ? '✅' : '⚠️'} {msg}
-                </p>
-              </div>
-            )}
-
             {/* Terms */}
             <p className="text-center text-xs text-green-700 mt-6 font-medium">
               By registering, you agree to our <span className="text-green-600 font-bold cursor-pointer hover:underline">Terms of Service</span>
@@ -340,74 +339,6 @@ export default function RegisterPage() {
         </div>
       </form>
 
-      {/* OTP Modal Popup */}
-      {showOtpModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border-2 border-green-200 relative overflow-hidden">
-            {/* Background glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-green-100/20 via-transparent to-emerald-100/20 pointer-events-none"></div>
-            
-            {/* Modal content */}
-            <div className="relative z-10">
-              <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-700 via-green-600 to-emerald-600 mb-2 leading-tight">
-                Verify OTP
-              </h2>
-              <p className="text-green-700 font-medium text-sm mb-6">
-                Enter the OTP sent to <strong>{registeredEmail}</strong>
-              </p>
-
-              <form onSubmit={verifyOtp} className="space-y-4">
-                <div className="relative group">
-                  <label className="text-xs font-bold text-green-700 mb-2 block">OTP Code</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      maxLength="6"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="000000"
-                      className="input-enhanced-green text-center text-2xl tracking-widest"
-                      required
-                    />
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-green-400">
-                      🔐
-                    </div>
-                  </div>
-                </div>
-
-                {/* Verify Button */}
-                <button
-                  type="submit"
-                  disabled={otpLoading || otp.length !== 6}
-                  className="relative group overflow-hidden w-full text-white font-bold rounded-xl text-base px-6 py-3 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl mt-6"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 group-hover:from-green-700 group-hover:via-emerald-700 group-hover:to-teal-700 transition duration-300"></div>
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-300 animate-pulse-glow" style={{
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                  }}></div>
-                  <span className="relative flex items-center justify-center gap-2">
-                    {otpLoading ? '⏳ Verifying...' : '✅ Verify OTP'}
-                  </span>
-                </button>
-
-                {/* OTP Message */}
-                {otpMsg && (
-                  <div className={`p-4 border-l-4 rounded-lg text-sm font-semibold ${
-                    otpMsg.includes('✅') ? 'bg-green-50 border-green-500 text-green-700' : 'bg-red-50 border-red-500 text-red-700'
-                  }`}>
-                    {otpMsg}
-                  </div>
-                )}
-
-                {/* Resend Option */}
-                <p className="text-center text-xs text-gray-600 mt-4">
-                  Didn't receive? <span className="text-green-600 font-bold cursor-pointer hover:underline">Resend OTP</span>
-                </p>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       <style jsx>{`
         .input-enhanced-green {

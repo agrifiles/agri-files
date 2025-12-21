@@ -32,7 +32,7 @@ router.post('/register', async (req, res) => {
     const {
       name, business_name, email, mobile, short_address,
       district, taluka, bank_name, account_name, account_number,
-      ifsc, gst_no, gst_state, password
+      ifsc, bank_branch, gst_no, gst_state, password
     } = req.body;
 
     // Basic validation
@@ -58,44 +58,32 @@ router.post('/register', async (req, res) => {
     if (existing.rows.length) {
       const updateQ = `
         UPDATE users SET name=$1,business_name=$2,short_address=$3,district=$4,taluka=$5,
-                         bank_name=$6,account_name=$7,account_number=$8,ifsc=$9,
-                         gst_no=$10,gst_state=$11,password_hash=$12
-        WHERE id=$13 RETURNING id;
+                         bank_name=$6,account_name=$7,account_number=$8,ifsc=$9,bank_branch=$10,
+                         gst_no=$11,gst_state=$12,password_hash=$13,is_verified=$14
+        WHERE id=$15 RETURNING id;
       `;
       const ures = await pool.query(updateQ, [
         name, business_name, short_address, district, taluka,
-        bank_name, account_name, account_number, ifsc, gst_no, gst_state, password_hash, existing.rows[0].id
+        bank_name, account_name, account_number, ifsc, bank_branch, gst_no, gst_state, password_hash, true, existing.rows[0].id
       ]);
       userId = ures.rows[0].id;
     } else {
       const q = `
         INSERT INTO users (name,business_name,email,mobile,short_address,district,taluka,
-                           bank_name,account_name,account_number,ifsc,gst_no,gst_state,password_hash)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                           bank_name,account_name,account_number,ifsc,bank_branch,gst_no,gst_state,password_hash,is_verified)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
         RETURNING id;
       `;
       const out = await pool.query(q, [
         name, business_name, email, mobile, short_address, district, taluka,
-        bank_name, account_name, account_number, ifsc, gst_no, gst_state, password_hash
+        bank_name, account_name, account_number, ifsc, bank_branch, gst_no, gst_state, password_hash, true
       ]);
       userId = out.rows[0].id;
     }
 
-    // generate OTP and save
-    const otpCode = createOtpCode();
-    const expiresAt = new Date(Date.now() + OTP_EXP_MIN * 60 * 1000);
-
-    await pool.query(
-      `INSERT INTO otp_verification (user_id, target, purpose, otp_code, expires_at)
-       VALUES ($1,$2,'registration',$3,$4)`,
-      [userId, email, otpCode, expiresAt]
-    );
-
-    // send OTP by email (or via SMS if prefer)
-    await sendOtpEmail(email, otpCode, 'registration');
-    // if(you want sms) await sendSmsOtp(mobile, otpCode);
-
-    return res.json({ ok: true, message: 'OTP sent to email. Please verify to complete registration.' });
+    // Skip OTP verification - user is now verified by default
+    // User can now login directly without OTP verification
+    return res.json({ ok: true, message: 'Registration successful! You can now login.', userId: userId });
   } catch (err) {
     console.error('REGISTER ERR', err);
     res.status(500).json({ error: 'Server error during registration' });

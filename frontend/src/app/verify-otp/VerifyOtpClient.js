@@ -14,23 +14,24 @@ export default function VerifyOtpClient() {
   const [otp, setOtp] = useState('');
   const [msg, setMsg] = useState('');
 
-  async function submit(e) {
-    e.preventDefault();
-    setMsg('');
-    try {
-      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target, otp }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'Invalid OTP');
-      setMsg(t.verifiedOtp);
-      setTimeout(() => router.push('/'), 1200);
-    } catch (err) {
-      setMsg(err.message);
-    }
-  }
+  // OTP Verification - Commented out for future implementation
+  // async function submit(e) {
+  //   e.preventDefault();
+  //   setMsg('');
+  //   try {
+  //     const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ target, otp }),
+  //     });
+  //     const d = await res.json();
+  //     if (!res.ok) throw new Error(d.error || 'Invalid OTP');
+  //     setMsg(t.verifiedOtp);
+  //     setTimeout(() => router.push('/'), 1200);
+  //   } catch (err) {
+  //     setMsg(err.message);
+  //   }
+  // }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -39,7 +40,8 @@ export default function VerifyOtpClient() {
         <p className="text-sm mb-4">
           {t.otpSentTo} <strong>{target}</strong>
         </p>
-        <form onSubmit={submit}>
+        {/* OTP Form - Commented out for future implementation */}
+        {/* <form onSubmit={submit}>
           <input
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
@@ -55,7 +57,7 @@ export default function VerifyOtpClient() {
             </button>
           </div>
         </form>
-        {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
+        {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>} */}
       </div>
     </div>
   );

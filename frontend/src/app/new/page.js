@@ -120,7 +120,7 @@ function NewFilePageContent() {
     salesEngg: '', pumpType: '', twoNozzelDistance: '', w1Name: '', w1Village: '',
     w2Name: '', w2Village: '', place: '', billAmount: '',
     // Bank details
-    bankName: '', accountName: '', accountNumber: '', ifsc: '',
+    bankName: '', accountName: '', accountNumber: '', ifsc: '', bankBranch: '',
     // Common area and scheme details
     isCommonArea: false, schemeName: '', giverNames: '', customSchemeName: '',
     // engineer details (auto-populated from company selection)
@@ -510,6 +510,7 @@ function NewFilePageContent() {
           accountName: file.account_name ?? prev.accountName,
           accountNumber: file.account_number ?? prev.accountNumber,
           ifsc: file.ifsc ?? prev.ifsc,
+          bankBranch: file.bank_branch ?? prev.bankBranch,
           billAmount: file.bill_amount ?? prev.billAmount,
           // Common area and scheme details
           isCommonArea: file.is_common_area ?? prev.isCommonArea,
@@ -846,7 +847,7 @@ function NewFilePageContent() {
     w2Name: '', w2Village: '',
     place: '', billAmount: '',
     // Bank details
-    bankName: '', accountName: '', accountNumber: '', ifsc: '',
+    bankName: '', accountName: '', accountNumber: '', ifsc: '', bankBranch: '',
     // Common area and scheme details
     isCommonArea: false, schemeName: '', giverNames: '', customSchemeName: '',
     engineerDesignation: '', engineerMobile: ''
@@ -2933,6 +2934,10 @@ const submitFormAndPrint = async (e) => {
     <div className="flex flex-col">
       <label className="font-semibold mb-1">{t.ifsc || 'IFSC'}</label>
       <input name="ifsc" value={form.ifsc} onChange={handleChange} className="input" />
+    </div>
+    <div className="flex flex-col">
+      <label className="font-semibold mb-1">{t.branch || 'Bank Branch'}</label>
+      <input name="bankBranch" value={form.bankBranch} onChange={handleChange} className="input" />
     </div>
   </div>
 </div>
