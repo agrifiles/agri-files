@@ -127,6 +127,29 @@ function DashboardPageContent() {
           </div>
 
         </div>
+
+        {/* Stock book Management Section */}
+        <div className="relative bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-4 border-2 border-rose-200 shadow-lg mb-6">
+          {/* Section Header */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-2xl">📚</span>
+            <h3 className="text-lg font-bold text-rose-800">{t.stobookManagement || 'Stock book Management'}</h3>
+          </div>
+          
+          <div
+            onClick={() => router.push('/stobook')}
+            className="group relative bg-white rounded-xl shadow-md border border-rose-200 overflow-hidden p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-pink-400"></div>
+            <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📦</div>
+            <h2 className="text-base font-bold text-rose-700 mb-1">{t.stobookDesc || 'Manage your stock and inventory'}</h2>
+            <p className="text-xs text-gray-500 mb-3">{t.clickToExplore || 'Click to explore'}</p>
+            <button className="w-full bg-gradient-to-r from-rose-500 to-rose-400 text-white text-xs font-semibold py-2 rounded-lg hover:from-rose-600 hover:to-rose-500 transition-all">
+              📚 {t.explore || 'Explore'}
+            </button>
+          </div>
+        </div>
+
         {/* User Info Section - Stylish */}
         <div className="relative overflow-hidden rounded-2xl mt-8 shadow-xl">
           {/* Gradient Background */}

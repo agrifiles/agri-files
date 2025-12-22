@@ -329,7 +329,7 @@ router.get('/:fileId/bill', async (req, res) => {
 
       // Fetch bill items
       const itemsRes = await pool.query(
-        `SELECT * FROM bill_items WHERE bill_id = $1 ORDER BY item_id ASC`,
+        `SELECT * FROM bill_items WHERE bill_id = $1 ORDER BY item_id DESC`,
         [bill.bill_id]
       );
 

@@ -780,7 +780,14 @@ function NewFilePageContent() {
                 }
                 
                 // Combine: all products + unmatched bill items
-                const finalItems = [...mergedItems, ...unmatchedBillItems];
+                const allFinalItems = [...mergedItems, ...unmatchedBillItems];
+                
+                // SORT by product_id ASC (consistent with new file order)
+                const finalItems = allFinalItems.sort((a, b) => {
+                  const aId = Number(a.product_id) || 0;
+                  const bId = Number(b.product_id) || 0;
+                  return aId - bId;
+                });
                 
                 // Log summary
                 const itemsWithQty = finalItems.filter(i => i.qty > 0);
@@ -963,21 +970,28 @@ const loadProductsForCompany = async (companyId) => {
     setProducts(allProducts);
 
     // Initialize bill items with loaded products (qty = 0)
-    const initialItems = allProducts.map(prod => ({
-      product_id: prod.product_id ?? prod.id,
-      description: prod.description_of_good || prod.name || prod.product_name || '',
-      hsn: prod.hsn_code || prod.hsn || '',
-      batch_no: prod.batch_no || prod.batchNo || '',
-      cml_no: prod.cml_no || prod.cmlNo || '',
-      size: prod.size || '',
-      gov_rate: Number(prod.gov_rate || prod.govRate || 0),
-      sales_rate: Number(prod.selling_rate || prod.sellingRate || prod.sales_rate || 0),
-      uom: prod.unit_of_measure || prod.unit || prod.uom || '',
-      gst_percent: 0, // Default GST is 0 for all items (user can enable global GST or set per item)
-      qty: 0,
-      amount: 0,
-      spare2: prod.spare2
-    }));
+    const initialItems = allProducts
+      // Sort by product_id ASC for consistent order (oldest → newest)
+      .sort((a, b) => {
+        const aId = a.product_id ?? a.id;
+        const bId = b.product_id ?? b.id;
+        return Number(aId) - Number(bId);
+      })
+      .map(prod => ({
+        product_id: prod.product_id ?? prod.id,
+        description: prod.description_of_good || prod.name || prod.product_name || '',
+        hsn: prod.hsn_code || prod.hsn || '',
+        batch_no: prod.batch_no || prod.batchNo || '',
+        cml_no: prod.cml_no || prod.cmlNo || '',
+        size: prod.size || '',
+        gov_rate: Number(prod.gov_rate || prod.govRate || 0),
+        sales_rate: Number(prod.selling_rate || prod.sellingRate || prod.sales_rate || 0),
+        uom: prod.unit_of_measure || prod.unit || prod.uom || '',
+        gst_percent: 0, // Default GST is 0 for all items (user can enable global GST or set per item)
+        qty: 0,
+        amount: 0,
+        spare2: prod.spare2
+      }));
     
     console.log('📋 Setting billItems with:', initialItems.length, 'items');
     setBillItems(initialItems);
@@ -3027,7 +3041,7 @@ const submitFormAndPrint = async (e) => {
 
     {/* Bill Items Section - All Products with Qty Inputs */}
     <div id="bill-section" className="mb-6">
-      {console.log('🔍 [RENDER] Bill section rendered with', billItems.length, 'billItems:', billItems.slice(0, 3).map(b => ({ product_id: b.product_id, description: b.description, spare2: b.spare2 })))}
+      {console.log('🔍 [RENDER] Bill section rendered with', billItems.length, billItems, 'billItems:', billItems.slice(0, 3).map(b => ({ product_id: b.product_id, description: b.description, spare2: b.spare2 })))}
       <h2 className="text-lg font-semibold text-gray-800 mb-3">Products (Enter Qty to include in bill)</h2>
       <p className="text-sm text-gray-500 mb-4">All available products are shown below. Enter quantity to include them in the bill. Items with qty=0 will not be saved.</p>
 

@@ -227,10 +227,10 @@ router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id;
     console.log('📋 GET /:id route hit with id:', id);
-    const billRes = await pool.query('SELECT * FROM bills WHERE bill_id=$1 ', [id]);
+    const billRes = await pool.query('SELECT * FROM bills WHERE bill_id=$1 ORDER BY bill_id DESC', [id]);
     if (!billRes.rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     const bill = billRes.rows[0];
-    const itemsRes = await pool.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY item_id', [id]);
+    const itemsRes = await pool.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY product_id ASC', [id]);
     console.log('📋 Bill items query returned:', itemsRes.rows.length, 'items for bill_id:', id);
     bill.items = itemsRes.rows;
     return res.json({ success: true, bill });
@@ -524,7 +524,7 @@ router.post('/:id/duplicate', async (req, res) => {
     const newId = newBillRes.rows[0].bill_id;
 
     // copy items
-    const itemsRes = await client.query('SELECT * FROM bill_items WHERE bill_id=$1', [id]);
+    const itemsRes = await client.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY product_id ASC', [id]);
     for (const it of itemsRes.rows) {
       await client.query(
         `INSERT INTO bill_items (bill_id, product_id, description, hsn, batch_no, cml_no, size, gov_rate, sales_rate, uom, gst_percent, qty, amount, created_at, updated_at)
@@ -619,7 +619,7 @@ router.get('/v2/:billId', async (req, res) => {
 
     // Fetch bill items
     const itemsRes = await pool.query(
-      'SELECT * FROM bill_items WHERE bill_id = $1 ORDER BY item_id ASC',
+      'SELECT * FROM bill_items WHERE bill_id = $1 ORDER BY product_id ASC',
       [billIdNum]
     );
 
