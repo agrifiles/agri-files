@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -8,6 +8,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 function NewBillPageContent() {
   const API = API_BASE;
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Extract user ID from localStorage
   const getUserId = () => {
@@ -21,6 +22,7 @@ function NewBillPageContent() {
   };
 
   const userId = getUserId();
+  const selectedCompanyId = searchParams?.get('company_id') ? parseInt(searchParams.get('company_id')) : null;
 
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -29,6 +31,7 @@ function NewBillPageContent() {
   // bill header
   const [billNo, setBillNo] = useState('');
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lastFetchedMonthYear, setLastFetchedMonthYear] = useState(''); // track to avoid duplicate calls
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [status, setStatus] = useState('draft');
@@ -41,12 +44,57 @@ function NewBillPageContent() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 const [searchTerm, setSearchTerm] = useState('');
 const [filteredProducts, setFilteredProducts] = useState([]);
+
+  // Fetch next bill number from backend
+  const fetchNextBillNo = async (dateStr) => {
+    if (!userId) return;
+    
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1; // 1-12
+    const year = date.getFullYear();
+    const monthYearKey = `${year}-${month}`;
+    
+    // Skip if already fetched for this month/year
+    if (monthYearKey === lastFetchedMonthYear) return;
+    
+    try {
+      const res = await fetch(`${API}/api/bills/next-bill-no?owner_id=${userId}&month=${month}&year=${year}`);
+      const data = await res.json();
+      if (data.success && data.bill_no) {
+        setBillNo(data.bill_no);
+        setLastFetchedMonthYear(monthYearKey);
+      }
+    } catch (err) {
+      console.error('Failed to fetch next bill number:', err);
+    }
+  };
+
+  // Handle bill date change - only fetch if month/year changed
+  const handleBillDateChange = (newDate) => {
+    const oldDate = new Date(billDate);
+    const newDateObj = new Date(newDate);
+    
+    setBillDate(newDate);
+    
+    // Check if month or year changed
+    if (oldDate.getMonth() !== newDateObj.getMonth() || oldDate.getFullYear() !== newDateObj.getFullYear()) {
+      fetchNextBillNo(newDate);
+    }
+  };
+
+  // Fetch next bill number on mount
+  useEffect(() => {
+    if (userId && billDate) {
+      fetchNextBillNo(billDate);
+    }
+  }, [userId]);
   // load products
   const loadProducts = async () => {
     setLoadingProducts(true);
     try {
       const params = new URLSearchParams();
       if (userId) params.append('user_id', userId);
+      if (selectedCompanyId) params.append('company_id', selectedCompanyId);
       const res = await fetch(`${API}/products/list?${params.toString()}`);
       const text = await res.text();
       const data = JSON.parse(text || '{}');
@@ -59,8 +107,8 @@ const [filteredProducts, setFilteredProducts] = useState([]);
     }
   };
 
-// fetch products on mount
-useEffect(() => { loadProducts(); }, []);
+// fetch products on mount or when company changes
+useEffect(() => { loadProducts(); }, [selectedCompanyId]);
 
 useEffect(() => {
   // whenever products update or searchTerm changes, update filteredProducts
@@ -209,10 +257,10 @@ return (
         <div>
           <label className="block text-sm font-medium text-gray-700">Bill No</label>
           <input
-            className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-gray-50"
+            className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
             value={billNo}
-            onChange={(e) => setBillNo(e.target.value)}
-            placeholder="Auto / enter"
+            disabled
+            placeholder="Auto-generated"
           />
         </div>
 
@@ -222,7 +270,7 @@ return (
             type="date"
             className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-white"
             value={billDate}
-            onChange={(e) => setBillDate(e.target.value)}
+            onChange={(e) => handleBillDateChange(e.target.value)}
           />
         </div>
 

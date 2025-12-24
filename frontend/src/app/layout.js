@@ -95,6 +95,7 @@ export default function RootLayout({ children }) {
   const confirmLogout = () => {
     setIsLoading(true);
     localStorage.removeItem('user');
+    localStorage.removeItem('userCompanyLinks'); // Clear cached company links
     setUser(null);
     setShowLogoutConfirm(false);
     setTimeout(() => {
@@ -183,15 +184,15 @@ export default function RootLayout({ children }) {
         )}
 
         <LangContext.Provider value={{ lang, t, toggleLang }}>
-          <div className="flex flex-col h-screen overflow-hidden">
+          <div className="flex flex-col h-screen overflow-hidden min-w-0">
             {/* Header - Fixed at top */}
-            <header className="bg-gradient-to-r from-green-100 to-gray-100 text-green-900 p-4 flex justify-between items-center shadow-lg flex-shrink-0 sticky top-0 z-40">
-              <div className="flex items-center gap-3">
-                <img src="/logo-icon.png" alt="Agri Files Icon" className="h-12 object-contain" />
-                <img src="/logo-text-shadow.png" alt="Agri Files" className="h-10 object-contain" />
+            <header className="bg-gradient-to-r from-green-100 to-gray-100 text-green-900 p-2 sm:p-4 flex flex-col sm:flex-row justify-between items-center shadow-lg flex-shrink-0 sticky top-0 z-40 w-full">
+              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center sm:justify-start">
+                <img src="/logo-icon.png" alt="Agri Files Icon" className="h-10 sm:h-12 object-contain" />
+                <img src="/logo-text-shadow.png" alt="Agri Files" className="h-8 sm:h-10 object-contain" />
               </div>
               <button
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-bold shadow-md hover:shadow-lg"
+                className="bg-green-600 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-green-700 transition font-bold shadow-md hover:shadow-lg mt-2 sm:mt-0"
                 onClick={toggleLang}
               >
                 {lang === 'en' ? 'मराठी' : 'EN'}
@@ -200,9 +201,9 @@ export default function RootLayout({ children }) {
 
             {/* ✅ Sub-header (auto-updates after login/logout) - Fixed */}
             {user && (
-              <div className="bg-gradient-to-r from-green-700 to-emerald-700 text-white flex justify-between items-center px-6 py-3 border-b-2 border-green-900 shadow-md flex-shrink-0 sticky top-[72px] z-40">
+              <div className="bg-gradient-to-r from-green-700 to-emerald-700 text-white flex flex-col sm:flex-row justify-between items-center px-2 sm:px-6 py-2 sm:py-3 border-b-2 border-green-900 shadow-md flex-shrink-0 sticky top-[72px] z-40 w-full">
       {/* Left side: user info */}
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-xs sm:text-sm font-semibold w-full sm:w-auto justify-center sm:justify-start">
       <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-full shadow-md">
          {user.business_name}
       </span>
@@ -215,11 +216,11 @@ export default function RootLayout({ children }) {
     </div>
 
     {/* Right side: Navigation buttons - flex-end to push to right */}
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1 sm:gap-2 w-full sm:w-auto justify-center sm:justify-end mt-2 sm:mt-0">
       {/* Home Button */}
       <button
         onClick={handleHome}
-        className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg"
+        className="bg-amber-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-md hover:bg-amber-700 transition text-xs sm:text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg"
       >
         🏠 {t.home || 'Home'}
       </button>
@@ -227,7 +228,7 @@ export default function RootLayout({ children }) {
       {/* Settings Button */}
       <button
         onClick={handleSettings}
-        className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 transition text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg"
+        className="bg-cyan-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-md hover:bg-cyan-700 transition text-xs sm:text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg"
       >
         ⚙️ {t.settings || 'Settings'}
       </button>
@@ -235,7 +236,7 @@ export default function RootLayout({ children }) {
       {/* Logout Button */}
       <button
         onClick={handleLogout}
-        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg"
+        className="bg-red-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-md hover:bg-red-700 transition text-xs sm:text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg"
       >
         🚪 {t.logout || 'Logout'}
       </button>
@@ -243,7 +244,7 @@ export default function RootLayout({ children }) {
       {/* Profile Button - Extreme Right */}
       <button
         onClick={handleProfile}
-        className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg ml-auto"
+        className="bg-yellow-500 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-md hover:bg-yellow-600 transition text-xs sm:text-sm font-semibold cursor-pointer shadow-md hover:shadow-lg ml-auto"
       >
         👤 {t.profile || 'Profile'}
       </button>
@@ -252,10 +253,10 @@ export default function RootLayout({ children }) {
             )}
 
             {/* Main content - Scrollable area */}
-            <main className="flex-grow overflow-y-auto">{children}</main>
+            <main className="flex-grow overflow-y-auto min-w-0 px-1 sm:px-0">{children}</main>
 
             {/* Footer - Fixed at bottom of scrollable area */}
-            <footer className="bg-gray-200 text-gray-700 text-center p-4 flex-shrink-0">
+            <footer className="bg-gray-200 text-gray-700 text-center p-2 sm:p-4 flex-shrink-0 text-xs sm:text-sm">
               © 2025 Agri Files. All rights reserved.
             </footer>
           </div>

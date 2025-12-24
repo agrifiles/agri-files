@@ -8,6 +8,97 @@ router.get('/ping', (req, res) => {
   return res.json({ ok: true, msg: 'files router alive' });
 });
 
+// GET /api/files/companies/list/:userId - Get user's linked companies from company_link table
+router.get('/companies/list/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'userId is required' });
+    }
+
+    // Query company_link table to get companies linked to this user
+    const { rows } = await pool.query(
+      `SELECT 
+        cl.link_id,
+        cl.company_id,
+        cl.user_id,
+        cl.company_slot,
+        cl.designation,
+        cl.engineer_name,
+        co.company_name,
+        co.mobile
+       FROM company_link cl
+       JOIN company_oem co ON cl.company_id = co.company_id
+       WHERE cl.user_id = $1
+       ORDER BY cl.company_slot ASC`,
+      [userId]
+    );
+
+    return res.json({ success: true, companies: rows });
+  } catch (err) {
+    console.error('fetch user companies err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// GET /api/files/products/:userId - Get products for billing (filter by user and optionally by company)
+router.get('/products/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { companyId } = req.query;
+    
+    console.log('=== GET /api/files/products DEBUG ===');
+    console.log('userId from params:', userId, 'Type:', typeof userId);
+    console.log('companyId from query:', companyId, 'Type:', typeof companyId);
+    
+    if (!userId || userId === 'null' || userId === 'undefined') {
+      console.error('❌ userId is missing or invalid');
+      return res.status(400).json({ success: false, error: 'userId is required' });
+    }
+
+    if (companyId) {
+      // Filter by both user AND company (spare1 = userId AND spare2 = companyId)
+      const userIdText = String(userId);
+      const companyIdText = String(companyId);
+      
+      console.log(`✅ Fetching products for userId=${userIdText}, companyId=${companyIdText}`);
+      
+      const query = `
+        SELECT *
+        FROM products
+        WHERE is_deleted = FALSE
+          AND spare1 = $1
+          AND spare2 = $2
+        ORDER BY product_id DESC
+      `;
+      const result = await pool.query(query, [userIdText, companyIdText]);
+      console.log(`Found ${result.rows.length} products for user+company`);
+      return res.json({ success: true, products: result.rows });
+    } else {
+      // Filter by user only (spare1 = userId OR spare1 = 'master_User')
+      const userIdText = String(userId);
+      
+      console.log(`✅ Fetching products for userId=${userIdText} (with master_User)`);
+      
+      const query = `
+        SELECT *
+        FROM products
+        WHERE is_deleted = FALSE
+          AND (spare1 = $1 OR spare1 = 'master_User')
+        ORDER BY product_id DESC
+      `;
+      const result = await pool.query(query, [userIdText]);
+      console.log(`Found ${result.rows.length} products for user`);
+      console.log('Sample products spare1 values:', result.rows.slice(0, 3).map(p => ({ product_id: p.product_id, spare1: p.spare1 })));
+      return res.json({ success: true, products: result.rows });
+    }
+  } catch (err) {
+    console.error('fetch products err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // Map front-end form keys to DB column names
 function mapFormToDb(form = {}) {
   return {
@@ -39,6 +130,14 @@ function mapFormToDb(form = {}) {
     pump_type: form.pumpType || null,
     two_nozzel_distance: form.twoNozzelDistance || null,
     bill_amount: form.billAmount || null,
+    bank_name: form.bankName || null,
+    account_name: form.accountName || null,
+    account_number: form.accountNumber || null,
+    ifsc: form.ifsc || null,
+    bank_branch: form.bankBranch || null,
+    is_common_area: form.isCommonArea ?? false,
+    scheme_name: form.schemeName || null,
+    giver_names: form.giverNames || null,
     w1_name: form.w1Name || null,
     w1_village: form.w1Village || null,
     w1_taluka: form.w1Taluka || null,
@@ -48,7 +147,8 @@ function mapFormToDb(form = {}) {
     w2_taluka: form.w2Taluka || null,
     w2_district: form.w2District || null,
     place: form.place || null,
-    file_date: form.fileDate || null
+    file_date: form.fileDate || null,
+    file_type: form.fileType || null
   };
 }
 
@@ -57,9 +157,30 @@ router.post('/', async (req, res) => {
   try {
     // If you have auth middleware, req.user.id can be used as owner_id
     const userId = req.body.owner_id || null;
+    
+    // Check if user is verified
+    if (userId) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [userId]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
+
     const { title = null, form = {}, shapes = {} } = req.body;
     const mapped = mapFormToDb(form);
     const shapes_json = JSON.stringify(shapes || []);
+
+    console.log('=== FILE CREATE - BACKEND DEBUG ===');
+    console.log('User ID:', userId);
+    console.log('Title:', title);
+    console.log('Shapes count:', Array.isArray(shapes) ? shapes.length : 0);
+    if (Array.isArray(shapes) && shapes.length > 0) {
+      console.log('Shape types:', shapes.map(s => s.type).join(', '));
+      console.log('First shape:', shapes[0]);
+      console.log('Last shape:', shapes[shapes.length - 1]);
+    }
+    console.log('Shapes JSON length:', shapes_json.length);
+    console.log('=== END BACKEND DEBUG ===');
 
     const fields = ['owner_id', 'title', 'shapes_json', ...Object.keys(mapped)];
     const values = [userId, title, shapes_json, ...Object.values(mapped)];
@@ -78,7 +199,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id || null;
+    const userId = req.user?.id || req.body.owner_id || null;
+
+    // Check if user is verified
+    if (userId) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [userId]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
 
     // Optional: check ownership (uncomment to enforce)
     // const ownerCheck = await pool.query('SELECT owner_id FROM files WHERE id=$1', [id]);
@@ -87,6 +216,15 @@ router.put('/:id', async (req, res) => {
 
     const { title, form = {}, shapes } = req.body;
     const mapped = mapFormToDb(form);
+
+    console.log('=== FILE UPDATE - BACKEND DEBUG ===');
+    console.log('File ID:', id);
+    console.log('Shapes count:', Array.isArray(shapes) ? shapes.length : 0);
+    if (Array.isArray(shapes) && shapes.length > 0) {
+      console.log('Shape types:', shapes.map(s => s.type).join(', '));
+      console.log('First shape:', shapes[0]);
+    }
+    console.log('=== END UPDATE DEBUG ===');
 
     const updates = [];
     const values = [];
@@ -117,11 +255,104 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// POST /api/files/:id/delete - Soft delete (sets status to 'deleted')
+// router.post('/:id/delete', async (req, res) => {
+//   try {
+//     console.log('Soft delete request for file id:', req.params.id);
+//     const id = req.params.id;
+//     const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
+    
+//     // Soft delete: set status to 'deleted'
+//     const result = await pool.query(
+//       'UPDATE files SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING id',
+//       ['deleted', id]
+//     );
+
+//     console.log('✅ File soft deleted (id):', id);
+//     if (!result.rows.length) {
+//       return res.status(404).json({ success: false, error: 'File not found' });
+//     }
+
+//     return res.json({ success: true, message: 'File deleted successfully' });
+//   } catch (err) {
+//     console.error('❌ Soft delete file err', err);
+//     return res.status(500).json({ success: false, error: 'Server error' });
+//   }
+// });
+
+router.post('/:id/delete', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const fileId = parseInt(req.params.id, 10);
+
+    await client.query('BEGIN');
+
+    // 1️⃣ Soft delete file & fetch owner_id + bill_no
+    const { rows } = await client.query(
+      `
+      UPDATE files
+      SET status = 'deleted',
+          updated_at = NOW()
+      WHERE id = $1
+        AND status <> 'deleted'
+      RETURNING id, owner_id, bill_no
+      `,
+      [fileId]
+    );
+
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: 'File not found or already deleted'
+      });
+    }
+
+    const { owner_id, bill_no } = rows[0];
+
+    // 2️⃣ Delete bill(s) safely using composite condition
+    if (bill_no) {
+      await client.query(
+        `
+        DELETE FROM bills
+        WHERE owner_id = $1
+          AND bill_no = $2
+        `,
+        [owner_id, bill_no]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    console.log('✅ File soft-deleted and related bill removed:', {
+      fileId,
+      owner_id,
+      bill_no
+    });
+
+    return res.json({
+      success: true,
+      message: 'File deleted and bill cleaned up successfully'
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('❌ Delete file err', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Server error'
+    });
+  } finally {
+    client.release();
+  }
+});
+
+
 // GET /api/files/:id  -> fetch file (handy for rehydration)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM files WHERE id=$1', [id]);
+    const { rows } = await pool.query('SELECT * FROM files WHERE id=$1 order by file_date desc', [id]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     return res.json({ success: true, file: rows[0] });
   } catch (err) {
@@ -204,6 +435,11 @@ router.get('/', async (req, res) => {
     const params = [];
     let idx = 1;
 
+    // Always exclude deleted files unless specifically querying for deleted status
+    if (!status || status !== 'deleted') {
+      where.push(`status != 'deleted'`);
+    }
+
     if (ownerId) {
       where.push(`owner_id = $${idx++}`);
       params.push(ownerId);
@@ -262,30 +498,6 @@ router.get('/:id', async (req, res) => {
 });
 
 
-// router.delete('/:id', async (req, res) => {
-//   try {
-//     const id = req.params.id;
-//     // you may want to check ownership before deleting:
-//     // const ownerCheck = await pool.query('SELECT owner_id FROM files WHERE id=$1',[id]);
-//     // if (!ownerCheck.rows[0] || ownerCheck.rows[0].owner_id !== req.user?.id) return res.status(403).json({success:false, error:'Forbidden'});
+// POST /api/files/:id/delete - Soft delete (sets status to 'deleted')
 
-// GET /api/files/companies/list
-// Fetch all companies with engineer details from company_oem table
-router.get('/companies/list', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT company_id, company_name, engineer_name, designation, mobile FROM company_oem ORDER BY company_name');
-    return res.json({ success: true, companies: rows });
-  } catch (err) {
-    console.error('fetch companies err', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
-
-//     await pool.query('DELETE FROM files WHERE id=$1', [id]);
-//     return res.json({ success: true });
-//   } catch (err) {
-//     console.error('delete file err', err);
-//     return res.status(500).json({ success: false, error: 'Server error' });
-//   }
-// });
 module.exports = router;

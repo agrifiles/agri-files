@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -15,7 +15,7 @@
     "html2pdf.js": "^0.12.1",
     "jspdf": "^3.0.3",
     "konva": "^10.0.2",
-    "next": "15.5.4",
+    "next": "15.5.7",
     "pdf-lib": "^1.17.1",
     "pdfmake": "^0.2.20",
     "react": "19.1.0",

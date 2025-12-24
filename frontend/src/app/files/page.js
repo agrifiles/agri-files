@@ -1,19 +1,71 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE, getCurrentUserId } from '../../lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { LangContext } from '../layout';
 
 function FilesPageContent() {
   const router = useRouter();
+  const langContext = useContext(LangContext);
+  const { lang, t } = langContext || { lang: 'en', t: {} };
 
   const API = API_BASE 
-  const [files, setFiles] = useState([]);
+  const [allFiles, setAllFiles] = useState([]);  // Store all files from API
+  const [files, setFiles] = useState([]);        // Filtered files for display
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [ownerId, setOwnerId] = useState(null);    // local user id
+  const [selectedFY, setSelectedFY] = useState('all'); // Financial year filter
+  const [fyOptions, setFyOptions] = useState([]);      // Available financial years
+
+  // Helper to get financial year from a date (April to March)
+  const getFinancialYear = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return null;
+      const year = date.getFullYear();
+      const month = date.getMonth(); // 0-indexed (0=Jan, 3=April)
+      // If month is April (3) or later, FY is current year - next year
+      // If month is before April, FY is previous year - current year
+      if (month >= 3) { // April onwards
+        return `${year}-${(year + 1).toString().slice(-2)}`;
+      } else {
+        return `${year - 1}-${year.toString().slice(-2)}`;
+      }
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Generate list of unique financial years from files
+  const generateFYOptions = (filesList) => {
+    const fySet = new Set();
+    filesList.forEach(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      const fy = getFinancialYear(fileDate);
+      if (fy) fySet.add(fy);
+    });
+    // Sort in descending order (latest FY first)
+    const sorted = Array.from(fySet).sort((a, b) => {
+      const yearA = parseInt(a.split('-')[0]);
+      const yearB = parseInt(b.split('-')[0]);
+      return yearB - yearA;
+    });
+    return sorted;
+  };
+
+  // Filter files based on selected financial year
+  const filterFilesByFY = (filesList, fy) => {
+    if (fy === 'all') return filesList;
+    return filesList.filter(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      return getFinancialYear(fileDate) === fy;
+    });
+  };
 
   // Helper to format date to readable format
   const formatDate = (dateStr) => {
@@ -53,7 +105,22 @@ function FilesPageContent() {
       const fText = await fRes.text();
       let fJson = null;
       try { fJson = JSON.parse(fText); } catch (_) {}
-      const filesList = fJson?.files || [];
+      let filesList = fJson?.files || [];
+
+      // Sort files by file_date (oldest first, new files at bottom)
+      // OLD LOGIC: Sort by created_at (commented below)
+      // filesList.sort((a, b) => {
+      //   const dateA = new Date(a.created_at || 0);
+      //   const dateB = new Date(b.created_at || 0);
+      //   return dateA.getTime() - dateB.getTime(); // Oldest first (new at bottom)
+      // });
+
+      // NEW LOGIC: Sort by file_date (oldest at top)
+      filesList.sort((a, b) => {
+        const dateA = new Date(a.file_date || a.fileDate || 0);
+        const dateB = new Date(b.file_date || b.fileDate || 0);
+        return dateA.getTime() - dateB.getTime(); // Oldest first (top)
+      });
 
       const bRes = await fetch(`${API}/api/bills?owner_id=${ownerId}`);
       const bText = await bRes.text();
@@ -61,7 +128,12 @@ function FilesPageContent() {
       try { bJson = JSON.parse(bText); } catch (_) {}
       const billsList = bJson?.bills || [];
 
-      setFiles(filesList);
+      // Store all files and generate FY options
+      setAllFiles(filesList);
+      setFyOptions(generateFYOptions(filesList));
+      
+      // Apply current filter
+      setFiles(filterFilesByFY(filesList, selectedFY));
       setBills(billsList);
     } catch (err) {
       console.error("LOAD ERROR", err);
@@ -74,6 +146,13 @@ function FilesPageContent() {
   useEffect(() => {
     if (ownerId) loadData();
   }, [ownerId]);
+
+  // Apply filter when selectedFY changes (local filtering, no API call)
+  useEffect(() => {
+    if (allFiles.length > 0) {
+      setFiles(filterFilesByFY(allFiles, selectedFY));
+    }
+  }, [selectedFY, allFiles]);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -138,7 +217,7 @@ function FilesPageContent() {
     if (!confirm("Delete this file?")) return;
 
     try {
-      const res = await fetch(`${API}/api/files/${fileId}`, { method: "DELETE" });
+      const res = await fetch(`${API}/api/files/${fileId}/delete`, { method: "POST" });
       if (!res.ok) {
         alert("Delete failed");
         return;
@@ -151,31 +230,169 @@ function FilesPageContent() {
     }
   };
 
+  // Calculate insights
+  const getInsights = () => {
+    const totalFiles = allFiles.length;
+    
+    // Files in current month
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const filesThisMonth = allFiles.filter(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      if (!fileDate) return false;
+      const date = new Date(fileDate);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }).length;
+
+    // Get latest file date
+    let latestDate = null;
+    if (allFiles.length > 0) {
+      const dates = allFiles
+        .map(f => f.file_date ?? f.fileDate)
+        .filter(d => d)
+        .map(d => new Date(d))
+        .filter(d => !isNaN(d.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime());
+      if (dates.length > 0) latestDate = dates[0];
+    }
+
+    // Files by last 3 months
+    const filesByMonth = {};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    for (let i = 0; i < 3; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthKey = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      filesByMonth[monthKey] = 0;
+    }
+
+    allFiles.forEach(f => {
+      const fileDate = f.file_date ?? f.fileDate;
+      if (!fileDate) return;
+      const date = new Date(fileDate);
+      if (isNaN(date.getTime())) return;
+      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      if (filesByMonth[monthKey] !== undefined) {
+        filesByMonth[monthKey]++;
+      }
+    });
+
+    return { totalFiles, filesThisMonth, latestDate, filesByMonth };
+  };
+
+  const insights = getInsights();
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Files</h1>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">{t.files}</h1>
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:cursor-pointer transition"
+          className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 hover:cursor-pointer transition"
           onClick={() => router.push('/new')}
         >
-          + New File
+          + {t.newFile}
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl shadow-lg border border-gray-200">
-        <table className="min-w-full bg-white">
+      {/* Insights Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-4 mb-6">
+        {/* Total Files Card */}
+        <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-blue-500">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t.totalFiles}</div>
+              <div className="text-3xl md:text-4xl font-bold text-gray-800">{insights.totalFiles}</div>
+            </div>
+            <div className="text-3xl md:text-4xl">📁</div>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-300 rounded-full"></div>
+          <div className="text-xs text-gray-500 mt-2 font-medium">{t.allTime}</div>
+        </div>
+
+        {/* Files This Month Card */}
+        <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-emerald-500">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t.thisMonth}</div>
+              <div className="text-3xl md:text-4xl font-bold text-gray-800">{insights.filesThisMonth}</div>
+            </div>
+            <div className="text-3xl md:text-4xl">📅</div>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full"></div>
+          <div className="text-xs text-gray-500 mt-2 font-medium">
+            {new Date().toLocaleDateString('en-IN', { month: 'short' })}
+          </div>
+        </div>
+
+        {/* Latest File Date Card */}
+        <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-amber-500">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t.latestFile}</div>
+              <div className="text-3xl md:text-4xl font-bold text-gray-800">
+                {insights.latestDate ? insights.latestDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '-'}
+              </div>
+            </div>
+            <div className="text-3xl md:text-4xl">⚡</div>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-amber-500 to-amber-300 rounded-full"></div>
+          <div className="text-xs text-gray-500 mt-2 font-medium">
+            {insights.latestDate ? insights.latestDate.getFullYear() : t.noFiles}
+          </div>
+        </div>
+
+        {/* Quick Stats Card */}
+        <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-violet-500">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t.byMonth}</div>
+            </div>
+            <div className="text-3xl md:text-4xl">📊</div>
+          </div>
+          <div className="space-y-1.5 text-xs">
+            {Object.entries(insights.filesByMonth).slice(0, 2).map(([month, count]) => (
+              <div key={month} className="flex justify-between items-center text-gray-700">
+                <span className="text-gray-600 font-medium">{month}</span>
+                <span className="font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded">{count}</span>
+              </div>
+            ))}
+          </div>
+          <div className="h-1 bg-gradient-to-r from-violet-500 to-violet-300 rounded-full mt-2"></div>
+        </div>
+      </div>
+
+      {/* Financial Year Filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <label className="text-sm font-medium text-gray-700">{t.financialYear}:</label>
+        <select
+          value={selectedFY}
+          onChange={(e) => setSelectedFY(e.target.value)}
+          className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        >
+          <option value="all">{t.all || 'All'}</option>
+          {fyOptions.map(fy => (
+            <option key={fy} value={fy}>FY {fy}</option>
+          ))}
+        </select>
+        <span className="text-xs text-gray-500">
+          {t.showing} {files.length} {t.of} {allFiles.length} {t.files}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200">
+        <table className="w-full bg-white min-w-max md:min-w-full">
           
           {/* Table Head */}
-          <thead className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+          <thead className="bg-gradient-to-r from-green-800 to-green-600 text-white hidden md:table-header-group">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Farmer</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Mobile</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">File Date</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Bill No</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.srNo}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.farmer}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.mobile}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.fileDate}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.billNo}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.actions}</th>
             </tr>
           </thead>
 
@@ -209,7 +426,6 @@ function FilesPageContent() {
               const linkedBill = bills.find(b => {
                 const bid = b.bill_id ?? b.id;
                 const bFileId = b.file_id ?? b.fileId;
-                // Match either by bill's file_id pointing to this file, explicit file.bill_id, or by bill_no equality
                 return bFileId === id || bid === f.bill_id || (b.bill_no && f.bill_no && b.bill_no === f.bill_no);
               });
               const billNo = linkedBill?.bill_no ?? f.bill_no ?? "-";
@@ -218,56 +434,46 @@ function FilesPageContent() {
               return (
                 <tr
                   key={id}
-                  className={`hover:bg-gray-50 transition ${
-                    i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  className={`block md:table-row mb-4 md:mb-0 border md:border-none rounded-lg md:rounded-none overflow-hidden ${
+                    i % 2 === 0 ? 'bg-green-50' : 'bg-green-100'
                   }`}
                 >
-                  <td className="px-4 py-3 text-sm text-gray-700">{id}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{farmerName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{mobile}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{formatDate(fileDate)}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{billNo}</td>
-                  
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        billStatus === 'final'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {billStatus}
-                    </span>
-                  </td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Sr_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{i + 1}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Farmer:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{farmerName}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Mobile:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{mobile}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Date:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{formatDate(fileDate)}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm font-semibold text-gray-800 before:content-['Bill_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{billNo}</td>
 
-                  <td className="px-4 py-3 flex gap-2">
-                    <button
-                      onClick={() => editFile(id)}
-                      className="text-blue-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-blue-800 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
+                  <td className="block md:table-cell px-4 py-3">
+                    <div className="flex flex-wrap gap-2 md:gap-2">
+                      <button
+                        onClick={() => editFile(id)}
+                        className="flex-1 md:flex-auto text-blue-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-blue-800 text-xs md:text-sm font-medium"
+                      >
+                        {t.edit}
+                      </button>
 
-                    <button
-                      onClick={() => openBillModal(id, f.bill_id)}
-                      className="text-purple-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-purple-800 text-sm font-medium"
-                    >
-                      {linkedBill ? "Update Bill" : "Link Bill"}
-                    </button>
+                      <button
+                        onClick={() => router.push(`/new?id=${id}&section=bill`)}
+                        className="flex-1 md:flex-auto text-purple-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-purple-800 text-xs md:text-sm font-medium"
+                      >
+                        {t.linkBill}
+                      </button>
 
-                    <button
-                      onClick={() => router.push(`/files/print/${id}`)}
-                      className="text-green-600 rounded-full border px-3 py-0 hover:cursor-pointer hover:text-green-800 text-sm font-medium"
-                    >
-                      Print
-                    </button>
+                      <button
+                        onClick={() => router.push(`/files/print/${id}`)}
+                        className="flex-1 md:flex-auto text-green-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-green-800 text-xs md:text-sm font-medium"
+                      >
+                        {t.quotationFeaturePrint}
+                      </button>
 
-                    <button
-                      onClick={() => deleteFile(id)}
-                      className="text-red-600 rounded-full border px-3 py-0 hover:text-red-900 hover:cursor-pointer text-sm font-medium"
-                    >
-                      Delete
-                    </button>
+                      {/* <button
+                        onClick={() => deleteFile(id)}
+                        className="flex-1 md:flex-auto text-red-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:text-red-900 hover:cursor-pointer text-xs md:text-sm font-medium"
+                      >
+                        Delete
+                      </button> */}
+                    </div>
                   </td>
                 </tr>
               );
@@ -282,19 +488,19 @@ function FilesPageContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
             <h2 className="text-xl font-bold mb-4 text-gray-800">
-              {(files.find(f => f.id === modalFileId)?.bill_no || bills.find(b => (b.file_id ?? b.fileId) === modalFileId)) ? "Update Bill" : "Link Bill"}
+              {t.linkBill}
             </h2>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Bill
+                {t.selectBill}
               </label>
               <select
                 value={selectedBillId}
                 onChange={(e) => setSelectedBillId(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                <option value="">-- Select a bill --</option>
+                <option value="">-- {t.selectBill} --</option>
                 {bills.map(b => (
                   <option key={b.bill_id ?? b.id} value={b.bill_id ?? b.id}>
                     {b.bill_no} - {b.farmer_name}
@@ -309,15 +515,15 @@ function FilesPageContent() {
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                 disabled={isLinking}
               >
-                Cancel
+                {t.close}
               </button>
-              <button
+              {/* <button
                 onClick={linkBill}
                 className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
                 disabled={isLinking || !selectedBillId}
               >
                 {isLinking ? "Linking..." : "Link"}
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

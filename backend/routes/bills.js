@@ -18,6 +18,162 @@ async function ensureBillsCols() {
 
 router.get('/ping', (req, res) => res.json({ ok: true, msg: 'bills router alive' }));
 
+// GET /api/bills/next-bill-no?owner_id=..&month=..&year=..
+// Returns the next bill number for the given owner and month/year
+// NEW LOGIC: Sequence resets only on 1st April (start of FY), continues throughout the financial year
+// router.get('/next-bill-no', async (req, res) => {
+//   try {
+//     const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
+//     const month = parseInt(req.query.month, 10); // 1-12
+//     const year = parseInt(req.query.year, 10);   // e.g., 2025
+
+//     if (!ownerId || !month || !year) {
+//       return res.status(400).json({ success: false, error: 'owner_id, month, and year are required' });
+//     }
+
+//     // Month names for bill number format
+//     const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+//     const monthStr = monthNames[month - 1];
+//     const prefix = `${year}${monthStr}_`; // e.g., "2025DEC_"
+
+//     // ===== NEW FY-BASED LOGIC =====
+//     // Financial Year runs from April to March
+//     // Determine FY start year: if month >= 4 (Apr-Dec), FY starts this year; if month <= 3 (Jan-Mar), FY started previous year
+//     const fyStartYear = month >= 4 ? year : year - 1;
+//     const fyEndYear = fyStartYear + 1;
+    
+//     // Build list of all month prefixes in this FY (Apr YYYY to Mar YYYY+1)
+//     // FY months: Apr(4), May(5), Jun(6), Jul(7), Aug(8), Sep(9), Oct(10), Nov(11), Dec(12) of fyStartYear
+//     //            Jan(1), Feb(2), Mar(3) of fyEndYear
+//     const fyPrefixes = [];
+//     // Apr to Dec of start year
+//     for (let m = 4; m <= 12; m++) {
+//       fyPrefixes.push(`${fyStartYear}${monthNames[m - 1]}_%`);
+//     }
+//     // Jan to Mar of end year
+//     for (let m = 1; m <= 3; m++) {
+//       fyPrefixes.push(`${fyEndYear}${monthNames[m - 1]}_%`);
+//     }
+    
+//     // Find the latest bill_no for this owner across entire FY
+//     // Use OR conditions to match any FY month prefix
+//     const likeConditions = fyPrefixes.map((_, idx) => `bill_no LIKE $${idx + 2}`).join(' OR ');
+//     const sql = `
+//       SELECT bill_no FROM bills 
+//       WHERE owner_id = $1 
+//         AND (${likeConditions})
+//       ORDER BY 
+//         CASE 
+//           WHEN bill_no ~ '^[0-9]{4}(APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)_' THEN 1
+//           WHEN bill_no ~ '^[0-9]{4}(JAN|FEB|MAR)_' THEN 2
+//         END,
+//    CAST(SPLIT_PART(bill_no, '_', 2) AS INTEGER) DESC
+
+//       LIMIT 1
+//     `;
+//     const { rows } = await pool.query(sql, [ownerId, ...fyPrefixes]);
+// console.log( Date.now() ,'FY Prefixes:', fyPrefixes, 'SQL:', sql, 'Params:', [ownerId, ...fyPrefixes], 'Result Rows:', rows);
+//     let nextSeq = 1;
+//     if (rows.length > 0 && rows[0].bill_no) {
+//       // Extract sequence from bill_no like "2025DEC_05"
+//       const lastBillNo = rows[0].bill_no;
+//       const parts = lastBillNo.split('_');
+//       if (parts.length >= 2) {
+//         const lastSeq = parseInt(parts[parts.length - 1], 10);
+//         if (!isNaN(lastSeq)) {
+//           nextSeq = lastSeq + 1;
+//         }
+//       }
+//     }
+//     // ===== END NEW FY-BASED LOGIC =====
+
+//     /* ===== OLD MONTHLY RESET LOGIC (commented out) =====
+//     // Find the latest bill_no for this owner with matching prefix (resets each month)
+//     const sql = `
+//       SELECT bill_no FROM bills 
+//       WHERE owner_id = $1 
+//         AND bill_no LIKE $2
+//       ORDER BY bill_no DESC
+//       LIMIT 1
+//     `;
+//     const { rows } = await pool.query(sql, [ownerId, `${prefix}%`]);
+
+//     let nextSeq = 1;
+//     if (rows.length > 0 && rows[0].bill_no) {
+//       // Extract sequence from bill_no like "2025DEC_05"
+//       const lastBillNo = rows[0].bill_no;
+//       const parts = lastBillNo.split('_');
+//       if (parts.length >= 2) {
+//         const lastSeq = parseInt(parts[parts.length - 1], 10);
+//         if (!isNaN(lastSeq)) {
+//           nextSeq = lastSeq + 1;
+//         }
+//       }
+//     }
+//     ===== END OLD LOGIC ===== */
+
+//     // Format: 2025DEC_01, 2025DEC_02, etc. (still uses current month in prefix)
+//     const nextBillNo = `${prefix}${String(nextSeq).padStart(2, '0')}`;
+
+//     return res.json({ success: true, bill_no: nextBillNo, sequence: nextSeq, fy: `${fyStartYear}-${fyEndYear}` });
+//   } catch (err) {
+//     console.error('get next-bill-no err', err);
+//     return res.status(500).json({ success: false, error: 'Server error' });
+//   }
+// });
+
+router.get('/next-bill-no', async (req, res) => {
+  try {
+    const ownerId = parseInt(req.query.owner_id, 10);
+    const month = parseInt(req.query.month, 10);
+    const year = parseInt(req.query.year, 10);
+
+    if (!ownerId || !month || !year) {
+      return res.status(400).json({ success: false, error: 'owner_id, month, and year are required' });
+    }
+
+    const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const monthStr = monthNames[month - 1];
+    const prefix = `${year}${monthStr}_`;
+
+    // FY logic
+    const fyStartYear = month >= 4 ? year : year - 1;
+    const fyEndYear = fyStartYear + 1;
+
+    const fyPrefixes = [];
+    for (let m = 4; m <= 12; m++) {
+      fyPrefixes.push(`${fyStartYear}${monthNames[m - 1]}_%`);
+    }
+    for (let m = 1; m <= 3; m++) {
+      fyPrefixes.push(`${fyEndYear}${monthNames[m - 1]}_%`);
+    }
+
+    const sql = `
+      SELECT MAX(CAST(SPLIT_PART(bill_no, '_', 2) AS INTEGER)) AS max_seq
+      FROM bills
+      WHERE owner_id = $1
+        AND bill_no LIKE ANY (ARRAY[${fyPrefixes.map((_, i) => `$${i + 2}`).join(',')}])
+    `;
+
+    const { rows } = await pool.query(sql, [ownerId, ...fyPrefixes]);
+
+    let nextSeq = (rows[0]?.max_seq ?? 0) + 1;
+
+    const nextBillNo = `${prefix}${String(nextSeq).padStart(2, '0')}`;
+console.log( Date.now() , 'SQL:', sql,  'Result Rows:', rows, nextBillNo);
+    return res.json({
+      success: true,
+      bill_no: nextBillNo,
+      sequence: nextSeq,
+      fy: `${fyStartYear}-${fyEndYear}`
+    });
+  } catch (err) {
+    console.error('get next-bill-no err', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+
 // GET /api/bills?owner_id=..&status=..&unlinked=1&file_id=..
 router.get('/', async (req, res) => {
   try {
@@ -53,7 +209,7 @@ router.get('/', async (req, res) => {
     const sql = `
       SELECT * FROM bills
       ${whereSql}
-      ORDER BY bill_date DESC, bill_id DESC
+      ORDER BY updated_at DESC, bill_date DESC, bill_id DESC
       LIMIT $${idx++} OFFSET $${idx++}
     `;
     params.push(limit, offset);
@@ -70,10 +226,12 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const billRes = await pool.query('SELECT * FROM bills WHERE bill_id=$1', [id]);
+    console.log('📋 GET /:id route hit with id:', id);
+    const billRes = await pool.query('SELECT * FROM bills WHERE bill_id=$1 ORDER BY bill_id DESC', [id]);
     if (!billRes.rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     const bill = billRes.rows[0];
-    const itemsRes = await pool.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY item_id', [id]);
+    const itemsRes = await pool.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY product_id ASC', [id]);
+    console.log('📋 Bill items query returned:', itemsRes.rows.length, 'items for bill_id:', id);
     bill.items = itemsRes.rows;
     return res.json({ success: true, bill });
   } catch (err) {
@@ -94,6 +252,16 @@ router.post('/', async (req, res) => {
   const client = await pool.connect();
   try {
     const body = req.body || {};
+    
+    // Check if user is verified
+    const owner_id = body.owner_id ?? body.created_by ?? null;
+    if (owner_id) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [owner_id]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
+
     // Debug: log incoming payload (trim to avoid huge logs)
     try { console.log('POST /api/bills payload:',
          JSON.stringify(body).slice(0, 2000)); } catch(e) { console.log('POST /api/bills payload: [unserializable]'); }
@@ -104,12 +272,14 @@ router.post('/', async (req, res) => {
       farmer_name = null,
       farmer_mobile = null,
       created_by = req.body.created_by || null,
-      items = [],
       file_id = null,
-      status = 'draft'
+      status = 'draft',
+      company_id = null,  // NEW: Company ID for proper bill-company relationship
+      company_slot_no = null  // NEW: Company slot number (1, 2, or 3)
     } = body;
+    // Support both 'items' and 'billItems' from frontend
+    const items = body.items || body.billItems || [];
     // map owner_id for schemas that require it
-    const owner_id = body.owner_id ?? created_by ?? null;
 
     // validate
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -120,7 +290,7 @@ router.post('/', async (req, res) => {
 
     // insert header - only include columns that actually exist in DB to avoid schema mismatch
     const cols = await ensureBillsCols();
-    const headerVals = { bill_no, bill_date, farmer_name, farmer_mobile, file_id, status, created_by, owner_id };
+    const headerVals = { bill_no, bill_date, farmer_name, farmer_mobile, file_id, status, created_by, owner_id, company_id, company_slot_no };
     const insertCols = [];
     const insertParams = [];
     Object.keys(headerVals).forEach((k) => {
@@ -228,9 +398,10 @@ router.post('/', async (req, res) => {
     return res.status(201).json({ success: true, bill: finalBill.rows[0] });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('create bill err', err);
+    console.error('❌ create bill err:', err);
+    console.error('Error Stack:', err.stack);
     // Return error message to aid debugging in dev. Remove message leak in production.
-    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+    return res.status(500).json({ success: false, error: err.message || err.toString() || 'Server error' });
   } finally {
     client.release();
   }
@@ -241,7 +412,19 @@ router.put('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
     const id = req.params.id;
-    const { bill_no, bill_date, farmer_name, farmer_mobile, status = 'draft', items = [], created_by = req.body.created_by || null } = req.body;
+    const { bill_no, bill_date, farmer_name, farmer_mobile, status = 'draft', created_by = req.body.created_by || null, company_id = null, company_slot_no = null } = req.body;
+    
+    // Check if user is verified
+    const owner_id = req.body.owner_id ?? created_by ?? null;
+    if (owner_id) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [owner_id]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
+
+    // Support both 'items' and 'billItems' from frontend
+    const items = req.body.items || req.body.billItems || [];
 
     await client.query('BEGIN');
 
@@ -252,10 +435,29 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Not found' });
     }
 
-    await client.query(
-      `UPDATE bills SET bill_no=$1, bill_date=$2, farmer_name=$3, farmer_mobile=$4, status=$5, updated_at=now() WHERE bill_id=$6`,
-      [bill_no, bill_date, farmer_name, farmer_mobile, status, id]
-    );
+    // Get available columns
+    const cols = await ensureBillsCols();
+    
+    // Build UPDATE query dynamically based on available columns
+    const updateFields = ['bill_no=$1', 'bill_date=$2', 'farmer_name=$3', 'farmer_mobile=$4', 'status=$5', 'updated_at=now()'];
+    const updateParams = [bill_no, bill_date, farmer_name, farmer_mobile, status];
+    
+    let paramIndex = 6;
+    if (cols.includes('company_id') && company_id !== null && company_id !== undefined) {
+      updateFields.push(`company_id=$${paramIndex}`);
+      updateParams.push(company_id);
+      paramIndex++;
+    }
+    if (cols.includes('company_slot_no') && company_slot_no !== null && company_slot_no !== undefined) {
+      updateFields.push(`company_slot_no=$${paramIndex}`);
+      updateParams.push(company_slot_no);
+      paramIndex++;
+    }
+    
+    updateParams.push(id);
+    const updateQuery = `UPDATE bills SET ${updateFields.join(', ')} WHERE bill_id=$${paramIndex}`;
+    
+    await client.query(updateQuery, updateParams);
 
     // delete old items and re-insert (simpler)
     await client.query('DELETE FROM bill_items WHERE bill_id=$1', [id]);
@@ -310,8 +512,9 @@ router.put('/:id', async (req, res) => {
     return res.json({ success: true, bill: b.rows[0] });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('update bill err', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
+    console.error('❌ update bill err:', err);
+    console.error('Error Stack:', err.stack);
+    return res.status(500).json({ success: false, error: err.message || err.toString() || 'Server error' });
   } finally {
     client.release();
   }
@@ -340,7 +543,7 @@ router.post('/:id/duplicate', async (req, res) => {
     const newId = newBillRes.rows[0].bill_id;
 
     // copy items
-    const itemsRes = await client.query('SELECT * FROM bill_items WHERE bill_id=$1', [id]);
+    const itemsRes = await client.query('SELECT * FROM bill_items WHERE bill_id=$1 ORDER BY product_id ASC', [id]);
     for (const it of itemsRes.rows) {
       await client.query(
         `INSERT INTO bill_items (bill_id, product_id, description, hsn, batch_no, cml_no, size, gov_rate, sales_rate, uom, gst_percent, qty, amount, created_at, updated_at)
@@ -370,6 +573,272 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error('delete bill err', err);
     return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// ============================================================================
+// V2 ENDPOINTS - Type-safe bill management
+// ============================================================================
+
+const toNumber = (val) => {
+  if (val === null || val === undefined) return 0;
+  const num = Number(val);
+  return isNaN(num) ? 0 : num;
+};
+
+const toString = (val) => {
+  return val === null || val === undefined ? '' : String(val);
+};
+
+// GET /api/v2/bills?file_id=X&limit=1 (fetch by file_id)
+router.get('/v2', async (req, res) => {
+  try {
+    const { file_id, owner_id, limit = 10 } = req.query;
+    let sql = 'SELECT * FROM bills WHERE 1=1';
+    let params = [];
+
+    if (file_id) {
+      sql += ` AND file_id = $${params.length + 1}`;
+      params.push(toNumber(file_id));
+    }
+    if (owner_id) {
+      sql += ` AND owner_id = $${params.length + 1}`;
+      params.push(toNumber(owner_id));
+    }
+
+    sql += ` ORDER BY bill_id DESC LIMIT $${params.length + 1}`;
+    params.push(toNumber(limit));
+
+    const { rows } = await pool.query(sql, params);
+    return res.json({ success: true, bills: rows });
+  } catch (err) {
+    console.error('Error fetching bills v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// GET /api/v2/bills/:billId
+router.get('/v2/:billId', async (req, res) => {
+  try {
+    const { billId } = req.params;
+    const billIdNum = toNumber(billId);
+
+    if (!billIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid billId' });
+    }
+
+    const billRes = await pool.query(
+      'SELECT * FROM bills WHERE bill_id = $1',
+      [billIdNum]
+    );
+
+    if (billRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Bill not found' });
+    }
+
+    // Fetch bill items
+    const itemsRes = await pool.query(
+      'SELECT * FROM bill_items WHERE bill_id = $1 ORDER BY product_id ASC',
+      [billIdNum]
+    );
+
+    console.log('📦 Bill items query result:', itemsRes.rows.length, 'items for bill_id:', billIdNum);
+
+    const bill = billRes.rows[0];
+    bill.items = itemsRes.rows.map(item => ({
+      ...item,
+      qty: toNumber(item.qty),
+      gov_rate: toNumber(item.gov_rate),
+      sales_rate: toNumber(item.sales_rate),
+      gst_percent: toNumber(item.gst_percent),
+      amount: toNumber(item.amount),
+      product_id: toNumber(item.product_id)
+    }));
+
+    console.log('📦 Returning bill with', bill.items.length, 'items');
+
+    return res.json({ success: true, bill });
+  } catch (err) {
+    console.error('Error fetching bill v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /api/v2/bills - Create new bill
+router.post('/v2', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const {
+      file_id,
+      owner_id,
+      company_id,
+      bill_no,
+      bill_date,
+      farmer_name,
+      farmer_mobile,
+      total_amount,
+      taxable_amount,
+      billItems
+    } = req.body;
+
+    const fileIdNum = toNumber(file_id);
+    const ownerIdNum = toNumber(owner_id);
+    const companyIdNum = toNumber(company_id);
+    const totalAmountNum = toNumber(total_amount);
+    const taxableAmountNum = toNumber(taxable_amount);
+
+    if (!fileIdNum || !ownerIdNum || !companyIdNum) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    await client.query('BEGIN');
+
+    // Delete any existing bill for this file + company
+    await client.query(
+      'DELETE FROM bills WHERE file_id = $1 AND owner_id = $2 AND company_id = $3',
+      [fileIdNum, ownerIdNum, companyIdNum]
+    );
+
+    // Create new bill
+    const billRes = await client.query(
+      `INSERT INTO bills (
+        bill_no, bill_date, file_id, owner_id, company_id,
+        farmer_name, farmer_mobile, total_amount, taxable_amount, status, created_by, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $4, NOW(), NOW())
+      RETURNING *`,
+      [
+        bill_no || null,
+        bill_date || new Date().toISOString().split('T')[0],
+        fileIdNum,
+        ownerIdNum,
+        companyIdNum,
+        farmer_name || '',
+        farmer_mobile || '',
+        totalAmountNum,
+        taxableAmountNum
+      ]
+    );
+
+    const createdBillId = billRes.rows[0].bill_id;
+
+    // Insert bill items (only those with qty > 0)
+    if (billItems && Array.isArray(billItems)) {
+      for (const item of billItems) {
+        const qty = toNumber(item.qty);
+        if (qty > 0) {
+          await client.query(
+            `INSERT INTO bill_items (
+              bill_id, product_id, description, hsn, batch_no, size,
+              gov_rate, sales_rate, uom, gst_percent, qty, amount, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())`,
+            [
+              createdBillId,
+              toNumber(item.product_id),
+              toString(item.description),
+              toString(item.hsn),
+              toString(item.batch_no),
+              toString(item.size),
+              toNumber(item.gov_rate),
+              toNumber(item.sales_rate),
+              toString(item.uom),
+              toNumber(item.gst_percent),
+              qty,
+              toNumber(item.amount)
+            ]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      bill_id: createdBillId,
+      message: 'Bill created successfully'
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error creating bill v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /api/v2/bills/:billId - Update bill
+router.put('/v2/:billId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { billId } = req.params;
+    const { billItems, bill_date, farmer_name, farmer_mobile, total_amount, taxable_amount } = req.body;
+
+    const billIdNum = toNumber(billId);
+    if (!billIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid billId' });
+    }
+
+    const totalAmountNum = toNumber(total_amount);
+    const taxableAmountNum = toNumber(taxable_amount);
+
+    await client.query('BEGIN');
+
+    // Update bill header including amounts
+    await client.query(
+      `UPDATE bills 
+       SET bill_date = COALESCE($1, bill_date),
+           farmer_name = COALESCE($2, farmer_name),
+           farmer_mobile = COALESCE($3, farmer_mobile),
+           total_amount = $4,
+           taxable_amount = $5,
+           updated_at = NOW()
+       WHERE bill_id = $6`,
+      [bill_date || null, farmer_name || null, farmer_mobile || null, totalAmountNum, taxableAmountNum, billIdNum]
+    );
+
+    // Delete existing items and insert new ones
+    await client.query('DELETE FROM bill_items WHERE bill_id = $1', [billIdNum]);
+
+    if (billItems && Array.isArray(billItems)) {
+      for (const item of billItems) {
+        const qty = toNumber(item.qty);
+        if (qty > 0) {
+          await client.query(
+            `INSERT INTO bill_items (
+              bill_id, product_id, description, hsn, batch_no, size,
+              gov_rate, sales_rate, uom, gst_percent, qty, amount, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())`,
+            [
+              billIdNum,
+              toNumber(item.product_id),
+              toString(item.description),
+              toString(item.hsn),
+              toString(item.batch_no),
+              toString(item.size),
+              toNumber(item.gov_rate),
+              toNumber(item.sales_rate),
+              toString(item.uom),
+              toNumber(item.gst_percent),
+              qty,
+              toNumber(item.amount)
+            ]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      message: 'Bill updated successfully'
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating bill v2:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  } finally {
+    client.release();
   }
 });
 
