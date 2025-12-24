@@ -323,6 +323,11 @@ accountBranch: "Branch",
   "goBack": "Go Back",
   "contactUs": "Questions? Feel free to contact us",
   "support": "Support",
+
+  // Account Verification - English
+  "accountNotActive": "Your account is not active. Please contact administrator.",
+  "contactAdmin": "Contact Administrator",
+  "accountNotVerified": "Account Not Verified",
  },
 
 
@@ -639,6 +644,11 @@ fillNewFileFeatureLayout: "शेत लेआउट मॅपिंग",
   "goBack": "परत जा",
   "contactUs": "प्रश्न आहेत? आमच्याशी संपर्क करा",
   "support": "समर्थन",
+
+  // Account Verification - Marathi
+  "accountNotActive": "आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com",
+  "contactAdmin": "प्रशासकांशी संपर्क करा",
+  "accountNotVerified": "खाते सत्यापित नाही",
   "commonArea": "समाईक क्षेत्र संमती पत्र - एका गट नंबरमध्ये अधिक शेतकरी",
   "schemeName": "योजनेचे नाव",
   "giverNames": "लिहून देणाऱ्याची नावे",

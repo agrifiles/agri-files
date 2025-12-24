@@ -157,6 +157,15 @@ router.post('/', async (req, res) => {
   try {
     // If you have auth middleware, req.user.id can be used as owner_id
     const userId = req.body.owner_id || null;
+    
+    // Check if user is verified
+    if (userId) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [userId]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
+
     const { title = null, form = {}, shapes = {} } = req.body;
     const mapped = mapFormToDb(form);
     const shapes_json = JSON.stringify(shapes || []);
@@ -190,7 +199,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id || null;
+    const userId = req.user?.id || req.body.owner_id || null;
+
+    // Check if user is verified
+    if (userId) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [userId]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
 
     // Optional: check ownership (uncomment to enforce)
     // const ownerCheck = await pool.query('SELECT owner_id FROM files WHERE id=$1', [id]);

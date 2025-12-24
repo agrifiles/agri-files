@@ -132,8 +132,7 @@ router.post('/', async (req, res) => {
   const client = await pool.connect();
   try {
     const body = req.body || {};
-    try { console.log('POST /api/quotations payload:', JSON.stringify(body).slice(0, 2000)); } catch(e) { console.log('POST /api/quotations payload: [unserializable]'); }
-
+    
     const {
       quotation_no = null,
       quotation_date = null,
@@ -162,6 +161,16 @@ router.post('/', async (req, res) => {
       sales_engg = null,
       company_name = null
     } = body;
+
+    // Check if user is verified
+    if (owner_id) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [owner_id]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
+
+    try { console.log('POST /api/quotations payload:', JSON.stringify(body).slice(0, 2000)); } catch(e) { console.log('POST /api/quotations payload: [unserializable]'); }
 
     const items = body.items || [];
     //const owner_id = body.owner_id || null;
@@ -263,6 +272,16 @@ router.put('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     const body = req.body || {};
     console.log('PUT /api/quotations/:id with id:', id);
+
+    const owner_id = body.owner_id || null;
+
+    // Check if user is verified
+    if (owner_id) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [owner_id]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
 
     const {
       quotation_no,

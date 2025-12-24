@@ -732,6 +732,13 @@ function NewQuotationPageContent() {
     e.preventDefault();
     if (saving) return;
 
+    // Check if user is verified before allowing quotation creation/update
+    const { isUserVerified } = await import('@/lib/utils');
+    if (!isUserVerified()) {
+      alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
+      return;
+    }
+
     const owner_id = getCurrentUserId();
     if (!owner_id) {
       alert('User not logged in');
@@ -817,6 +824,13 @@ function NewQuotationPageContent() {
   const submitQuotationAndPrint = async (e) => {
     e.preventDefault();
     if (saving) return;
+
+    // Check if user is verified before allowing quotation creation/update/print
+    const { isUserVerified } = await import('@/lib/utils');
+    if (!isUserVerified()) {
+      alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
+      return;
+    }
 
     const owner_id = getCurrentUserId();
     if (!owner_id) {

@@ -379,6 +379,12 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'owner_id required' });
     }
 
+    // Check if user is verified
+    const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [ownerIdNum]);
+    if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+      return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+    }
+
     await client.query('BEGIN');
 
     // 1. Map form to database columns and prepare insert
@@ -484,6 +490,12 @@ router.put('/:fileId', async (req, res) => {
 
     if (!fileIdNum || !ownerIdNum) {
       return res.status(400).json({ success: false, error: 'Invalid params' });
+    }
+
+    // Check if user is verified
+    const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [ownerIdNum]);
+    if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+      return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
     }
 
     // Map form to database columns

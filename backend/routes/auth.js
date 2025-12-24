@@ -135,7 +135,7 @@ router.post('/login', async (req, res) => {
     if (!r.rows.length) return res.status(400).json({ error: 'Invalid credentials' });
 
     const user = r.rows[0];
-    if (!user.is_verified) return res.status(403).json({ error: 'User not verified. Verify OTP first.' });
+    if (!user.is_verified) return res.status(403).json({ error: 'User not verified / Active .  contact admin - 📞 8055554030 or 📧 connect.agrifiles@gmail.com' });
 
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(400).json({ error: 'Invalid credentials' });

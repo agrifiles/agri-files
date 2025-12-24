@@ -252,6 +252,16 @@ router.post('/', async (req, res) => {
   const client = await pool.connect();
   try {
     const body = req.body || {};
+    
+    // Check if user is verified
+    const owner_id = body.owner_id ?? body.created_by ?? null;
+    if (owner_id) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [owner_id]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
+
     // Debug: log incoming payload (trim to avoid huge logs)
     try { console.log('POST /api/bills payload:',
          JSON.stringify(body).slice(0, 2000)); } catch(e) { console.log('POST /api/bills payload: [unserializable]'); }
@@ -270,7 +280,6 @@ router.post('/', async (req, res) => {
     // Support both 'items' and 'billItems' from frontend
     const items = body.items || body.billItems || [];
     // map owner_id for schemas that require it
-    const owner_id = body.owner_id ?? created_by ?? null;
 
     // validate
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -404,6 +413,16 @@ router.put('/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const { bill_no, bill_date, farmer_name, farmer_mobile, status = 'draft', created_by = req.body.created_by || null, company_id = null, company_slot_no = null } = req.body;
+    
+    // Check if user is verified
+    const owner_id = req.body.owner_id ?? created_by ?? null;
+    if (owner_id) {
+      const userCheck = await pool.query('SELECT is_verified FROM users WHERE id = $1', [owner_id]);
+      if (!userCheck.rows[0] || !userCheck.rows[0].is_verified) {
+        return res.status(403).json({ success: false, error: 'Account not verified', accountNotActive: true });
+      }
+    }
+
     // Support both 'items' and 'billItems' from frontend
     const items = req.body.items || req.body.billItems || [];
 

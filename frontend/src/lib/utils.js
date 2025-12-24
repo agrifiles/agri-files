@@ -59,6 +59,15 @@ export function clearCurrentUser() {
 }
 
 /**
+ * Check if current user is verified (is_verified = true)
+ */
+export function isUserVerified() {
+  const user = getCurrentUser();
+  if (!user) return false;
+  return user?.is_verified === true || user?.isVerified === true;
+}
+
+/**
  * Get cached company links for current user from localStorage
  */
 export function getCachedCompanyLinks() {

@@ -5,7 +5,7 @@ import { LangContext } from '../layout';
 import { Stage, Layer, Rect, Circle, Line, Image, Transformer, Arrow, Group } from 'react-konva';
 import useImage from 'use-image';
 import { useRouter, useSearchParams } from 'next/navigation'; // optional navigation
-import { getCurrentUserId, getCurrentUser, API_BASE, getUserCompanyLinks } from '@/lib/utils';
+import { getCurrentUserId, getCurrentUser, API_BASE, getUserCompanyLinks, isUserVerified } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import { districtsEn, districtsMr } from '@/lib/districts';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -1140,6 +1140,12 @@ const submitForm = async (e) => {
 
   if (saving) return; // prevent double submit
 
+  // Check if user is verified before allowing file creation/update
+  if (!isUserVerified()) {
+    alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
+    return;
+  }
+
   // Validate required file fields
   if (!form.fyYear || !form.farmerName || !form.mobile) {
     alert('Please fill in all required file fields (FY Year, Farmer Name, Mobile)');
@@ -1228,7 +1234,12 @@ const submitForm = async (e) => {
 
     if (!fileRes.ok) {
       console.error('❌ File save failed:', fileRes.status, fileText);
-      alert(`File save failed: ${fileRes.status}\nResponse: ${fileText}\nSee console for details.`);
+      // Check for account not verified error
+      if (fileRes.status === 403 && fileData?.accountNotActive) {
+        alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
+      } else {
+        alert(`File save failed: ${fileRes.status}\nResponse: ${fileText}\nSee console for details.`);
+      }
       setSaving(false);
       return;
     }
@@ -1335,7 +1346,11 @@ const submitForm = async (e) => {
       console.error('❌ Bill save failed:', billRes.status);
       console.error('Response:', billText);
       console.error('Parsed Data:', billData);
-      alert(`⚠️ File saved, but Bill save failed: ${billRes.status}\nError: ${billData?.error || billText}`);
+      if (billRes.status === 403 && billData?.accountNotActive) {
+        alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
+      } else {
+        alert(`⚠️ File saved, but Bill save failed: ${billRes.status}\nError: ${billData?.error || billText}`);
+      }
       setSaving(false);
       return;
     }
@@ -1424,6 +1439,12 @@ const submitFormAndPrint = async (e) => {
   e.preventDefault();
 
   if (saving) return; // prevent double submit
+
+  // Check if user is verified before allowing file creation/update/print
+  if (!isUserVerified()) {
+    alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
+    return;
+  }
 
   // Validate required file fields
   if (!form.fyYear || !form.farmerName || !form.mobile) {
