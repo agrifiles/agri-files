@@ -1447,6 +1447,31 @@ const submitForm = async (e) => {
       console.log('✅ Bill created successfully. Bill No:', returnedBillNo);
     } else if (isUpdate) {
       console.log('✅ Bill updated successfully. Bill No:', billNo);
+      
+      // If FY changed, trigger resequencing of bills in original FY to fill gaps
+      const originalFY = originalBillDate ? getFYYear(originalBillDate) : null;
+      const newFY = getFYYear(billDate);
+      
+      if (originalFY !== null && originalFY !== newFY) {
+        console.log(`📅 FY changed (${originalFY} → ${newFY}), triggering resequence for original FY ${originalFY}...`);
+        
+        try {
+          const reseqRes = await fetch(`${API_BASE}/api/v2/bills/resequence-fy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner_id, fy_year: originalFY })
+          });
+          
+          const reseqData = await reseqRes.json();
+          if (reseqData.success) {
+            console.log(`✅ Resequenced ${reseqData.billsUpdated} bills in FY ${originalFY}`);
+          } else {
+            console.error('❌ Resequence failed:', reseqData.error);
+          }
+        } catch (err) {
+          console.error('❌ Error triggering resequence:', err);
+        }
+      }
     }
 
     // ===== VERIFY BILL ITEMS WERE SAVED =====

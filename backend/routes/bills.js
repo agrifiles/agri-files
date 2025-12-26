@@ -842,4 +842,84 @@ router.put('/v2/:billId', async (req, res) => {
   }
 });
 
+// ============================================================================
+// POST /api/v2/bills/resequence-fy
+// Resequence bills in a FY to fill gaps when a bill moves to another FY
+// Body: { owner_id, fy_year }
+// ============================================================================
+router.post('/resequence-fy', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { owner_id, fy_year } = req.body;
+
+    if (!owner_id || !fy_year) {
+      return res.status(400).json({ success: false, error: 'owner_id and fy_year are required' });
+    }
+
+    await client.query('BEGIN');
+
+    // Get all bills for this owner in this FY
+    // FY year is the starting year (e.g., 2025 means Apr 2025 - Mar 2026)
+    const startDate = new Date(fy_year, 3, 1); // Apr 1st of fy_year
+    const endDate = new Date(fy_year + 1, 2, 31); // Mar 31st of fy_year+1
+
+    const billsRes = await client.query(
+      `SELECT bill_id, bill_no FROM bills 
+       WHERE owner_id = $1 
+         AND bill_date >= $2 
+         AND bill_date <= $3
+       ORDER BY CAST(SPLIT_PART(bill_no, '_', 2) AS INTEGER) ASC`,
+      [owner_id, startDate, endDate]
+    );
+
+    const bills = billsRes.rows;
+
+    if (bills.length === 0) {
+      await client.query('ROLLBACK');
+      return res.json({ success: true, message: 'No bills to resequence' });
+    }
+
+    // Extract month and year prefix from first bill to rebuild bill numbers
+    // e.g., "2025DEC_01" → we'll use "2025DEC" as prefix for all bills in this sequence
+    const firstBillNo = bills[0].bill_no;
+    const prefix = firstBillNo.split('_')[0]; // e.g., "2025DEC"
+
+    // Resequence: renumber all bills to 01, 02, 03, etc.
+    for (let i = 0; i < bills.length; i++) {
+      const newSequence = String(i + 1).padStart(2, '0');
+      const newBillNo = `${prefix}_${newSequence}`;
+
+      console.log(`Resequencing: ${bills[i].bill_no} → ${newBillNo}`);
+
+      await client.query(
+        `UPDATE bills SET bill_no = $1, updated_at = NOW() WHERE bill_id = $2`,
+        [newBillNo, bills[i].bill_id]
+      );
+
+      // Also update the file that links to this bill
+      await client.query(
+        `UPDATE files SET bill_no = $1, updated_at = NOW() WHERE bill_no = $2`,
+        [newBillNo, bills[i].bill_no]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    console.log(`✅ Resequenced ${bills.length} bills for FY ${fy_year}`);
+
+    return res.json({
+      success: true,
+      message: `Resequenced ${bills.length} bills`,
+      billsUpdated: bills.length
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('❌ Resequence FY error:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
