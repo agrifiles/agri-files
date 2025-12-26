@@ -41,24 +41,63 @@ function FilesPageContent() {
     }
   };
 
-  // Helper to parse bill_no and extract year and sequence
-  // e.g., "2025DEC_04" → { year: 2025, seq: 4 }
+  // Helper to get FY year from calendar date
+  const getFYFromBillNo = (billNo) => {
+    if (!billNo || billNo === "-") return 0;
+    
+    // Extract year and month from bill_no (e.g., "2025DEC_04" → 2025, DEC)
+    const yearMatch = billNo.match(/^\d+/);
+    const year = yearMatch ? parseInt(yearMatch[0], 10) : 0;
+    
+    const monthMatch = billNo.match(/([A-Z]{3})/);
+    const monthStr = monthMatch ? monthMatch[1] : "";
+    
+    const monthMap = {
+      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
+    };
+    const month = monthMap[monthStr] || 0;
+    
+    // Calculate FY: Apr onwards = same year, Jan-Mar = previous year
+    if (month >= 3) { // Apr onwards
+      return year;
+    } else {
+      return year - 1;
+    }
+  };
+
+  // Helper to parse bill_no and extract year, month, and sequence
+  // e.g., "2025DEC_04" → { year: 2025, month: 11, seq: 4, fy: 2025 }
   const parseBillNo = (billNo) => {
-    if (!billNo || billNo === "-") return { year: 0, seq: 0 };
+    if (!billNo || billNo === "-") return { year: 0, month: 0, seq: 0, fy: 0 };
     
     // Extract year (e.g., "2025" from "2025DEC_04")
     const yearMatch = billNo.match(/^\d+/);
     const year = yearMatch ? parseInt(yearMatch[0], 10) : 0;
     
+    // Extract month abbreviation (e.g., "DEC" from "2025DEC_04")
+    const monthMatch = billNo.match(/([A-Z]{3})/);
+    const monthStr = monthMatch ? monthMatch[1] : "";
+    
+    // Convert month abbreviation to number (JAN=0, FEB=1, ..., DEC=11)
+    const monthMap = {
+      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
+    };
+    const month = monthMap[monthStr] || 0;
+    
     // Extract sequence number (e.g., "04" from "2025DEC_04")
     const seqMatch = billNo.match(/_(\d+)$/);
     const seq = seqMatch ? parseInt(seqMatch[1], 10) : 0;
     
-    console.log(`🔍 Parse "${billNo}" → year:${year}, seq:${seq}`);
-    return { year, seq };
+    // Calculate FY year
+    const fy = month >= 3 ? year : year - 1;
+    
+    console.log(`🔍 Parse "${billNo}" → year:${year}, month:${month}, seq:${seq}, fy:${fy}`);
+    return { year, month, seq, fy };
   };
 
-  // Sort files by bill_no: year → sequence (ignore month)
+  // Sort files by bill_no: year → (month if different FY) → sequence
   const sortFilesByBillNo = (filesList) => {
     console.log('📋 sortFilesByBillNo called with', filesList.length, 'files');
     
@@ -69,6 +108,11 @@ function FilesPageContent() {
     }));
     
     console.log('Before sort:', cleanedFiles.map(f => f.bill_no || '-').join(', '));
+    console.log('=== DETAILED PARSING ===');
+    cleanedFiles.forEach(f => {
+      const data = parseBillNo(f.bill_no);
+      console.log(`${f.bill_no}: year=${data.year}, month=${data.month}, fy=${data.fy}, seq=${data.seq}`);
+    });
     
     const sorted = [...cleanedFiles].sort((a, b) => {
       const aBillNo = a.bill_no || "-";
@@ -82,22 +126,32 @@ function FilesPageContent() {
       const aData = parseBillNo(aBillNo);
       const bData = parseBillNo(bBillNo);
       
-      console.log(`  Compare: ${aBillNo}(y:${aData.year},s:${aData.seq}) vs ${bBillNo}(y:${bData.year},s:${bData.seq})`);
+      console.log(`\n🔄 COMPARING: ${aBillNo} vs ${bBillNo}`);
+      console.log(`  A: year=${aData.year}, month=${aData.month}, fy=${aData.fy}, seq=${aData.seq}`);
+      console.log(`  B: year=${bData.year}, month=${bData.month}, fy=${bData.fy}, seq=${bData.seq}`);
       
-      // First sort by year
+      // First sort by calendar year
       if (aData.year !== bData.year) {
         const result = aData.year - bData.year;
-        console.log(`    → Year diff: ${result}`);
+        console.log(`  → Different YEAR: ${aData.year} vs ${bData.year} = ${result}`);
         return result;
       }
       
-      // Then sort by sequence number
+      // Same calendar year: check if same FY
+      if (aData.fy !== bData.fy) {
+        // Different FY but same year: sort by calendar month
+        const result = aData.month - bData.month;
+        console.log(`  → Different FY (${aData.fy} vs ${bData.fy}), sort by MONTH: ${aData.month} vs ${bData.month} = ${result}`);
+        return result;
+      }
+      
+      // Same FY: sort by sequence only
       const result = aData.seq - bData.seq;
-      console.log(`    → Seq diff: ${result}`);
+      console.log(`  → Same FY (${aData.fy}), sort by SEQUENCE: ${aData.seq} vs ${bData.seq} = ${result}`);
       return result;
     });
     
-    console.log('✅ After sort:', sorted.map(f => f.bill_no || '-').join(', '));
+    console.log('\n✅ After sort:', sorted.map(f => f.bill_no || '-').join(', '));
     return sorted;
   };
 
