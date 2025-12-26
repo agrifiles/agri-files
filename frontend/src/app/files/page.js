@@ -41,6 +41,66 @@ function FilesPageContent() {
     }
   };
 
+  // Helper to parse bill_no and extract year and sequence
+  // e.g., "2025DEC_04" → { year: 2025, seq: 4 }
+  const parseBillNo = (billNo) => {
+    if (!billNo || billNo === "-") return { year: 0, seq: 0 };
+    
+    // Extract year (e.g., "2025" from "2025DEC_04")
+    const yearMatch = billNo.match(/^\d+/);
+    const year = yearMatch ? parseInt(yearMatch[0], 10) : 0;
+    
+    // Extract sequence number (e.g., "04" from "2025DEC_04")
+    const seqMatch = billNo.match(/_(\d+)$/);
+    const seq = seqMatch ? parseInt(seqMatch[1], 10) : 0;
+    
+    console.log(`🔍 Parse "${billNo}" → year:${year}, seq:${seq}`);
+    return { year, seq };
+  };
+
+  // Sort files by bill_no: year → sequence (ignore month)
+  const sortFilesByBillNo = (filesList) => {
+    console.log('📋 sortFilesByBillNo called with', filesList.length, 'files');
+    
+    // Clean bill_no values (handle string "null")
+    const cleanedFiles = filesList.map(f => ({
+      ...f,
+      bill_no: (f.bill_no && f.bill_no !== "null") ? f.bill_no : null
+    }));
+    
+    console.log('Before sort:', cleanedFiles.map(f => f.bill_no || '-').join(', '));
+    
+    const sorted = [...cleanedFiles].sort((a, b) => {
+      const aBillNo = a.bill_no || "-";
+      const bBillNo = b.bill_no || "-";
+      
+      // If no bill number, sort to bottom
+      if (aBillNo === "-" && bBillNo === "-") return 0;
+      if (aBillNo === "-") return 1;
+      if (bBillNo === "-") return -1;
+      
+      const aData = parseBillNo(aBillNo);
+      const bData = parseBillNo(bBillNo);
+      
+      console.log(`  Compare: ${aBillNo}(y:${aData.year},s:${aData.seq}) vs ${bBillNo}(y:${bData.year},s:${bData.seq})`);
+      
+      // First sort by year
+      if (aData.year !== bData.year) {
+        const result = aData.year - bData.year;
+        console.log(`    → Year diff: ${result}`);
+        return result;
+      }
+      
+      // Then sort by sequence number
+      const result = aData.seq - bData.seq;
+      console.log(`    → Seq diff: ${result}`);
+      return result;
+    });
+    
+    console.log('✅ After sort:', sorted.map(f => f.bill_no || '-').join(', '));
+    return sorted;
+  };
+
   // Generate list of unique financial years from files
   const generateFYOptions = (filesList) => {
     const fySet = new Set();
@@ -107,20 +167,13 @@ function FilesPageContent() {
       try { fJson = JSON.parse(fText); } catch (_) {}
       let filesList = fJson?.files || [];
 
-      // Sort files by file_date (oldest first, new files at bottom)
-      // OLD LOGIC: Sort by created_at (commented below)
-      // filesList.sort((a, b) => {
-      //   const dateA = new Date(a.created_at || 0);
-      //   const dateB = new Date(b.created_at || 0);
-      //   return dateA.getTime() - dateB.getTime(); // Oldest first (new at bottom)
-      // });
-
-      // NEW LOGIC: Sort by file_date (oldest at top)
-      filesList.sort((a, b) => {
-        const dateA = new Date(a.file_date || a.fileDate || 0);
-        const dateB = new Date(b.file_date || b.fileDate || 0);
-        return dateA.getTime() - dateB.getTime(); // Oldest first (top)
+      console.log('📥 Files received from API:');
+      filesList.forEach((f, i) => {
+        console.log(`  ${i+1}. bill_no: "${f.bill_no}" | billNo: "${f.billNo}" | id: ${f.id}`);
       });
+
+      // Sort files by bill_no (FY year first, then sequence)
+      filesList = sortFilesByBillNo(filesList);
 
       const bRes = await fetch(`${API}/api/bills?owner_id=${ownerId}`);
       const bText = await bRes.text();
@@ -423,12 +476,23 @@ function FilesPageContent() {
               const farmerName = f.farmer_name ?? f.farmerName;
               const mobile = f.mobile ?? f.farmer_mobile ?? "-";
               const fileDate = f.file_date ?? f.fileDate ?? "";
+              
+              // Helper to get clean bill_no (handle string "null")
+              const getCleanBillNo = (billNoValue) => {
+                if (!billNoValue || billNoValue === "null" || billNoValue === null) return null;
+                return billNoValue;
+              };
+              
               const linkedBill = bills.find(b => {
                 const bid = b.bill_id ?? b.id;
                 const bFileId = b.file_id ?? b.fileId;
-                return bFileId === id || bid === f.bill_id || (b.bill_no && f.bill_no && b.bill_no === f.bill_no);
+                const fBillNo = getCleanBillNo(f.bill_no ?? f.billNo);
+                const bBillNo = getCleanBillNo(b.bill_no);
+                return bFileId === id || bid === f.bill_id || (bBillNo && fBillNo && bBillNo === fBillNo);
               });
-              const billNo = linkedBill?.bill_no ?? f.bill_no ?? "-";
+              
+              const fBillNo = getCleanBillNo(f.bill_no ?? f.billNo);
+              const billNo = linkedBill?.bill_no ?? fBillNo ?? "-";
               const billStatus = linkedBill?.status ?? f.status ?? "draft";
 
               return (
