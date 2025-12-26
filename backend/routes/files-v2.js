@@ -79,6 +79,83 @@ function mapFormToDb(form = {}) {
 }
 
 // ============================================================================
+// 0. GET /api/v2/files - List all files for user (with search, filter, pagination)
+// Query params: owner_id, status, q (search), limit, offset
+// ============================================================================
+router.get('/', async (req, res) => {
+  try {
+    const ownerId = req.query.owner_id ? parseInt(req.query.owner_id, 10) : null;
+    const status = req.query.status || null;
+    const q = req.query.q ? String(req.query.q).trim() : null;
+    const limit = Math.min(parseInt(req.query.limit || '100', 10), 1000);
+    const offset = parseInt(req.query.offset || '0', 10);
+
+    if (!ownerId) {
+      return res.status(400).json({ success: false, error: 'owner_id required' });
+    }
+
+    // Build where clauses dynamically
+    const where = [];
+    const params = [];
+    let idx = 1;
+
+    // Always exclude deleted files unless specifically querying for deleted status
+    if (!status || status !== 'deleted') {
+      where.push(`status != 'deleted'`);
+    }
+
+    where.push(`owner_id = $${idx++}`);
+    params.push(ownerId);
+
+    if (status) {
+      where.push(`status = $${idx++}`);
+      params.push(status);
+    }
+
+    if (q) {
+      where.push(`(farmer_name ILIKE $${idx} OR mobile ILIKE $${idx} OR company ILIKE $${idx} OR quotation_no ILIKE $${idx})`);
+      params.push(`%${q}%`);
+      idx++;
+    }
+
+    const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+    
+    // Count query
+    const countRes = await pool.query(
+      `SELECT COUNT(*) as total FROM files ${whereClause}`,
+      params
+    );
+    const total = parseInt(countRes.rows[0].total, 10);
+
+    // Data query
+    const dataRes = await pool.query(
+      `SELECT * FROM files ${whereClause} ORDER BY file_date DESC, id DESC LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...params, limit, offset]
+    );
+
+    // Type conversion for numeric fields
+    const files = dataRes.rows.map(f => ({
+      ...f,
+      id: toNumber(f.id),
+      owner_id: toNumber(f.owner_id),
+      bill_amount: toNumber(f.bill_amount)
+    }));
+
+    return res.json({
+      success: true,
+      files,
+      total,
+      limit,
+      offset,
+      hasMore: offset + limit < total
+    });
+  } catch (err) {
+    console.error('Error listing files:', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// ============================================================================
 // 1. GET /api/v2/files/context/:userId
 // Returns: user's company links + all their products
 // ============================================================================

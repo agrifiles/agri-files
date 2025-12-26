@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useContext } from 'react';
 import { LangContext } from '../../layout';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getCurrentUserId, getCurrentUser, API_BASE } from '@/lib/utils';
+import { getCurrentUserId, getCurrentUser, API_BASE, isUserVerified } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import { districtsEn, districtsMr } from '@/lib/districts';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -733,7 +733,6 @@ function NewQuotationPageContent() {
     if (saving) return;
 
     // Check if user is verified before allowing quotation creation/update
-    const { isUserVerified } = await import('@/lib/utils');
     if (!isUserVerified()) {
       alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
       return;
@@ -806,7 +805,9 @@ function NewQuotationPageContent() {
 
       const data = await res.json();
 
-      if (data.success) {
+      if (res.status === 403 && data?.accountNotActive) {
+        alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
+      } else if (data.success) {
         alert(isUpdate ? 'Quotation updated! / कोटेशन अपडेट झाले!' : 'Quotation created! / कोटेशन तयार झाले!');
         router.push('/quotations');
       } else {
@@ -826,7 +827,6 @@ function NewQuotationPageContent() {
     if (saving) return;
 
     // Check if user is verified before allowing quotation creation/update/print
-    const { isUserVerified } = await import('@/lib/utils');
     if (!isUserVerified()) {
       alert(t.accountNotActive || 'आपले खाते सक्रिय नाही. कृपया प्रशासकांशी संपर्क करा - 📞 8055554030 किंवा 📧 connect.agrifiles@gmail.com');
       return;

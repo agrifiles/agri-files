@@ -306,6 +306,9 @@ function NewFilePageContent() {
   // Bill state management
   const [billNo, setBillNo] = useState('');
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
+  const [originalBillNo, setOriginalBillNo] = useState('');  // Track original bill number from DB
+  const [originalBillDate, setOriginalBillDate] = useState('');  // Track original bill date from DB
+  const [originalBillMonth, setOriginalBillMonth] = useState(null);  // Track original month for intra-FY switching
   const [billCustomerName, setBillCustomerName] = useState('');
   const [billCustomerMobile, setBillCustomerMobile] = useState('');
   const [billStatus, setBillStatus] = useState('draft');
@@ -516,7 +519,8 @@ function NewFilePageContent() {
           isCommonArea: file.is_common_area ?? prev.isCommonArea,
           schemeName: file.scheme_name || '',
           giverNames: file.giver_names || '',
-          customSchemeName: ''
+          customSchemeName: '',
+          fileType: file.file_type ?? prev.fileType
         }));
 
         // Update talukas dropdown for the loaded district
@@ -625,6 +629,18 @@ function NewFilePageContent() {
               // Set bill details
               setBillNo(bill.bill_no || '');
               setBillDate(formatDateForInput(bill.bill_date) || new Date().toISOString().split('T')[0]);
+              
+              // Track ORIGINAL bill details for month/year switching
+              setOriginalBillNo(bill.bill_no || '');
+              setOriginalBillDate(formatDateForInput(bill.bill_date) || '');
+              
+              // Track original month for intra-FY month switching
+              if (bill.bill_date) {
+                const originalDate = new Date(bill.bill_date);
+                setOriginalBillMonth(originalDate.getMonth() + 1);  // 1-12
+              }
+              
+              setLastFetchedMonthYear(bill.bill_date ? `${new Date(bill.bill_date).getFullYear()}-${new Date(bill.bill_date).getMonth() + 1}` : '');
 
               // Fetch products filtered by the bill's company
               if (bill.items && Array.isArray(bill.items)) {
@@ -891,15 +907,76 @@ const fetchNextBillNo = async (dateStr) => {
   }
 };
 
-// Handle bill date change
-const handleBillDateChange = (newDate) => {
-  const oldDate = new Date(billDate);
-  const newDateObj = new Date(newDate);
+// Helper function to get month abbreviation
+const getMonthAbbr = (dateStr) => {
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const date = new Date(dateStr);
+  return months[date.getMonth()];
+};
+
+// Helper function to extract sequence number from bill number (e.g., "2025DEC_03" → "03")
+const extractBillSequence = (billNo) => {
+  if (!billNo) return null;
+  const parts = billNo.split('_');
+  return parts.length > 1 ? parts[1] : null;
+};
+
+// Helper function to rebuild bill number with new month (e.g., "2025DEC_03" + "NOV" → "2025NOV_03")
+const rebuildBillNoWithMonth = (originalBillNo, newDate) => {
+  const newMonth = getMonthAbbr(newDate);
+  const sequence = extractBillSequence(originalBillNo);
   
+  if (!sequence) return null;
+  
+  const year = new Date(newDate).getFullYear();
+  return `${year}${newMonth}_${sequence}`;
+};
+
+// Helper function to determine FY year from a date
+// FY starts in April, so March belongs to current FY year
+const getFYYear = (dateStr) => {
+  const date = new Date(dateStr);
+  const month = date.getMonth() + 1;  // 1-12
+  const year = date.getFullYear();
+  
+  // If month is Jan-Mar, it belongs to FY of previous year
+  // If month is Apr-Dec, it belongs to FY of current year
+  if (month < 4) {
+    return year - 1;  // Jan-Mar belongs to previous FY
+  }
+  return year;  // Apr-Dec belongs to current FY
+};
+
+// Handle bill date change - update bill number month if FY same, fetch if FY different
+const handleBillDateChange = (newDate) => {
   setBillDate(newDate);
   
-  if (oldDate.getMonth() !== newDateObj.getMonth() || oldDate.getFullYear() !== newDateObj.getFullYear()) {
-    fetchNextBillNo(newDate);
+  // Determine FY for new date and original date
+  const newFY = getFYYear(newDate);
+  const originalFY = originalBillDate ? getFYYear(originalBillDate) : null;
+  
+  // If editing an existing file
+  if (savedFileId && originalBillNo && originalFY !== null) {
+    // Check if FY changed
+    if (newFY !== originalFY) {
+      // Different FY - fetch new bill number for this FY
+      console.log(`📅 FY Changed (${originalFY} → ${newFY}), fetching new bill number`);
+      fetchNextBillNo(newDate);
+    } else {
+      // Same FY - rebuild bill number with new month but keep sequence
+      const newBillNo = rebuildBillNoWithMonth(originalBillNo, newDate);
+      console.log(`📅 Same FY, updating month: ${originalBillNo} → ${newBillNo}`);
+      setBillNo(newBillNo);
+      setLastFetchedMonthYear(`${newFY}-FY`);
+    }
+  } else if (!savedFileId) {
+    // Creating new file - fetch new bill number if FY changes
+    const oldFY = getFYYear(billDate);
+    
+    if (newFY !== oldFY) {
+      console.log(`📅 New file, FY changed to ${newFY}, fetching bill number`);
+      fetchNextBillNo(newDate);
+    }
   }
 };
 

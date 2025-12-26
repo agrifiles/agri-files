@@ -101,7 +101,7 @@ function FilesPageContent() {
     if (!ownerId) return;
     setLoading(true);
     try {
-      const fRes = await fetch(`${API}/api/files?owner_id=${ownerId}`);
+      const fRes = await fetch(`${API}/api/v2/files?owner_id=${ownerId}`);
       const fText = await fRes.text();
       let fJson = null;
       try { fJson = JSON.parse(fText); } catch (_) {}
