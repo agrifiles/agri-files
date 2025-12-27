@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE } from '@/lib/utils';
+import { API_BASE, formatBillNo, formatQuotationNo } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { getCurrentUser } from '@/lib/utils';
@@ -20,6 +20,8 @@ function FilePrintPageContent({ params }) {
   const [canvasImage, setCanvasImage] = useState(null);
   const [billData, setBillData] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [displayQuotationNo, setDisplayQuotationNo] = useState(null);
+  const [displayBillNo, setDisplayBillNo] = useState(null);
 
 
   // Format date to readable DD/MM/YYYY (removes timestamp)
@@ -429,6 +431,18 @@ function FilePrintPageContent({ params }) {
         console.log('Fetched file data:', fileData);
         setFile(fileData);
         
+        // Format quotation number if present
+        if (fileData.quotation_no) {
+          if (!fileData.quotation_date) {
+            // Format quotation number without date
+            const formatted = formatQuotationNo(fileData.quotation_no, null, fileData.bill_date);
+            setDisplayQuotationNo(formatted);
+          } else {
+            // Keep original if date exists
+            setDisplayQuotationNo(fileData.quotation_no);
+          }
+        }
+        
         // Parse shapes_json if it exists
         if (fileData.shapes_json) {
           try {
@@ -455,6 +469,11 @@ function FilePrintPageContent({ params }) {
               console.log('Fetched linked bill data psa:', linkedBillId, billData);
               if (billData.success && billData.bill) {
                 setBillData(billData.bill);
+                // Format bill number
+                if (billData.bill.bill_no && billData.bill.bill_date) {
+                  const formatted = formatBillNo(billData.bill.bill_no, billData.bill.bill_date);
+                  setDisplayBillNo(formatted);
+                }
                 console.log('Bill data loaded:', billData.bill);
               }
             }
@@ -1158,7 +1177,7 @@ function FilePrintPageContent({ params }) {
             <div className="mt-3 space-y-1">
               <p>१) शेतकऱ्याचे नाव: <span className="font-bold">{file?.farmer_name || '________'}</span> गाव: <span className="font-bold">{file?.village || '________'}</span> तालुका: <span className="font-bold">{file?.taluka || '________'}</span> जिल्हा: <span className="font-bold">{file?.district || '________'}</span></p>
               <p>२) पिकाचे नाव: <span className="font-bold">{file?.crop_name || '________'}</span> ठिबक खालील क्षेत्र- <span className="font-bold">{file?.irrigation_area || '________'}</span> हेक्टर गट नंबर: <span className="font-bold">{file?.gut_no || file?.survey_no || '________'}</span></p>
-              <p>३) बिल क्रमांक- <span className="font-bold">{billData?.bill_no || '________'}</span> तारीख- <span className="font-bold">{formatDate(billData?.bill_date) || '________'}</span> रक्कम रुपये- <span className="font-bold">{billData?.items?.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2) || '________'}</span></p>
+              <p>३) बिल क्रमांक- <span className="font-bold">{displayBillNo || '________'}</span> तारीख- <span className="font-bold">{formatDate(billData?.bill_date) || '________'}</span> रक्कम रुपये- <span className="font-bold">{billData?.items?.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2) || '________'}</span></p>
             </div>
 
             <ol className="list-decimal ml-4 mt-3 space-y-1">
@@ -1421,6 +1440,7 @@ function FilePrintPageContent({ params }) {
             showWatermark={true}
             embedded={true}
             autoHeight={true}
+            displayQuotationNo={file?.quotation_no && file?.quotation_date ? file.quotation_no : (file?.quotation_no ? formatQuotationNo(file.quotation_no, file.quotation_date, file.bill_date) : null)}
           />
         </div>
 
@@ -1445,6 +1465,7 @@ function FilePrintPageContent({ params }) {
             showWatermark={true}
             embedded={true}
             autoHeight={true}
+            displayBillNo={billData && billData.bill_no && billData.bill_date ? formatBillNo(billData.bill_no, billData.bill_date) : null}
           />
         </div>
         

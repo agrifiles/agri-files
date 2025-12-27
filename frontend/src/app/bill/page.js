@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE, getCurrentUserId } from '@/lib/utils';
+import { API_BASE, getCurrentUserId, formatBillNo } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -133,7 +133,7 @@ return (
                 }`}
               >
                 <td className="px-4 py-3 text-sm text-gray-700">{b.bill_id}</td>
-                <td className="px-4 py-3 text-sm text-gray-700">{b.bill_no || '-'}</td>
+                <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatBillNo(b.bill_no, b.bill_date) || '-'}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">{formatDate(b.bill_date || b.created_at)}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">{b.farmer_name || b.customer_name || '-'}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-gray-800">

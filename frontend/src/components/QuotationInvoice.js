@@ -1,5 +1,7 @@
 'use client';
 
+import { formatQuotationNo, formatBillNo } from '@/lib/utils';
+
 // Convert number to words (Indian English)
 function numberToWords(num) {
   const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
@@ -23,17 +25,18 @@ function numberToWords(num) {
 }
 
 /**
- * BillInvoice - Shared bill invoice component
+ * QuotationInvoice - Shared quotation invoice component
  * @param {Object} props
  * @param {Object} props.bill - Bill data object with items, bill_no, bill_date, etc.
- * @param {Object} props.fileData - Linked file data (farmer details, area, etc.)
+ * @param {Object} props.fileData - Linked file data (quotation_no, quotation_date, etc.)
  * @param {Object} props.userData - Current user/business data
  * @param {string} props.id - Optional id for the container div (default: "bill-content")
  * @param {boolean} props.showWatermark - Whether to show watermark (default: true)
  * @param {boolean} props.embedded - If true, uses 100% width/height instead of fixed A4 size (default: false)
  * @param {boolean} props.autoHeight - If true, allows content to grow beyond single page (default: false)
+ * @param {string} props.displayQuotationNo - Formatted quotation number for display (optional)
  */
-export default function BillInvoice({ bill, fileData, userData, id = "bill-content", showWatermark = true, embedded = false, autoHeight = false }) {
+export default function BillInvoice({ bill, fileData, userData, id = "bill-content", showWatermark = true, embedded = false, autoHeight = false, displayQuotationNo = null }) {
   if (!bill) {
     return (
       <div className="h-full flex items-center justify-center flex-col gap-4">
@@ -45,6 +48,24 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
       </div>
     );
   }
+
+  // Use displayQuotationNo if provided, otherwise format quotation_no internally
+  let quotationNoDisplay = displayQuotationNo;
+  if (!quotationNoDisplay) {
+    if (fileData?.quotation_no) {
+      // If quotation_no exists without date, format it
+      if (!fileData?.quotation_date) {
+        quotationNoDisplay = formatQuotationNo(fileData.quotation_no, null, fileData.bill_date || bill?.bill_date);
+      } else {
+        // If quotation_date exists, keep original
+        quotationNoDisplay = fileData.quotation_no;
+      }
+    } else if (bill?.bill_no) {
+      // Fallback: Use bill_no formatted as 2526MAR_QT04
+      quotationNoDisplay = formatQuotationNo(bill.bill_no, null, bill.bill_date);
+    }
+  }
+  quotationNoDisplay = quotationNoDisplay || "N/A";
 
   // Compute totals
   const items = Array.isArray(bill.items) ? bill.items : [];
@@ -181,7 +202,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
 
                       <div>
               <div className="font-bold text-[11px] text-gray-700">कोटेशन क्रमांक</div>
-              <div className="border-b border-black py-0.5 text-[15px] font-semibold">{fileData?.quotation_no || bill?.bill_no || "N/A"}</div>
+              <div className="border-b border-black py-0.5 text-[15px] font-semibold">{quotationNoDisplay}</div>
             </div>
           </div>
 

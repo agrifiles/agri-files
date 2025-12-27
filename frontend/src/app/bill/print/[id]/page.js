@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { API_BASE, getCurrentUser } from '@/lib/utils';
+import { API_BASE, getCurrentUser, formatBillNo } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import BillInvoice from '@/components/BillInvoice';
@@ -54,8 +54,8 @@ function BillPrintContent({ params }) {
 
     // Generate filename from farmer name and bill number
     const farmerName = fileData?.farmer_name || bill.farmer_name || 'Customer';
-    const billNo = bill.bill_no || 'Bill';
-    const fileName = `${farmerName}_${billNo}`.replace(/[^a-zA-Z0-9\u0900-\u097F_-]/g, '_');
+    const formattedBillNo = formatBillNo(bill.bill_no, bill.bill_date) || 'Bill';
+    const fileName = `${farmerName}_${formattedBillNo}`.replace(/[^a-zA-Z0-9\u0900-\u097F_-]/g, '_');
 
     const htmlContent = `<!DOCTYPE html>
 <html>
@@ -209,6 +209,7 @@ function BillPrintContent({ params }) {
           id="bill-content"
           showWatermark={true}
           autoHeight={true}
+          displayBillNo={formatBillNo(bill?.bill_no, bill?.bill_date)}
         />
       </div>
 

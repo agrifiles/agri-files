@@ -5,7 +5,7 @@ import { LangContext } from '../layout';
 import { Stage, Layer, Rect, Circle, Line, Image, Transformer, Arrow, Group } from 'react-konva';
 import useImage from 'use-image';
 import { useRouter, useSearchParams } from 'next/navigation'; // optional navigation
-import { getCurrentUserId, getCurrentUser, API_BASE, getUserCompanyLinks, isUserVerified } from '@/lib/utils';
+import { getCurrentUserId, getCurrentUser, API_BASE, getUserCompanyLinks, isUserVerified, formatBillNo } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import { districtsEn, districtsMr } from '@/lib/districts';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -219,6 +219,27 @@ function NewFilePageContent() {
       updatedForm.w2Taluka = value;
     }
 
+    // ✅ If "fyYear" changes, refetch bill number for new FY
+    if (name === "fyYear") {
+      console.log(`📅 FY Year changed from ${prev.fyYear} to ${value}`);
+      
+      // Convert FY string (e.g., "2025-26") to format key (e.g., "2526")
+      const fyParts = value.split('-');
+      const fyKey = fyParts[0].slice(-2) + fyParts[1]; // "2025-26" → "2526"
+      
+      // Check if we have a cached bill number for this FY
+      if (billNoCache[fyKey]) {
+        console.log(`✅ Restoring cached bill number for FY ${value}: ${billNoCache[fyKey]}`);
+        setBillNo(billNoCache[fyKey]);
+      } else {
+        // No cache - fetch new bill number for this FY
+        console.log(`📦 No cache for FY ${value}, fetching new bill number`);
+        if (billDate) {
+          fetchNextBillNo(billDate);
+        }
+      }
+    }
+
     {/* Removed w1District, w1Taluka, w2District, w2Taluka handlers since they auto-sync from main district/taluka */}
 
     // ✅ If "village" field changes, also update "place"
@@ -319,6 +340,10 @@ function NewFilePageContent() {
   // Cache for bill items by company - allows switching back to previous company
   // Format: { companyId: billItems[] }
   const [billItemsCache, setBillItemsCache] = useState({});
+  
+  // Cache for bill numbers by FY - allows smooth switching between FYs
+  // Format: { "2526": "01", "2627": "02" }
+  const [billNoCache, setBillNoCache] = useState({});
   const [originalBillCompanyId, setOriginalBillCompanyId] = useState(null); // Track original bill's company
 
   // Fitting / Installation & Accessories charges
@@ -754,6 +779,12 @@ function NewFilePageContent() {
                   const salesRate = Number(prod.selling_rate || prod.sellingRate || prod.sales_rate || 0);
                   const qty = Number(billItem?.qty) || 0;
                   
+                  // IMPORTANT: When editing, prioritize billItem's GST even if it's 0%
+                  // Don't fall back to product's GST (which might be 5% by default)
+                  const gstPercent = billItem !== undefined && billItem.gst_percent !== undefined 
+                    ? Number(billItem.gst_percent) 
+                    : Number(prod.sgst || prod.cgst || prod.gst_percent || 0);
+                  
                   return {
                     product_id: productId,
                     description: prod.description_of_good || prod.name || prod.product_name || '',
@@ -764,7 +795,7 @@ function NewFilePageContent() {
                     gov_rate: Number(prod.gov_rate || prod.govRate || 0),
                     sales_rate: salesRate,
                     uom: prod.unit_of_measure || prod.unit || prod.uom || '',
-                    gst_percent: Number(billItem?.gst_percent) || Number(prod.sgst || prod.cgst || prod.gst_percent || 0),
+                    gst_percent: gstPercent,
                     qty: qty,
                     amount: Number((qty * salesRate).toFixed(2)),
                     spare2: prod.spare2
@@ -812,6 +843,49 @@ function NewFilePageContent() {
                 setBillItems(finalItems);
                 setProducts(allProducts);
                 
+                // Extract most common GST % from bill items with NON-ZERO QTY (for hydration in global GST field)
+                // When editing: include items with 0% GST as valid values
+                const billItemsWithQty = finalItems.filter(item => item.qty > 0);
+                
+                console.log('🔍 GST Hydration Debug:');
+                console.log('  Total items:', finalItems.length);
+                console.log('  Items with qty > 0:', billItemsWithQty.length);
+                billItemsWithQty.forEach((item, idx) => {
+                  console.log(`    Item ${idx+1}: qty=${item.qty}, gst_percent=${item.gst_percent}, description=${item.description?.substring(0, 30)}`);
+                });
+                
+                if (billItemsWithQty.length > 0) {
+                  // Create frequency map of ALL GST percentages (including 0%)
+                  const gstFrequency = {};
+                  billItemsWithQty.forEach(item => {
+                    const gst = Number(item.gst_percent ?? 0); // Treat undefined/null as 0%
+                    gstFrequency[gst] = (gstFrequency[gst] || 0) + 1;
+                  });
+                  
+                  console.log('  GST Frequency map:', gstFrequency);
+                  
+                  // Find the most common GST %
+                  const mostCommonGst = Object.entries(gstFrequency)
+                    .sort((a, b) => b[1] - a[1])[0];
+                  
+                  if (mostCommonGst) {
+                    const gstPercent = Number(mostCommonGst[0]);
+                    const frequency = mostCommonGst[1];
+                    console.log(`📊 Most common GST in bill (qty > 0): ${gstPercent}% (appears ${frequency} times)`);
+                    setGlobalGstPercent(gstPercent);
+                    // Auto-enable only if GST > 0
+                    if (gstPercent > 0) {
+                      setEnableGlobalGst(true);
+                    } else {
+                      setEnableGlobalGst(false); // Keep disabled for 0% GST
+                    }
+                  }
+                } else {
+                  console.log(`📊 No items with qty > 0 - keeping GST at 0%`);
+                  setGlobalGstPercent(0);
+                  setEnableGlobalGst(false);
+                }
+                
                 // Cache this company's bill items for later switching
                 setBillItemsCache(prev => ({
                   ...prev,
@@ -833,9 +907,9 @@ function NewFilePageContent() {
                     setFittingChargesPercent(extractedPercent);
                     console.log('✅ Set fitting charges percent to:', extractedPercent);
                   }
-                  // Extract GST from fitting item
+                  // Extract GST from fitting item - use original value even if 0%
                   if (fittingChargeItem.gst_percent !== undefined && fittingChargeItem.gst_percent !== null) {
-                    setFittingChargesGst(Number(fittingChargeItem.gst_percent) || 5);
+                    setFittingChargesGst(Number(fittingChargeItem.gst_percent));
                     console.log('✅ Set fitting charges GST to:', fittingChargeItem.gst_percent);
                   }
                 }
@@ -893,14 +967,33 @@ const fetchNextBillNo = async (dateStr) => {
   const year = date.getFullYear();
   const monthYearKey = `${year}-${month}`;
   
+  // Determine FY from the date
+  const fyStartYear = month >= 4 ? year : year - 1;
+  const fyEndYear = fyStartYear + 1;
+  const fyKey = `${String(fyStartYear).slice(-2)}${String(fyEndYear).slice(-2)}`;
+  
   if (monthYearKey === lastFetchedMonthYear) return;
   
   try {
     const res = await fetch(`${API_BASE}/api/v2/bills/next-bill-no?owner_id=${owner_id}&month=${month}&year=${year}`);
     const data = await res.json();
     if (data.success && data.bill_no) {
+      console.log(`✅ Fetched bill number ${data.bill_no} for FY ${fyKey}`);
       setBillNo(data.bill_no);
       setLastFetchedMonthYear(monthYearKey);
+      
+      // For NEW files: set originalBillNo so same-FY date changes work correctly
+      if (!savedFileId && !originalBillNo) {
+        console.log(`📌 Setting originalBillNo to ${data.bill_no} for new file`);
+        setOriginalBillNo(data.bill_no);
+        setOriginalBillDate(dateStr);
+      }
+      
+      // Cache the bill number for this FY for smooth FY switching
+      setBillNoCache(prev => ({
+        ...prev,
+        [fyKey]: data.bill_no
+      }));
     }
   } catch (err) {
     console.error('Failed to fetch next bill number:', err);
@@ -914,22 +1007,22 @@ const getMonthAbbr = (dateStr) => {
   return months[date.getMonth()];
 };
 
-// Helper function to extract sequence number from bill number (e.g., "2025DEC_03" → "03")
+// Helper function to extract sequence number from bill number (e.g., "2025DEC_03" → "03" OR "03" → "03")
 const extractBillSequence = (billNo) => {
   if (!billNo) return null;
   const parts = billNo.split('_');
-  return parts.length > 1 ? parts[1] : null;
+  // New format: bill number IS the sequence (e.g., "03")
+  // Old format: sequence is after underscore (e.g., "2025DEC_03" → "03")
+  return parts.length > 1 ? parts[1] : billNo;
 };
 
-// Helper function to rebuild bill number with new month (e.g., "2025DEC_03" + "NOV" → "2025NOV_03")
+// Helper function to rebuild bill number - now just returns the bill number as-is
+// since bill numbers are stored as simple sequences and formatting happens on display
 const rebuildBillNoWithMonth = (originalBillNo, newDate) => {
-  const newMonth = getMonthAbbr(newDate);
-  const sequence = extractBillSequence(originalBillNo);
-  
-  if (!sequence) return null;
-  
-  const year = new Date(newDate).getFullYear();
-  return `${year}${newMonth}_${sequence}`;
+  // Bill numbers are now just sequence numbers (01, 02, etc.)
+  // They don't need rebuilding - the same bill number stays valid across month/date changes within same FY
+  // Formatting (FYMONTH_NN) happens at display time using formatBillNo()
+  return originalBillNo;
 };
 
 // Helper function to determine FY year from a date
@@ -1262,7 +1355,9 @@ const submitForm = async (e) => {
   const formWithBillData = {
     ...form,
     billNo: billNo || null,
+    bill_no: billNo || null,  // snake_case for backend
     billDate: billDate || new Date().toISOString().split('T')[0],
+    bill_date: billDate || new Date().toISOString().split('T')[0],  // snake_case for backend
     billAmount: actualBillAmount  // Use calculated total, not form input
   };
 
@@ -1270,6 +1365,8 @@ const submitForm = async (e) => {
     owner_id,                         
     title: `${form.farmerName || 'File'} - ${billDate}`,
     form: { ...formWithBillData, fileDate: billDate },  // Use billDate as fileDate
+    bill_no: billNo || null,  // Explicitly include bill_no at file level
+    bill_date: billDate || new Date().toISOString().split('T')[0],  // Explicitly include bill_date at file level
     shapes: shapesToSave
   };
 
@@ -1582,7 +1679,9 @@ const submitFormAndPrint = async (e) => {
   const filePayload = {
     owner_id,                         
     title: `${form.farmerName || 'File'} - ${billDate}`,
-    form: { ...form, fileDate: billDate },  // Use billDate as fileDate
+    form: { ...form, fileDate: billDate, bill_no: billNo || null, bill_date: billDate || new Date().toISOString().split('T')[0] },  // Include bill_no and bill_date
+    bill_no: billNo || null,  // Explicitly include bill_no at file level
+    bill_date: billDate || new Date().toISOString().split('T')[0],  // Explicitly include bill_date at file level
     shapes: shapesToSave
   };
 
@@ -3122,7 +3221,7 @@ const submitFormAndPrint = async (e) => {
         <label className="block text-sm font-semibold text-gray-700 mb-1">Bill No</label>
         <input
           className="mt-1 block w-full rounded-md border border-gray-200 shadow-sm px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-          value={billNo}
+          value={billNo !== "-" ? formatBillNo(billNo, billDate) : "-"}
           disabled
           placeholder="Auto-generated"
         />

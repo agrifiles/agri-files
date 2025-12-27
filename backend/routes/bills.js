@@ -132,35 +132,33 @@ router.get('/next-bill-no', async (req, res) => {
       return res.status(400).json({ success: false, error: 'owner_id, month, and year are required' });
     }
 
-    const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    const monthStr = monthNames[month - 1];
-    const prefix = `${year}${monthStr}_`;
-
-    // FY logic
+    // FY logic: Financial Year runs April to March
+    // If month >= 4 (Apr-Dec), FY starts this year; if month <= 3 (Jan-Mar), FY started previous year
     const fyStartYear = month >= 4 ? year : year - 1;
     const fyEndYear = fyStartYear + 1;
 
-    const fyPrefixes = [];
-    for (let m = 4; m <= 12; m++) {
-      fyPrefixes.push(`${fyStartYear}${monthNames[m - 1]}_%`);
-    }
-    for (let m = 1; m <= 3; m++) {
-      fyPrefixes.push(`${fyEndYear}${monthNames[m - 1]}_%`);
-    }
-
+    // Query: Get the maximum bill_no (as integer) for this owner within the FY
+    // Bill numbers are now simple sequential numbers: 01, 02, 03, etc.
+    // FY boundary: April fyStartYear to March fyEndYear
     const sql = `
-      SELECT MAX(CAST(SPLIT_PART(bill_no, '_', 2) AS INTEGER)) AS max_seq
+      SELECT MAX(CAST(bill_no AS INTEGER)) AS max_seq
       FROM bills
       WHERE owner_id = $1
-        AND bill_no LIKE ANY (ARRAY[${fyPrefixes.map((_, i) => `$${i + 2}`).join(',')}])
+        AND bill_no ~ '^[0-9]+$'
+        AND (
+          (EXTRACT(YEAR FROM bill_date) = $2 AND EXTRACT(MONTH FROM bill_date) >= 4)
+          OR
+          (EXTRACT(YEAR FROM bill_date) = $3 AND EXTRACT(MONTH FROM bill_date) < 4)
+        )
     `;
 
-    const { rows } = await pool.query(sql, [ownerId, ...fyPrefixes]);
+    const { rows } = await pool.query(sql, [ownerId, fyStartYear, fyEndYear]);
 
     let nextSeq = (rows[0]?.max_seq ?? 0) + 1;
 
-    const nextBillNo = `${prefix}${String(nextSeq).padStart(2, '0')}`;
-console.log( Date.now() , 'SQL:', sql,  'Result Rows:', rows, nextBillNo);
+    // Format as simple sequential number: 01, 02, 03, ..., n
+    const nextBillNo = String(nextSeq).padStart(2, '0');
+console.log( Date.now() , 'next-bill-no:', nextBillNo, 'FY:', fyStartYear + '-' + fyEndYear, 'Rows:', rows);
     return res.json({
       success: true,
       bill_no: nextBillNo,
@@ -868,7 +866,7 @@ router.post('/resequence-fy', async (req, res) => {
        WHERE owner_id = $1 
          AND bill_date >= $2 
          AND bill_date <= $3
-       ORDER BY CAST(SPLIT_PART(bill_no, '_', 2) AS INTEGER) ASC`,
+       ORDER BY CAST(bill_no AS INTEGER) ASC`,
       [owner_id, startDate, endDate]
     );
 
@@ -879,27 +877,24 @@ router.post('/resequence-fy', async (req, res) => {
       return res.json({ success: true, message: 'No bills to resequence' });
     }
 
-    // Extract month and year prefix from first bill to rebuild bill numbers
-    // e.g., "2025DEC_01" → we'll use "2025DEC" as prefix for all bills in this sequence
-    const firstBillNo = bills[0].bill_no;
-    const prefix = firstBillNo.split('_')[0]; // e.g., "2025DEC"
+    // Bill numbers are now simple sequential (01, 02, 03, etc.)
+    // Just renumber them sequentially to fill any gaps
 
     // Resequence: renumber all bills to 01, 02, 03, etc.
     for (let i = 0; i < bills.length; i++) {
       const newSequence = String(i + 1).padStart(2, '0');
-      const newBillNo = `${prefix}_${newSequence}`;
 
-      console.log(`Resequencing: ${bills[i].bill_no} → ${newBillNo}`);
+      console.log(`Resequencing: ${bills[i].bill_no} → ${newSequence}`);
 
       await client.query(
         `UPDATE bills SET bill_no = $1, updated_at = NOW() WHERE bill_id = $2`,
-        [newBillNo, bills[i].bill_id]
+        [newSequence, bills[i].bill_id]
       );
 
       // Also update the file that links to this bill
       await client.query(
         `UPDATE files SET bill_no = $1, updated_at = NOW() WHERE bill_no = $2`,
-        [newBillNo, bills[i].bill_no]
+        [newSequence, bills[i].bill_no]
       );
     }
 

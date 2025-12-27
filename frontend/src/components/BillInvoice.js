@@ -1,5 +1,7 @@
 'use client';
 
+import { formatBillNo } from '@/lib/utils';
+
 // Convert number to words (Indian English)
 function numberToWords(num) {
   const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
@@ -32,8 +34,9 @@ function numberToWords(num) {
  * @param {boolean} props.showWatermark - Whether to show watermark (default: true)
  * @param {boolean} props.embedded - If true, uses 100% width/height instead of fixed A4 size (default: false)
  * @param {boolean} props.autoHeight - If true, allows content to grow beyond single page (default: false)
+ * @param {string} props.displayBillNo - Formatted bill number for display (optional, defaults to bill.bill_no)
  */
-export default function BillInvoice({ bill, fileData, userData, id = "bill-content", showWatermark = true, embedded = false, autoHeight = false }) {
+export default function BillInvoice({ bill, fileData, userData, id = "bill-content", showWatermark = true, embedded = false, autoHeight = false, displayBillNo = null }) {
   if (!bill) {
     return (
       <div className="h-full flex items-center justify-center flex-col gap-4">
@@ -46,8 +49,18 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
     );
   }
 
-  // Compute totals
-  const items = Array.isArray(bill.items) ? bill.items : [];
+  // Use displayBillNo if provided, otherwise format bill_no internally
+  // If displayBillNo not provided and we have bill_no + bill_date, format it
+  let billNoDisplay = displayBillNo;
+  if (!billNoDisplay && bill?.bill_no) {
+    // Format the bill number if not already provided
+    billNoDisplay = formatBillNo(bill.bill_no, bill.bill_date) || bill.bill_no;
+  }
+  billNoDisplay = billNoDisplay || "N/A";
+  
+  // Get items from bill - could be bill.items or bill.billItems
+  const items = bill?.items || bill?.billItems || [];
+  
   let taxableAmount = 0;
   let totalGst = 0;
   
@@ -181,7 +194,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
             </div>
                                  <div>
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>बिल क्रमांक</div>
-              <div className="border-b border-black py-0.5 text-[15px] font-semibold" style={{ color: "#334155" }}>{bill?.bill_no || "N/A"}</div>
+              <div className="border-b border-black py-0.5 text-[15px] font-semibold" style={{ color: "#334155" }}>{billNoDisplay}</div>
             </div>
  
 

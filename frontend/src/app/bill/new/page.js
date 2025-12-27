@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { API_BASE } from '@/lib/utils';
+import { API_BASE, formatBillNo } from '@/lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -258,7 +258,7 @@ return (
           <label className="block text-sm font-medium text-gray-700">Bill No</label>
           <input
             className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-            value={billNo}
+            value={billNo ? formatBillNo(billNo, billDate) : 'Auto-generated'}
             disabled
             placeholder="Auto-generated"
           />

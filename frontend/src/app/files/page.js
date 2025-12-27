@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useContext } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE, getCurrentUserId } from '../../lib/utils';
+import { API_BASE, getCurrentUserId, formatBillNo } from '../../lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { LangContext } from '../layout';
@@ -41,63 +41,33 @@ function FilesPageContent() {
     }
   };
 
-  // Helper to get FY year from calendar date
-  const getFYFromBillNo = (billNo) => {
-    if (!billNo || billNo === "-") return 0;
-    
-    // Extract year and month from bill_no (e.g., "2025DEC_04" → 2025, DEC)
-    const yearMatch = billNo.match(/^\d+/);
-    const year = yearMatch ? parseInt(yearMatch[0], 10) : 0;
-    
-    const monthMatch = billNo.match(/([A-Z]{3})/);
-    const monthStr = monthMatch ? monthMatch[1] : "";
-    
-    const monthMap = {
-      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
-    };
-    const month = monthMap[monthStr] || 0;
-    
-    // Calculate FY: Apr onwards = same year, Jan-Mar = previous year
-    if (month >= 3) { // Apr onwards
-      return year;
-    } else {
-      return year - 1;
-    }
+  // Helper to get FY year from bill_date (NEW FORMAT: bill_no is just sequence number like 01, 02, etc)
+  const getFYFromDate = (billDate) => {
+    if (!billDate) return 0;
+    const date = new Date(billDate);
+    const month = date.getMonth() + 1; // 1-12
+    const year = date.getFullYear();
+    // FY: Apr onwards = same year, Jan-Mar = previous year
+    return month >= 4 ? year : year - 1;
   };
 
-  // Helper to parse bill_no and extract year, month, and sequence
-  // e.g., "2025DEC_04" → { year: 2025, month: 11, seq: 4, fy: 2025 }
-  const parseBillNo = (billNo) => {
-    if (!billNo || billNo === "-") return { year: 0, month: 0, seq: 0, fy: 0 };
+  // Helper to parse bill_no and extract sequence only
+  // NEW FORMAT: bill_no is just a simple number like "01", "02", "03"
+  const parseBillNo = (billNo, billDate) => {
+    if (!billNo || billNo === "-") return { seq: 0, fy: 0 };
     
-    // Extract year (e.g., "2025" from "2025DEC_04")
-    const yearMatch = billNo.match(/^\d+/);
-    const year = yearMatch ? parseInt(yearMatch[0], 10) : 0;
+    // Extract sequence number directly (entire bill_no is the sequence)
+    const seq = parseInt(billNo, 10) || 0;
     
-    // Extract month abbreviation (e.g., "DEC" from "2025DEC_04")
-    const monthMatch = billNo.match(/([A-Z]{3})/);
-    const monthStr = monthMatch ? monthMatch[1] : "";
+    // Get FY from bill_date
+    const fy = getFYFromDate(billDate);
     
-    // Convert month abbreviation to number (JAN=0, FEB=1, ..., DEC=11)
-    const monthMap = {
-      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
-    };
-    const month = monthMap[monthStr] || 0;
-    
-    // Extract sequence number (e.g., "04" from "2025DEC_04")
-    const seqMatch = billNo.match(/_(\d+)$/);
-    const seq = seqMatch ? parseInt(seqMatch[1], 10) : 0;
-    
-    // Calculate FY year
-    const fy = month >= 3 ? year : year - 1;
-    
-    console.log(`🔍 Parse "${billNo}" → year:${year}, month:${month}, seq:${seq}, fy:${fy}`);
-    return { year, month, seq, fy };
+    console.log(`🔍 Parse "${billNo}" (date: ${billDate}) → seq:${seq}, fy:${fy}`);
+    return { seq, fy };
   };
 
-  // Sort files by bill_no: year → (month if different FY) → sequence
+  // Sort files by bill_no: FY (from bill_date) → sequence
+  // NEW FORMAT: bill_no is just sequence number (01, 02, etc). FY comes from bill_date.
   const sortFilesByBillNo = (filesList) => {
     console.log('📋 sortFilesByBillNo called with', filesList.length, 'files');
     
@@ -110,8 +80,8 @@ function FilesPageContent() {
     console.log('Before sort:', cleanedFiles.map(f => f.bill_no || '-').join(', '));
     console.log('=== DETAILED PARSING ===');
     cleanedFiles.forEach(f => {
-      const data = parseBillNo(f.bill_no);
-      console.log(`${f.bill_no}: year=${data.year}, month=${data.month}, fy=${data.fy}, seq=${data.seq}`);
+      const data = parseBillNo(f.bill_no, f.bill_date);
+      console.log(`${f.bill_no} (date: ${f.bill_date}): fy=${data.fy}, seq=${data.seq}`);
     });
     
     const sorted = [...cleanedFiles].sort((a, b) => {
@@ -123,29 +93,21 @@ function FilesPageContent() {
       if (aBillNo === "-") return 1;
       if (bBillNo === "-") return -1;
       
-      const aData = parseBillNo(aBillNo);
-      const bData = parseBillNo(bBillNo);
+      const aData = parseBillNo(aBillNo, a.bill_date);
+      const bData = parseBillNo(bBillNo, b.bill_date);
       
       console.log(`\n🔄 COMPARING: ${aBillNo} vs ${bBillNo}`);
-      console.log(`  A: year=${aData.year}, month=${aData.month}, fy=${aData.fy}, seq=${aData.seq}`);
-      console.log(`  B: year=${bData.year}, month=${bData.month}, fy=${bData.fy}, seq=${bData.seq}`);
+      console.log(`  A: fy=${aData.fy}, seq=${aData.seq}`);
+      console.log(`  B: fy=${bData.fy}, seq=${bData.seq}`);
       
-      // First sort by calendar year
-      if (aData.year !== bData.year) {
-        const result = aData.year - bData.year;
-        console.log(`  → Different YEAR: ${aData.year} vs ${bData.year} = ${result}`);
-        return result;
-      }
-      
-      // Same calendar year: check if same FY
+      // First sort by FY
       if (aData.fy !== bData.fy) {
-        // Different FY but same year: sort by calendar month
-        const result = aData.month - bData.month;
-        console.log(`  → Different FY (${aData.fy} vs ${bData.fy}), sort by MONTH: ${aData.month} vs ${bData.month} = ${result}`);
+        const result = aData.fy - bData.fy;
+        console.log(`  → Different FY: ${aData.fy} vs ${bData.fy} = ${result}`);
         return result;
       }
       
-      // Same FY: sort by sequence only
+      // Same FY: sort by sequence
       const result = aData.seq - bData.seq;
       console.log(`  → Same FY (${aData.fy}), sort by SEQUENCE: ${aData.seq} vs ${bData.seq} = ${result}`);
       return result;
@@ -221,10 +183,19 @@ function FilesPageContent() {
       try { fJson = JSON.parse(fText); } catch (_) {}
       let filesList = fJson?.files || [];
 
+      console.log('═══════════════════════════════════════════');
       console.log('📥 Files received from API:');
+      console.log('═══════════════════════════════════════════');
       filesList.forEach((f, i) => {
-        console.log(`  ${i+1}. bill_no: "${f.bill_no}" | billNo: "${f.billNo}" | id: ${f.id}`);
+        console.log(`\n📄 File #${i+1}:`);
+        console.log(`   file_date: "${f.file_date}"`);
+        console.log(`   bill_no: "${f.bill_no}"`);
+        console.log(`   billNo: "${f.billNo}"`);
+        console.log(`   bill_date: "${f.bill_date}"`);
+        console.log(`   billDate: "${f.billDate}"`);
+        console.log(`   id: ${f.id}`);
       });
+      console.log('\n═══════════════════════════════════════════\n');
 
       // Sort files by bill_no (FY year first, then sequence)
       filesList = sortFilesByBillNo(filesList);
@@ -234,8 +205,18 @@ function FilesPageContent() {
       let bJson = null;
       try { bJson = JSON.parse(bText); } catch (_) {}
       const billsList = bJson?.bills || [];
-
-      // Store all files and generate FY options
+      
+      console.log('═══════════════════════════════════════════');
+      console.log('📥 Bills received from API:');
+      console.log('═══════════════════════════════════════════');
+      billsList.forEach((b, i) => {
+        console.log(`\n💵 Bill #${i+1}:`);
+        console.log(`   bill_no: "${b.bill_no}"`);
+        console.log(`   bill_date: "${b.bill_date}"`);
+        console.log(`   file_id: ${b.file_id}`);
+        console.log(`   bill_id: ${b.bill_id}`);
+      });
+      console.log('\n═══════════════════════════════════════════\n');
       setAllFiles(filesList);
       setFyOptions(generateFYOptions(filesList));
       
@@ -547,7 +528,27 @@ function FilesPageContent() {
               
               const fBillNo = getCleanBillNo(f.bill_no ?? f.billNo);
               const billNo = linkedBill?.bill_no ?? fBillNo ?? "-";
+              
+              // IMPORTANT: For bill number formatting, ALWAYS use the FILE's date, not the linked bill's date
+              // The bill number belongs to the file, so use the file's transaction date
+              const billDate = f.bill_date ?? f.billDate ?? fileDate;
               const billStatus = linkedBill?.status ?? f.status ?? "draft";
+              
+              // Debug logging for this specific row
+              console.log('\n📍 FILES TABLE ROW ' + (i + 1) + ':');
+              console.log('   fBillNo:', fBillNo);
+              console.log('   linkedBill:', linkedBill ? 'YES' : 'NO');
+              console.log('   billNo (to format):', billNo);
+              console.log('   f.bill_date:', f.bill_date ?? f.billDate);
+              console.log('   fileDate:', fileDate);
+              console.log('   billDate (final):', billDate);
+              console.log('   linkedBill?.bill_date:', linkedBill?.bill_date);
+              
+              // Format bill_no for display (e.g., "01" → "2526MAR_01")
+              // billDate is guaranteed to exist since fileDate is always set
+              const displayBillNo = billNo !== "-" ? formatBillNo(billNo, billDate) : "-";
+              
+              console.log('   displayBillNo (result):', displayBillNo);
 
               return (
                 <tr
@@ -560,7 +561,7 @@ function FilesPageContent() {
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Farmer:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{farmerName}</td>
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Mobile:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{mobile}</td>
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Date:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{formatDate(fileDate)}</td>
-                  <td className="block md:table-cell px-4 py-2 text-sm font-semibold text-gray-800 before:content-['Bill_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{billNo}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm font-semibold text-gray-800 before:content-['Bill_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{displayBillNo}</td>
 
                   <td className="block md:table-cell px-4 py-3">
                     <div className="flex flex-wrap gap-2 md:gap-2">
