@@ -804,4 +804,133 @@ router.put('/v2/bills/:billId', async (req, res) => {
   }
 });
 
+// ============================================================================
+// UPDATE BILL NUMBER FOR A FILE
+// PUT /api/files/:fileId/bill-no
+// ============================================================================
+router.put('/:fileId/bill-no', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { bill_no } = req.body;
+
+    const fileIdNum = toNumber(fileId);
+
+    if (!fileIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid file ID' });
+    }
+
+    if (!bill_no || bill_no.toString().trim() === '') {
+      return res.status(400).json({ success: false, error: 'Bill number is mandatory' });
+    }
+
+    // Validate: digits only
+    if (!/^\d+$/.test(bill_no.toString().trim())) {
+      return res.status(400).json({ success: false, error: 'Bill number must contain only digits' });
+    }
+
+    // Normalize: pad to 2 digits
+    const normalizedBillNo = bill_no.toString().trim().padStart(2, '0');
+
+    // Update file's bill_no
+    const updateRes = await pool.query(
+      'UPDATE files SET bill_no = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [normalizedBillNo, fileIdNum]
+    );
+
+    if (updateRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
+    const file = updateRes.rows[0];
+    console.log(`✅ Bill number updated for file ${fileIdNum}: ${normalizedBillNo}`);
+
+    // Try to update linked bill in bills table if exists
+    if (file.bill_date) {
+      const billUpdateRes = await pool.query(
+        'UPDATE bills SET bill_no = $1 WHERE file_id = $2 RETURNING *',
+        [normalizedBillNo, fileIdNum]
+      );
+      
+      if (billUpdateRes.rows.length > 0) {
+        console.log(`✅ Also updated linked bill: ${normalizedBillNo}`);
+      }
+    }
+
+    return res.json({
+      success: true,
+      file,
+      message: 'Bill number updated successfully'
+    });
+  } catch (err) {
+    console.error('Error updating bill number:', err.message);
+    return res.status(500).json({ success: false, error: 'Server error: ' + err.message });
+  }
+});
+
+// ============================================================================
+// UPDATE BILL DATE FOR A FILE
+// PUT /api/files/:fileId/bill-date
+// ============================================================================
+router.put('/:fileId/bill-date', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { bill_date } = req.body;
+
+    const fileIdNum = toNumber(fileId);
+
+    if (!fileIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid file ID' });
+    }
+
+    if (!bill_date || bill_date.toString().trim() === '') {
+      return res.status(400).json({ success: false, error: 'Bill date is mandatory' });
+    }
+
+    // Validate: valid date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(bill_date.toString().trim())) {
+      return res.status(400).json({ success: false, error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Convert to ISO date
+    const dateObj = new Date(bill_date.toString().trim());
+    if (isNaN(dateObj.getTime())) {
+      return res.status(400).json({ success: false, error: 'Invalid date' });
+    }
+
+    const isoDate = dateObj.toISOString();
+
+    // Update file's bill_date and file_date
+    const updateRes = await pool.query(
+      'UPDATE files SET bill_date = $1, file_date = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [isoDate, fileIdNum]
+    );
+
+    if (updateRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
+    const file = updateRes.rows[0];
+    console.log(`✅ Bill date updated for file ${fileIdNum}: ${bill_date}`);
+
+    // Try to update linked bill in bills table if exists
+    const billUpdateRes = await pool.query(
+      'UPDATE bills SET bill_date = $1 WHERE file_id = $2 RETURNING *',
+      [isoDate, fileIdNum]
+    );
+    
+    if (billUpdateRes.rows.length > 0) {
+      console.log(`✅ Also updated linked bill date: ${bill_date}`);
+    }
+
+    return res.json({
+      success: true,
+      file,
+      message: 'Bill date updated successfully'
+    });
+  } catch (err) {
+    console.error('Error updating bill date:', err.message);
+    return res.status(500).json({ success: false, error: 'Server error: ' + err.message });
+  }
+});
+
 module.exports = router;

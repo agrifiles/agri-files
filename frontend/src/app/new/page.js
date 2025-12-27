@@ -112,7 +112,7 @@ function NewFilePageContent() {
   
   const [form, setForm] = useState({
     fyYear: '', company: '', applicationId: '', farmerId: '', farmerName: '', fatherName: '',
-    mobile: '', aadhaarNo: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
+    mobile: '', aadhaarNo: '', quotationNo: '', quotationDate: '', billDate: '', village: '',
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
     dripperSpacing: '', planeLateralQty: '',
@@ -329,7 +329,6 @@ function NewFilePageContent() {
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
   const [originalBillNo, setOriginalBillNo] = useState('');  // Track original bill number from DB
   const [originalBillDate, setOriginalBillDate] = useState('');  // Track original bill date from DB
-  const [originalBillMonth, setOriginalBillMonth] = useState(null);  // Track original month for intra-FY switching
   const [billCustomerName, setBillCustomerName] = useState('');
   const [billCustomerMobile, setBillCustomerMobile] = useState('');
   const [billStatus, setBillStatus] = useState('draft');
@@ -505,7 +504,6 @@ function NewFilePageContent() {
           mobile: file.mobile ?? prev.mobile,
           quotationNo: file.quotation_no ?? prev.quotationNo,
           quotationDate: formatDateForInput(file.quotation_date ?? prev.quotationDate),
-          billNo: file.bill_no ?? prev.billNo,
           aadhaarNo: file.aadhaar_no ?? prev.aadhaarNo,
           billDate: file.bill_date ? new Date(file.bill_date).toISOString().split('T')[0] : prev.billDate,
           village: file.village ?? prev.village,
@@ -655,15 +653,9 @@ function NewFilePageContent() {
               setBillNo(bill.bill_no || '');
               setBillDate(formatDateForInput(bill.bill_date) || new Date().toISOString().split('T')[0]);
               
-              // Track ORIGINAL bill details for month/year switching
+              // Track ORIGINAL bill details for FY switching
               setOriginalBillNo(bill.bill_no || '');
               setOriginalBillDate(formatDateForInput(bill.bill_date) || '');
-              
-              // Track original month for intra-FY month switching
-              if (bill.bill_date) {
-                const originalDate = new Date(bill.bill_date);
-                setOriginalBillMonth(originalDate.getMonth() + 1);  // 1-12
-              }
               
               setLastFetchedMonthYear(bill.bill_date ? `${new Date(bill.bill_date).getFullYear()}-${new Date(bill.bill_date).getMonth() + 1}` : '');
 
@@ -935,7 +927,7 @@ function NewFilePageContent() {
   const resetForm = () => {
   setForm({
     fyYear: '', company: '', applicationId: '', farmerId: '', farmerName: '', fatherName: '',
-    mobile: '', aadhaarNo: '', quotationNo: '', quotationDate: '', billNo: '', billDate: '', village: '',
+    mobile: '', aadhaarNo: '', quotationNo: '', quotationDate: '', billDate: '', village: '',
     taluka: '', district: '', area8A: '', gutNo: '', cropName: '',
     irrigationArea: '', lateralSpacing: '', driplineProduct: '', dripperDischarge: '',
     dripperSpacing: '', planeLateralQty: '',
@@ -1016,15 +1008,6 @@ const extractBillSequence = (billNo) => {
   return parts.length > 1 ? parts[1] : billNo;
 };
 
-// Helper function to rebuild bill number - now just returns the bill number as-is
-// since bill numbers are stored as simple sequences and formatting happens on display
-const rebuildBillNoWithMonth = (originalBillNo, newDate) => {
-  // Bill numbers are now just sequence numbers (01, 02, etc.)
-  // They don't need rebuilding - the same bill number stays valid across month/date changes within same FY
-  // Formatting (FYMONTH_NN) happens at display time using formatBillNo()
-  return originalBillNo;
-};
-
 // Helper function to determine FY year from a date
 // FY starts in April, so March belongs to current FY year
 const getFYYear = (dateStr) => {
@@ -1040,7 +1023,7 @@ const getFYYear = (dateStr) => {
   return year;  // Apr-Dec belongs to current FY
 };
 
-// Handle bill date change - update bill number month if FY same, fetch if FY different
+// Handle bill date change - fetch new bill number if FY changes
 const handleBillDateChange = (newDate) => {
   setBillDate(newDate);
   
@@ -1048,29 +1031,12 @@ const handleBillDateChange = (newDate) => {
   const newFY = getFYYear(newDate);
   const originalFY = originalBillDate ? getFYYear(originalBillDate) : null;
   
-  // If editing an existing file
-  if (savedFileId && originalBillNo && originalFY !== null) {
-    // Check if FY changed
-    if (newFY !== originalFY) {
-      // Different FY - fetch new bill number for this FY
-      console.log(`📅 FY Changed (${originalFY} → ${newFY}), fetching new bill number`);
-      fetchNextBillNo(newDate);
-    } else {
-      // Same FY - rebuild bill number with new month but keep sequence
-      const newBillNo = rebuildBillNoWithMonth(originalBillNo, newDate);
-      console.log(`📅 Same FY, updating month: ${originalBillNo} → ${newBillNo}`);
-      setBillNo(newBillNo);
-      setLastFetchedMonthYear(`${newFY}-FY`);
-    }
-  } else if (!savedFileId) {
-    // Creating new file - fetch new bill number if FY changes
-    const oldFY = getFYYear(billDate);
-    
-    if (newFY !== oldFY) {
-      console.log(`📅 New file, FY changed to ${newFY}, fetching bill number`);
-      fetchNextBillNo(newDate);
-    }
+  // If FY changed, fetch new bill number for the new FY
+  if (newFY !== originalFY) {
+    console.log(`📅 FY Changed (${originalFY} → ${newFY}), fetching new bill number`);
+    fetchNextBillNo(newDate);
   }
+  // If FY is same, keep the existing bill number (no rearrangement)
 };
 
 // Load products and initialize bill items with all products (qty = 0 by default)
@@ -1316,6 +1282,18 @@ const submitForm = async (e) => {
     return;
   }
 
+  // ===== VALIDATE BILL NUMBER =====
+  if (!billNo || billNo.trim() === '') {
+    alert('⚠️ Bill number is mandatory. Please enter a bill number (e.g., 01, 02, 03)');
+    return;
+  }
+  
+  const billNoStr = billNo.trim();
+  if (!/^\d+$/.test(billNoStr)) {
+    alert('⚠️ Bill number must contain only digits (e.g., 01, 02, 03). No special characters or letters allowed.');
+    return;
+  }
+
   // Validate required file fields
   if (!form.fyYear || !form.farmerName || !form.mobile) {
     alert('Please fill in all required file fields (FY Year, Farmer Name, Mobile)');
@@ -1351,11 +1329,14 @@ const submitForm = async (e) => {
   const billTotals = computeBillTotals();
   const actualBillAmount = billTotals.total;
 
+  // Normalize bill number before saving
+  const normalizedBillNo = billNo ? billNo.trim().padStart(2, '0') : null;
+
   // Add bill data to form before saving
   const formWithBillData = {
     ...form,
-    billNo: billNo || null,
-    bill_no: billNo || null,  // snake_case for backend
+    billNo: normalizedBillNo,
+    bill_no: normalizedBillNo,  // snake_case for backend
     billDate: billDate || new Date().toISOString().split('T')[0],
     bill_date: billDate || new Date().toISOString().split('T')[0],  // snake_case for backend
     billAmount: actualBillAmount  // Use calculated total, not form input
@@ -1365,7 +1346,7 @@ const submitForm = async (e) => {
     owner_id,                         
     title: `${form.farmerName || 'File'} - ${billDate}`,
     form: { ...formWithBillData, fileDate: billDate },  // Use billDate as fileDate
-    bill_no: billNo || null,  // Explicitly include bill_no at file level
+    bill_no: normalizedBillNo,  // Explicitly include bill_no at file level
     bill_date: billDate || new Date().toISOString().split('T')[0],  // Explicitly include bill_date at file level
     shapes: shapesToSave
   };
@@ -1451,7 +1432,7 @@ const submitForm = async (e) => {
     const company_slot_no = selectedCompany?.company_slot || null;
     
     const billPayload = {
-      bill_no: billNo || null, // Will be auto-generated if null
+      bill_no: billNo ? billNo.trim().padStart(2, '0') : null,  // Normalize: pad with leading zeros (01, 02, etc.)
       bill_date: billDate || new Date().toISOString().split('T')[0],
       farmer_name: form.farmerName,
       farmer_mobile: form.mobile,
@@ -1645,6 +1626,18 @@ const submitFormAndPrint = async (e) => {
     return;
   }
 
+  // ===== VALIDATE BILL NUMBER =====
+  if (!billNo || billNo.trim() === '') {
+    alert('⚠️ Bill number is mandatory. Please enter a bill number (e.g., 01, 02, 03)');
+    return;
+  }
+  
+  const billNoStr = billNo.trim();
+  if (!/^\d+$/.test(billNoStr)) {
+    alert('⚠️ Bill number must contain only digits (e.g., 01, 02, 03). No special characters or letters allowed.');
+    return;
+  }
+
   // Validate required file fields
   if (!form.fyYear || !form.farmerName || !form.mobile) {
     alert('Please fill in all required file fields (FY Year, Farmer Name, Mobile)');
@@ -1676,11 +1669,14 @@ const submitFormAndPrint = async (e) => {
   // Flatten standardGroup if it exists, otherwise use regular shapes
   const shapesToSave = standardGroup ? flattenStandardGroup(standardGroup) : shapes;
 
+  // Normalize bill number before saving
+  const normalizedBillNo = billNo ? billNo.trim().padStart(2, '0') : null;
+
   const filePayload = {
     owner_id,                         
     title: `${form.farmerName || 'File'} - ${billDate}`,
-    form: { ...form, fileDate: billDate, bill_no: billNo || null, bill_date: billDate || new Date().toISOString().split('T')[0] },  // Include bill_no and bill_date
-    bill_no: billNo || null,  // Explicitly include bill_no at file level
+    form: { ...form, fileDate: billDate, bill_no: normalizedBillNo, bill_date: billDate || new Date().toISOString().split('T')[0] },  // Include normalized bill_no and bill_date
+    bill_no: normalizedBillNo,  // Explicitly include bill_no at file level
     bill_date: billDate || new Date().toISOString().split('T')[0],  // Explicitly include bill_date at file level
     shapes: shapesToSave
   };
@@ -1750,7 +1746,7 @@ const submitFormAndPrint = async (e) => {
     
     const billPayload = {
       file_id: fileId,
-      bill_no: billNo,
+      bill_no: billNo.trim().padStart(2, '0'),  // Normalize: pad with leading zeros (01, 02, etc.)
       bill_date: billDate,
       farmer_name: form.farmerName || '',
       farmer_mobile: form.mobile || '',
@@ -3218,13 +3214,35 @@ const submitFormAndPrint = async (e) => {
     {/* Bill Header */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-1">Bill No</label>
-        <input
-          className="mt-1 block w-full rounded-md border border-gray-200 shadow-sm px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-          value={billNo !== "-" ? formatBillNo(billNo, billDate) : "-"}
-          disabled
-          placeholder="Auto-generated"
-        />
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
+          Bill No <span className="text-red-500">*</span>
+          <span className="text-xs text-gray-500 font-normal ml-2">(Sequential numbers: 01, 02, 03...)</span>
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="mt-1 block flex-1 rounded-md border border-gray-300 shadow-sm px-3 py-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            value={billNo}
+            onChange={(e) => setBillNo(e.target.value.trim())}
+            placeholder="Enter bill number (e.g., 01, 02, 03)"
+          />
+          {/* <button
+            type="button"
+            onClick={() => {
+              // Auto-suggest next bill number
+              if (billDate) {
+                fetchNextBillNo(billDate);
+              }
+            }}
+            className="mt-1 px-3 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition whitespace-nowrap"
+            title="Click to auto-suggest next sequential number"
+          >
+            Auto-Suggest
+          </button> */}
+        </div>
+        {billNo && !/^\d+$/.test(billNo.trim()) && (
+          <p className="text-xs text-red-500 mt-1">⚠️ Bill number must contain only digits (e.g., 01, 02, 03)</p>
+        )}
       </div>
 
       <div>
@@ -3267,6 +3285,54 @@ const submitFormAndPrint = async (e) => {
       <h2 className="text-lg font-semibold text-gray-800 mb-3">Products (Enter Qty to include in bill)</h2>
       <p className="text-sm text-gray-500 mb-4">All available products are shown below. Enter quantity to include them in the bill. Items with qty=0 will not be saved.</p>
 
+
+      {/* Fitting / Installation & Accessories Charges Section Add Fitting / Installation & Accessories Charges */}
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={enableFittingCharges}
+              onChange={(e) => setEnableFittingCharges(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="font-semibold text-gray-700 text-sm md:text-base">फिटिंग / इन्स्टॉलेशन आणि अक्सेसरीज शुल्क जोडा टक्केवारी (%)</span>
+          </label>
+
+          {enableFittingCharges && (
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Charges %:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+                  value={fittingChargesPercent}
+                  onChange={(e) => setFittingChargesPercent(Number(e.target.value) || 0)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">GST %:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+                  value={fittingChargesGst}
+                  onChange={(e) => setFittingChargesGst(Number(e.target.value) || 0)}
+                  placeholder="5"
+                />
+              </div>
+              <span className="text-sm text-gray-600">
+                ≈ ₹{enableFittingCharges && fittingChargesPercent > 0 ? ((fittingChargesPercent / 100) * computeBillTotals().taxable).toFixed(2) : '0.00'}
+                {fittingChargesGst > 0 && ` + GST ₹${(((fittingChargesGst / 100) * (fittingChargesPercent / 100) * computeBillTotals().taxable) || 0).toFixed(2)}`}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
       {/* Global GST % Shortcut - Apply same GST to all items */}
       <div className="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -3317,54 +3383,6 @@ const submitFormAndPrint = async (e) => {
         {!enableGlobalGst && (
           <p className="text-xs text-gray-500 mt-2">डिफॉल्ट: सर्व आयटमसाठी GST 0% आहे. टिक करा व % टाका सर्वांना लागू करण्यासाठी.</p>
         )}
-      </div>
-
-      {/* Fitting / Installation & Accessories Charges Section Add Fitting / Installation & Accessories Charges */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={enableFittingCharges}
-              onChange={(e) => setEnableFittingCharges(e.target.checked)}
-              className="w-4 h-4"
-            />
-            <span className="font-semibold text-gray-700 text-sm md:text-base">फिटिंग / इन्स्टॉलेशन आणि अक्सेसरीज शुल्क जोडा टक्केवारी (%)</span>
-          </label>
-
-          {enableFittingCharges && (
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Charges %:</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
-                  value={fittingChargesPercent}
-                  onChange={(e) => setFittingChargesPercent(Number(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">GST %:</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
-                  value={fittingChargesGst}
-                  onChange={(e) => setFittingChargesGst(Number(e.target.value) || 0)}
-                  placeholder="5"
-                />
-              </div>
-              <span className="text-sm text-gray-600">
-                ≈ ₹{enableFittingCharges && fittingChargesPercent > 0 ? ((fittingChargesPercent / 100) * computeBillTotals().taxable).toFixed(2) : '0.00'}
-                {fittingChargesGst > 0 && ` + GST ₹${(((fittingChargesGst / 100) * (fittingChargesPercent / 100) * computeBillTotals().taxable) || 0).toFixed(2)}`}
-              </span>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Desktop Table View */}

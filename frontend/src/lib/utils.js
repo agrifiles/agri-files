@@ -71,70 +71,16 @@ export function clearCurrentUser() {
  * - NN: Bill sequence number (e.g., "01", "02")
  */
 export function formatBillNo(billNo, billDate) {
-  // Handle invalid inputs
+  // NEW BEHAVIOR: Return bill number as-is (no FY/month formatting)
+  // Bill numbers are now simple sequential numbers: 01, 02, 03, ...
+  // No longer includes FY or month information
+  
   if (!billNo || billNo === "-" || billNo === "null") {
     return billNo || "-";
   }
 
-  if (!billDate) {
-    console.warn('formatBillNo: No billDate provided for billNo:', billNo);
-    return billNo; // Return unformatted if no date
-  }
-
-  try {
-    console.log('\n🔵 formatBillNo: billNo=' + billNo + ', billDate=' + billDate);
-    
-    let year, month, day;
-    
-    // IMPORTANT: Handle ISO format with time (e.g., "2026-06-13T18:30:00.000Z")
-    // Extract YYYY-MM-DD to avoid timezone conversion issues
-    if (typeof billDate === 'string' && billDate.includes('T')) {
-      console.log('   📌 ISO format detected, extracting date part only...');
-      const dateMatch = billDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (dateMatch) {
-        year = parseInt(dateMatch[1], 10);
-        month = parseInt(dateMatch[2], 10);
-        day = parseInt(dateMatch[3], 10);
-        console.log('   ✅ Extracted: ' + year + '-' + month + '-' + day);
-      } else {
-        console.warn('   ❌ Could not parse ISO date:', billDate);
-        return billNo;
-      }
-    } else {
-      // Parse as regular date
-      const date = new Date(billDate);
-      if (isNaN(date.getTime())) {
-        console.warn('formatBillNo: Invalid date format:', billDate, 'for billNo:', billNo);
-        return billNo; // Return unformatted if date is invalid
-      }
-      month = date.getMonth() + 1; // 1-12
-      year = date.getFullYear();
-      day = date.getDate();
-    }
-
-    // Calculate FY: Apr onwards = same year, Jan-Mar = previous year
-    // Financial Year: April 1 to March 31
-    const fyStartYear = month >= 4 ? year : year - 1;
-    const fyEndYear = fyStartYear + 1;
-
-    // Format FY as 2-digit year + 2-digit year (e.g., "2627" for 2026-2027)
-    const fyFormatted = `${String(fyStartYear).slice(-2)}${String(fyEndYear).slice(-2)}`;
-
-    // Month abbreviations
-    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const monthStr = monthNames[month - 1];
-
-    // Ensure billNo is padded with leading zeros
-    const billNoFormatted = String(billNo).padStart(2, '0');
-
-    // Return formatted: FYMONTH_NN
-    const formatted = `${fyFormatted}${monthStr}_${billNoFormatted}`;
-    console.log('   ✅ Formatted: ' + formatted + ' (FY' + fyStartYear + '-' + fyEndYear + ', month=' + month + ')');
-    return formatted;
-  } catch (e) {
-    console.warn('formatBillNo error:', e, 'billNo:', billNo, 'billDate:', billDate);
-    return billNo; // Return unformatted if any error
-  }
+  // Simply ensure 2-digit padding
+  return String(billNo).padStart(2, '0');
 }
 
 /**

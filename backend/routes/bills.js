@@ -264,7 +264,7 @@ router.post('/', async (req, res) => {
     try { console.log('POST /api/bills payload:',
          JSON.stringify(body).slice(0, 2000)); } catch(e) { console.log('POST /api/bills payload: [unserializable]'); }
     // basic header fields
-    const {
+    let {
       bill_no = null,
       bill_date = null,
       farmer_name = null,
@@ -278,6 +278,22 @@ router.post('/', async (req, res) => {
     // Support both 'items' and 'billItems' from frontend
     const items = body.items || body.billItems || [];
     // map owner_id for schemas that require it
+
+    // ===== MANUAL BILL NUMBER VALIDATION =====
+    // Bill number must be provided, non-blank, and follow format 01...N (sequential numbers only)
+    if (!bill_no || bill_no.toString().trim() === '') {
+      return res.status(400).json({ success: false, error: 'Bill number is mandatory' });
+    }
+    
+    // Validate bill number format: only digits allowed (01, 02, 03, ... 99, 100, etc.)
+    const billNoStr = bill_no.toString().trim();
+    if (!/^\d+$/.test(billNoStr)) {
+      return res.status(400).json({ success: false, error: 'Bill number must contain only digits (e.g., 01, 02, 03)' });
+    }
+    
+    // Pad with leading zeros if needed (01, 02, etc.)
+    bill_no = billNoStr.padStart(2, '0');
+    console.log(`✅ Bill number validated: ${billNoStr} -> ${bill_no}`);
 
     // validate
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -410,7 +426,23 @@ router.put('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
     const id = req.params.id;
-    const { bill_no, bill_date, farmer_name, farmer_mobile, status = 'draft', created_by = req.body.created_by || null, company_id = null, company_slot_no = null } = req.body;
+    let { bill_no, bill_date, farmer_name, farmer_mobile, status = 'draft', created_by = req.body.created_by || null, company_id = null, company_slot_no = null } = req.body;
+    
+    // ===== MANUAL BILL NUMBER VALIDATION =====
+    // Bill number must be provided, non-blank, and follow format 01...N (sequential numbers only)
+    if (!bill_no || bill_no.toString().trim() === '') {
+      return res.status(400).json({ success: false, error: 'Bill number is mandatory' });
+    }
+    
+    // Validate bill number format: only digits allowed (01, 02, 03, ... 99, 100, etc.)
+    const billNoStr = bill_no.toString().trim();
+    if (!/^\d+$/.test(billNoStr)) {
+      return res.status(400).json({ success: false, error: 'Bill number must contain only digits (e.g., 01, 02, 03)' });
+    }
+    
+    // Pad with leading zeros if needed (01, 02, etc.)
+    bill_no = billNoStr.padStart(2, '0');
+    console.log(`✅ Bill number validated for update: ${billNoStr} -> ${bill_no}`);
     
     // Check if user is verified
     const owner_id = req.body.owner_id ?? created_by ?? null;

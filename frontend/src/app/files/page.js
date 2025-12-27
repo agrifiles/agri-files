@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useContext } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE, getCurrentUserId, formatBillNo } from '../../lib/utils';
+import { API_BASE, getCurrentUserId } from '../../lib/utils';
 import Loader from '@/components/Loader';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { LangContext } from '../layout';
@@ -15,11 +15,20 @@ function FilesPageContent() {
   const API = API_BASE 
   const [allFiles, setAllFiles] = useState([]);  // Store all files from API
   const [files, setFiles] = useState([]);        // Filtered files for display
-  const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [ownerId, setOwnerId] = useState(null);    // local user id
   const [selectedFY, setSelectedFY] = useState('all'); // Financial year filter
   const [fyOptions, setFyOptions] = useState([]);      // Available financial years
+
+  // Bill number edit state
+  const [editingBillFileId, setEditingBillFileId] = useState(null);
+  const [editingBillNo, setEditingBillNo] = useState("");
+  const [isUpdatingBill, setIsUpdatingBill] = useState(false);
+
+  // Bill date edit state
+  const [editingDateFileId, setEditingDateFileId] = useState(null);
+  const [editingDate, setEditingDate] = useState("");
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
 
   // Helper to get financial year from a date (April to March)
   const getFinancialYear = (dateStr) => {
@@ -77,11 +86,11 @@ function FilesPageContent() {
       bill_no: (f.bill_no && f.bill_no !== "null") ? f.bill_no : null
     }));
     
-    console.log('Before sort:', cleanedFiles.map(f => f.bill_no || '-').join(', '));
-    console.log('=== DETAILED PARSING ===');
+    // console.log('Before sort:', cleanedFiles.map(f => f.bill_no || '-').join(', '));
+    // console.log('=== DETAILED PARSING ===');
     cleanedFiles.forEach(f => {
       const data = parseBillNo(f.bill_no, f.bill_date);
-      console.log(`${f.bill_no} (date: ${f.bill_date}): fy=${data.fy}, seq=${data.seq}`);
+      // console.log(`${f.bill_no} (date: ${f.bill_date}): fy=${data.fy}, seq=${data.seq}`);
     });
     
     const sorted = [...cleanedFiles].sort((a, b) => {
@@ -96,14 +105,14 @@ function FilesPageContent() {
       const aData = parseBillNo(aBillNo, a.bill_date);
       const bData = parseBillNo(bBillNo, b.bill_date);
       
-      console.log(`\n🔄 COMPARING: ${aBillNo} vs ${bBillNo}`);
-      console.log(`  A: fy=${aData.fy}, seq=${aData.seq}`);
-      console.log(`  B: fy=${bData.fy}, seq=${bData.seq}`);
+      // console.log(`\n🔄 COMPARING: ${aBillNo} vs ${bBillNo}`);
+      // console.log(`  A: fy=${aData.fy}, seq=${aData.seq}`);
+      // console.log(`  B: fy=${bData.fy}, seq=${bData.seq}`);
       
       // First sort by FY
       if (aData.fy !== bData.fy) {
         const result = aData.fy - bData.fy;
-        console.log(`  → Different FY: ${aData.fy} vs ${bData.fy} = ${result}`);
+        // console.log(`  → Different FY: ${aData.fy} vs ${bData.fy} = ${result}`);
         return result;
       }
       
@@ -159,6 +168,33 @@ function FilesPageContent() {
     }
   };
 
+  // Helper to get FY date range (min and max dates for a given date)
+  const getFYDateRange = (dateStr) => {
+    if (!dateStr) return { minDate: '', maxDate: '' };
+    try {
+      const date = new Date(dateStr);
+      const month = date.getMonth(); // 0-indexed (0=Jan, 3=April)
+      const year = date.getFullYear();
+      
+      let fyStartYear, fyEndYear;
+      if (month >= 3) { // April onwards
+        fyStartYear = year;
+        fyEndYear = year + 1;
+      } else { // Jan-Mar
+        fyStartYear = year - 1;
+        fyEndYear = year;
+      }
+      
+      // April 1 to March 31
+      const minDate = `${fyStartYear}-04-01`;
+      const maxDate = `${fyEndYear}-03-31`;
+      
+      return { minDate, maxDate };
+    } catch (e) {
+      return { minDate: '', maxDate: '' };
+    }
+  };
+
   // Read user from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -172,7 +208,7 @@ function FilesPageContent() {
     }
   }, []);
 
-  // Load files + bills
+  // Load files
   const loadData = async () => {
     if (!ownerId) return;
     setLoading(true);
@@ -182,50 +218,19 @@ function FilesPageContent() {
       let fJson = null;
       try { fJson = JSON.parse(fText); } catch (_) {}
       let filesList = fJson?.files || [];
-
-      console.log('═══════════════════════════════════════════');
-      console.log('📥 Files received from API:');
-      console.log('═══════════════════════════════════════════');
-      filesList.forEach((f, i) => {
-        console.log(`\n📄 File #${i+1}:`);
-        console.log(`   file_date: "${f.file_date}"`);
-        console.log(`   bill_no: "${f.bill_no}"`);
-        console.log(`   billNo: "${f.billNo}"`);
-        console.log(`   bill_date: "${f.bill_date}"`);
-        console.log(`   billDate: "${f.billDate}"`);
-        console.log(`   id: ${f.id}`);
-      });
-      console.log('\n═══════════════════════════════════════════\n');
+      console.log(filesList)
 
       // Sort files by bill_no (FY year first, then sequence)
       filesList = sortFilesByBillNo(filesList);
 
-      const bRes = await fetch(`${API}/api/bills?owner_id=${ownerId}`);
-      const bText = await bRes.text();
-      let bJson = null;
-      try { bJson = JSON.parse(bText); } catch (_) {}
-      const billsList = bJson?.bills || [];
-      
-      console.log('═══════════════════════════════════════════');
-      console.log('📥 Bills received from API:');
-      console.log('═══════════════════════════════════════════');
-      billsList.forEach((b, i) => {
-        console.log(`\n💵 Bill #${i+1}:`);
-        console.log(`   bill_no: "${b.bill_no}"`);
-        console.log(`   bill_date: "${b.bill_date}"`);
-        console.log(`   file_id: ${b.file_id}`);
-        console.log(`   bill_id: ${b.bill_id}`);
-      });
-      console.log('\n═══════════════════════════════════════════\n');
       setAllFiles(filesList);
       setFyOptions(generateFYOptions(filesList));
       
       // Apply current filter
       setFiles(filterFilesByFY(filesList, selectedFY));
-      setBills(billsList);
     } catch (err) {
       console.error("LOAD ERROR", err);
-      alert("Error loading files/bills");
+      alert("Error loading files");
     }
     setLoading(false);
   };
@@ -241,59 +246,6 @@ function FilesPageContent() {
       setFiles(filterFilesByFY(allFiles, selectedFY));
     }
   }, [selectedFY, allFiles]);
-
-  // Modal state
-  const [showModal, setShowModal] = useState(false);
-  const [modalFileId, setModalFileId] = useState(null);
-  const [selectedBillId, setSelectedBillId] = useState("");
-  const [isLinking, setIsLinking] = useState(false);
-
-  // Open bill linking modal
-  const openBillModal = (fileId, currentBillId) => {
-    setModalFileId(fileId);
-    setSelectedBillId(currentBillId || "");
-    setShowModal(true);
-  };
-
-  // Link bill → file
-  const linkBill = async () => {
-    if (!selectedBillId || !modalFileId) {
-      alert("Please select a bill");
-      return;
-    }
-
-    setIsLinking(true);
-    console.log('Attempting to link - fileId:', modalFileId, 'billId:', selectedBillId);
-
-    try {
-      const res = await fetch(`${API}/api/files/${modalFileId}/link-bill`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bill_id: Number(selectedBillId) || selectedBillId })
-      });
-
-      const text = await res.text();
-      let data = null;
-      try { data = JSON.parse(text); } catch (_) {}
-
-      console.log('Response status:', res.status, 'Response:', text);
-
-      if (!res.ok || !data?.success) {
-        console.error("LINK ERROR", text);
-        alert("Linking bill failed: " + (data?.error || text));
-        setIsLinking(false);
-        return;
-      }
-
-      alert("Bill linked successfully!");
-      setShowModal(false);
-      loadData();
-    } catch (err) {
-      console.error("LINK EXCEPTION", err);
-      alert("Network error");
-    }
-    setIsLinking(false);
-  };
 
   // Edit file → go to /new?id=123
   const editFile = (fileId) => {
@@ -315,6 +267,124 @@ function FilesPageContent() {
     } catch (err) {
       console.error(err);
       alert("Delete error");
+    }
+  };
+
+  // Update bill number for a file
+  const updateBillNumber = async (fileId, newBillNo) => {
+    if (!newBillNo || newBillNo.trim() === "") {
+      alert("Bill number cannot be empty");
+      return;
+    }
+
+    // Validate: digits only
+    if (!/^\d+$/.test(newBillNo.trim())) {
+      alert("Bill number must contain only digits");
+      return;
+    }
+
+    setIsUpdatingBill(true);
+    try {
+      const normalizedBillNo = newBillNo.trim().padStart(2, '0');
+      
+      const res = await fetch(`${API}/api/v2/files/${fileId}/bill-no`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bill_no: normalizedBillNo })
+      });
+
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (_) {}
+
+      if (!res.ok) {
+        alert("Update failed: " + (data?.error || text));
+        setIsUpdatingBill(false);
+        return;
+      }
+
+      // Update local state instead of full refresh
+      setAllFiles(prevFiles =>
+        prevFiles.map(f =>
+          (f.id ?? f.file_id) === fileId
+            ? { ...f, bill_no: normalizedBillNo }
+            : f
+        )
+      );
+
+      setFiles(prevFiles =>
+        prevFiles.map(f =>
+          (f.id ?? f.file_id) === fileId
+            ? { ...f, bill_no: normalizedBillNo }
+            : f
+        )
+      );
+
+      setEditingBillFileId(null);
+      setEditingBillNo("");
+      setIsUpdatingBill(false);
+    } catch (err) {
+      console.error("UPDATE ERROR", err);
+      alert("Update failed: " + err.message);
+      setIsUpdatingBill(false);
+    }
+  };
+
+  // Update bill date for a file
+  const updateBillDate = async (fileId, newDate) => {
+    if (!newDate || newDate.trim() === "") {
+      alert("Date cannot be empty");
+      return;
+    }
+
+    // Validate: valid date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate.trim())) {
+      alert("Please enter a valid date (YYYY-MM-DD)");
+      return;
+    }
+
+    setIsUpdatingDate(true);
+    try {
+      const res = await fetch(`${API}/api/v2/files/${fileId}/bill-date`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bill_date: newDate.trim() })
+      });
+
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (_) {}
+
+      if (!res.ok) {
+        alert("Update failed: " + (data?.error || text));
+        setIsUpdatingDate(false);
+        return;
+      }
+
+      // Update local state instead of full refresh
+      setAllFiles(prevFiles =>
+        prevFiles.map(f =>
+          (f.id ?? f.file_id) === fileId
+            ? { ...f, bill_date: newDate.trim(), file_date: newDate.trim() }
+            : f
+        )
+      );
+
+      setFiles(prevFiles =>
+        prevFiles.map(f =>
+          (f.id ?? f.file_id) === fileId
+            ? { ...f, bill_date: newDate.trim(), file_date: newDate.trim() }
+            : f
+        )
+      );
+
+      setEditingDateFileId(null);
+      setEditingDate("");
+      setIsUpdatingDate(false);
+    } catch (err) {
+      console.error("UPDATE DATE ERROR", err);
+      alert("Update failed: " + err.message);
+      setIsUpdatingDate(false);
     }
   };
 
@@ -517,38 +587,21 @@ function FilesPageContent() {
                 if (!billNoValue || billNoValue === "null" || billNoValue === null) return null;
                 return billNoValue;
               };
-              
-              const linkedBill = bills.find(b => {
-                const bid = b.bill_id ?? b.id;
-                const bFileId = b.file_id ?? b.fileId;
-                const fBillNo = getCleanBillNo(f.bill_no ?? f.billNo);
-                const bBillNo = getCleanBillNo(b.bill_no);
-                return bFileId === id || bid === f.bill_id || (bBillNo && fBillNo && bBillNo === fBillNo);
-              });
-              
+
               const fBillNo = getCleanBillNo(f.bill_no ?? f.billNo);
-              const billNo = linkedBill?.bill_no ?? fBillNo ?? "-";
-              
-              // IMPORTANT: For bill number formatting, ALWAYS use the FILE's date, not the linked bill's date
-              // The bill number belongs to the file, so use the file's transaction date
+              const billNo = fBillNo ?? "-";
+
+              // Use the file's own bill_date and status directly
               const billDate = f.bill_date ?? f.billDate ?? fileDate;
-              const billStatus = linkedBill?.status ?? f.status ?? "draft";
-              
-              // Debug logging for this specific row
-              console.log('\n📍 FILES TABLE ROW ' + (i + 1) + ':');
-              console.log('   fBillNo:', fBillNo);
-              console.log('   linkedBill:', linkedBill ? 'YES' : 'NO');
-              console.log('   billNo (to format):', billNo);
-              console.log('   f.bill_date:', f.bill_date ?? f.billDate);
-              console.log('   fileDate:', fileDate);
-              console.log('   billDate (final):', billDate);
-              console.log('   linkedBill?.bill_date:', linkedBill?.bill_date);
-              
-              // Format bill_no for display (e.g., "01" → "2526MAR_01")
-              // billDate is guaranteed to exist since fileDate is always set
-              const displayBillNo = billNo !== "-" ? formatBillNo(billNo, billDate) : "-";
-              
-              console.log('   displayBillNo (result):', displayBillNo);
+              const billStatus = f.status ?? "draft";
+
+              // // Debug logging for this specific row
+              // console.log('\n📍 FILES TABLE ROW ' + (i + 1) + ':');
+              // console.log('   fBillNo:', fBillNo);
+              // console.log('   billNo:', billNo);
+              // console.log('   f.bill_date:', f.bill_date ?? f.billDate);
+              // console.log('   fileDate:', fileDate);
+              // console.log('   billDate (final):', billDate);
 
               return (
                 <tr
@@ -560,8 +613,104 @@ function FilesPageContent() {
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Sr_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{i + 1}</td>
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Farmer:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{farmerName}</td>
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Mobile:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{mobile}</td>
-                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Date:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{formatDate(fileDate)}</td>
-                  <td className="block md:table-cell px-4 py-2 text-sm font-semibold text-gray-800 before:content-['Bill_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{displayBillNo}</td>
+                  
+                  {/* File Date - Editable Cell */}
+                  <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Date:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none min-w-40 bg-blue-50/50 md:hover:bg-blue-100/70 transition-colors">
+                    {editingDateFileId === id ? (() => {
+                      const { minDate, maxDate } = getFYDateRange(fileDate);
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex gap-1 items-center">
+                            <input
+                              type="date"
+                              value={editingDate}
+                              onChange={(e) => setEditingDate(e.target.value)}
+                              min={minDate}
+                              max={maxDate}
+                              className="px-2 py-1 border-2 border-blue-400 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                              disabled={isUpdatingDate}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => updateBillDate(id, editingDate)}
+                              disabled={isUpdatingDate}
+                              className="w-7 h-7 flex items-center justify-center bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50 flex-shrink-0 transition-colors"
+                              title="Save"
+                            >
+                              {isUpdatingDate ? "..." : "✓"}
+                            </button>
+                            <button
+                              onClick={() => setEditingDateFileId(null)}
+                              disabled={isUpdatingDate}
+                              className="w-7 h-7 flex items-center justify-center bg-gray-400 text-white text-xs rounded hover:bg-gray-500 disabled:opacity-50 flex-shrink-0 transition-colors"
+                              title="Cancel"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })() : (
+                      <span
+                        onClick={() => {
+                          setEditingDateFileId(id);
+                          // Convert fileDate to YYYY-MM-DD format for input
+                          const dateObj = new Date(fileDate);
+                          const formattedDate = dateObj.toISOString().split('T')[0];
+                          setEditingDate(formattedDate);
+                        }}
+                        className="cursor-pointer hover:text-blue-700 px-2 py-1 rounded inline-flex items-center gap-1 font-medium text-blue-600 transition-colors"
+                        title="Click to edit date"
+                      >
+                        ✏️ {formatDate(fileDate)}
+                      </span>
+                    )}
+                  </td>
+                  
+                  {/* Bill No - Editable Cell */}
+                  <td className="block md:table-cell px-4 py-2 text-sm font-semibold text-gray-800 before:content-['Bill_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none min-w-32 bg-amber-50/50 md:hover:bg-amber-100/70 transition-colors">
+                    {editingBillFileId === id ? (
+                      <div className="flex gap-1 items-center">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={editingBillNo}
+                          onChange={(e) => setEditingBillNo(e.target.value.replace(/\D/g, ''))}
+                          placeholder={billNo}
+                          className="w-12 px-2 py-1 border-2 border-amber-400 rounded text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white font-semibold"
+                          disabled={isUpdatingBill}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => updateBillNumber(id, editingBillNo)}
+                          disabled={isUpdatingBill}
+                          className="w-7 h-7 flex items-center justify-center bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50 flex-shrink-0 transition-colors"
+                          title="Save"
+                        >
+                          {isUpdatingBill ? "..." : "✓"}
+                        </button>
+                        <button
+                          onClick={() => setEditingBillFileId(null)}
+                          disabled={isUpdatingBill}
+                          className="w-7 h-7 flex items-center justify-center bg-gray-400 text-white text-xs rounded hover:bg-gray-500 disabled:opacity-50 flex-shrink-0 transition-colors"
+                          title="Cancel"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        onClick={() => {
+                          setEditingBillFileId(id);
+                          setEditingBillNo(billNo === "-" ? "" : billNo);
+                        }}
+                        className="cursor-pointer hover:text-amber-700 px-2 py-1 rounded inline-flex items-center gap-1 font-semibold text-amber-600 transition-colors"
+                        title="Click to edit bill number"
+                      >
+                        ✏️ {billNo}
+                      </span>
+                    )}
+                  </td>
 
                   <td className="block md:table-cell px-4 py-3">
                     <div className="flex flex-wrap gap-2 md:gap-2">
@@ -576,7 +725,7 @@ function FilesPageContent() {
                         onClick={() => router.push(`/new?id=${id}&section=bill`)}
                         className="flex-1 md:flex-auto text-purple-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:cursor-pointer hover:text-purple-800 text-xs md:text-sm font-medium"
                       >
-                        {t.linkBill}
+                        {t.editBill || 'Edit Bill'}
                       </button>
 
                       <button
@@ -601,52 +750,6 @@ function FilesPageContent() {
           </tbody>
         </table>
       </div>
-
-      {/* Link Bill Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">
-              {t.linkBill}
-            </h2>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.selectBill}
-              </label>
-              <select
-                value={selectedBillId}
-                onChange={(e) => setSelectedBillId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">-- {t.selectBill} --</option>
-                {bills.map(b => (
-                  <option key={b.bill_id ?? b.id} value={b.bill_id ?? b.id}>
-                    {b.bill_no} - {b.farmer_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                disabled={isLinking}
-              >
-                {t.close}
-              </button>
-              {/* <button
-                onClick={linkBill}
-                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
-                disabled={isLinking || !selectedBillId}
-              >
-                {isLinking ? "Linking..." : "Link"}
-              </button> */}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
