@@ -933,4 +933,116 @@ router.put('/:fileId/bill-date', async (req, res) => {
   }
 });
 
+// ============================================================================
+// POST /api/v2/files/:fileId/delete - Delete file and associated bills
+// Validates owner_id before deletion
+// ============================================================================
+router.post('/:fileId/delete', async (req, res) => {
+  let client;
+  try {
+    const { fileId } = req.params;
+    const { owner_id } = req.body;
+    
+    const fileIdNum = toNumber(fileId);
+    const ownerIdNum = toNumber(owner_id);
+
+    if (!fileIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid file ID' });
+    }
+
+    if (!ownerIdNum) {
+      return res.status(400).json({ success: false, error: 'owner_id is required in request body' });
+    }
+
+    // Get client for transaction
+    client = await pool.connect();
+
+    // Start transaction
+    await client.query('BEGIN');
+
+    // 1. Check if file exists and belongs to the requesting owner
+    const fileCheck = await client.query(
+      'SELECT id, owner_id, farmer_name, file_date FROM files WHERE id = $1',
+      [fileIdNum]
+    );
+
+    if (fileCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
+    const fileRecord = fileCheck.rows[0];
+    
+    // Validate owner_id
+    if (fileRecord.owner_id !== ownerIdNum) {
+      await client.query('ROLLBACK');
+      console.warn(`⚠️ Unauthorized delete attempt: user ${ownerIdNum} tried to delete file ${fileIdNum} owned by ${fileRecord.owner_id}`);
+      return res.status(403).json({ success: false, error: 'Unauthorized: You do not own this file' });
+    }
+
+    // 2. Delete all bills associated with this file (verify owner_id in bills table too)
+    const billCheck = await client.query(
+      'SELECT bill_id, owner_id FROM bills WHERE file_id = $1',
+      [fileIdNum]
+    );
+
+    // Validate that all bills also belong to the same owner
+    for (const bill of billCheck.rows) {
+      if (bill.owner_id !== ownerIdNum) {
+        await client.query('ROLLBACK');
+        console.warn(`⚠️ Unauthorized delete attempt: bill ${bill.bill_id} owner mismatch. Expected ${ownerIdNum}, got ${bill.owner_id}`);
+        return res.status(403).json({ success: false, error: 'Unauthorized: Bill ownership mismatch' });
+      }
+    }
+
+    // Delete bills
+    const billDeleteRes = await client.query(
+      'DELETE FROM bills WHERE file_id = $1 AND owner_id = $2 RETURNING bill_id',
+      [fileIdNum, ownerIdNum]
+    );
+
+    const deletedBillCount = billDeleteRes.rows.length;
+    if (deletedBillCount > 0) {
+      console.log(`✅ Deleted ${deletedBillCount} bill(s) for file ${fileIdNum}`);
+    }
+
+    // 3. Delete the file itself
+    const fileDeleteRes = await client.query(
+      'DELETE FROM files WHERE id = $1 AND owner_id = $2 RETURNING id, owner_id',
+      [fileIdNum, ownerIdNum]
+    );
+
+    if (fileDeleteRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(500).json({ success: false, error: 'Failed to delete file' });
+    }
+
+    // Commit transaction
+    await client.query('COMMIT');
+
+    const deletedFile = fileDeleteRes.rows[0];
+    console.log(`✅ Deleted file ${fileIdNum} owned by user ${ownerIdNum}`);
+
+    return res.json({
+      success: true,
+      message: `File deleted successfully. Also deleted ${deletedBillCount} associated bill(s).`,
+      fileId: deletedFile.id
+    });
+  } catch (err) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('Rollback failed:', rollbackErr.message);
+      }
+    }
+    console.error('Error deleting file:', err.message);
+    return res.status(500).json({ success: false, error: 'Server error: ' + err.message });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 module.exports = router;

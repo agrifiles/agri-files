@@ -207,20 +207,24 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           </div>
 
           {/* Row 2: Mobile and Farmer/Client ID */}
-          <div className="grid grid-cols-3 gap-3 mb-1">
-                                    <div>
+          <div className="grid grid-cols-6 gap-3 mb-1">
+                                    <div className="col-span-2">
               <div className="font-bold text-[11px] text-gray-700">गाव</div>
               <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.village || bill?.village || "____________________"}</div>
             </div>
 
     
-            <div>
+            <div className="col-span-2">
               <div className="font-bold text-[11px] text-gray-700">मोबाइल नंबर</div>
               <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.mobile || bill?.farmer_mobile || "____________________"}</div>
             </div>
-                    <div className="">
+                    <div >
               <div className="font-bold text-[11px] text-gray-700">शेतकरी ओळख क्रमांक </div>
               <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.farmer_id || bill?.farmer_id || "____________________"}</div>
+            </div>
+                        <div>
+              <div className="font-bold text-[11px] text-gray-700">आधार नंबर</div>
+              <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.aadhaar_no || bill?.aadhaar_no || "____________________"}</div>
             </div>
           </div>
 
@@ -248,7 +252,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
               <div className="font-bold text-[11px] text-gray-700">जिल्हा</div>
               <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.district || bill?.district || "____________________"}</div>
             </div>
-            <div>
+            <div className="col-span-2">
               <div className="font-bold text-[11px] text-gray-700">क्षेत्रफळ (हेक्टर)</div>
               <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.area8a || bill?.area8a || "____________________"}</div>
             </div>
@@ -261,10 +265,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
               <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.lateral_spacing || bill?.lateral_spacing || "____________________"}</div>
             </div>
 
-            <div>
-              <div className="font-bold text-[11px] text-gray-700">आधार नंबर</div>
-              <div className="border-b border-black py-0.5 text-[14px] font-semibold">{fileData?.aadhaar_no || bill?.aadhaar_no || "____________________"}</div>
-            </div>
+
 
 
           </div>
@@ -379,8 +380,8 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
         </div>
 
         {/* Right: Total/Rounded/Grand Total */}
-        <div>
-          <table className="w-full border border-black border-collapse" style={{fontSize: "11px"}}>
+        <div className="flex justify-end">
+          <table className="border border-black border-collapse" style={{fontSize: "11px"}}>
             <tbody>
               <tr>
                 <td className="border border-black px-0.5 py-0.5 font-bold">TAXABLE AMOUNT</td>

@@ -254,19 +254,27 @@ function FilesPageContent() {
 
   // Delete
   const deleteFile = async (fileId) => {
-    if (!confirm("Delete this file?")) return;
+    if (!confirm("Delete this file? This will also delete any associated bills.")) return;
 
     try {
-      const res = await fetch(`${API}/api/files/${fileId}/delete`, { method: "POST" });
+      const res = await fetch(`${API}/api/v2/files/${fileId}/delete`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner_id: ownerId })
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (_) {}
+
       if (!res.ok) {
-        alert("Delete failed");
+        alert("Delete failed: " + (data?.error || text));
         return;
       }
-      alert("Deleted");
+      alert(data?.message || "File and associated bills deleted successfully");
       loadData();
     } catch (err) {
       console.error(err);
-      alert("Delete error");
+      alert("Delete error: " + err.message);
     }
   };
 
@@ -735,12 +743,12 @@ function FilesPageContent() {
                         {t.quotationFeaturePrint}
                       </button>
 
-                      {/* <button
+                      <button
                         onClick={() => deleteFile(id)}
                         className="flex-1 md:flex-auto text-red-600 rounded-full border px-2 md:px-3 py-1 md:py-0 hover:text-red-900 hover:cursor-pointer text-xs md:text-sm font-medium"
                       >
                         Delete
-                      </button> */}
+                      </button>
                     </div>
                   </td>
                 </tr>
