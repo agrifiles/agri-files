@@ -486,8 +486,9 @@ router.post('/', async (req, res) => {
     let createdBillId = null;
 
     if (billItems && billItems.length > 0 && companyId) {
-      const billNo = form?.billNo || null;
-      const billDate = form?.billDate || new Date().toISOString().split('T')[0];
+      // Get bill_no and bill_date from request body (not just form)
+      const billNo = req.body.bill_no || form?.billNo || null;
+      const billDate = req.body.bill_date || form?.billDate || new Date().toISOString().split('T')[0];
       const companyIdNum = toNumber(companyId);
 
       const billRes = await client.query(
