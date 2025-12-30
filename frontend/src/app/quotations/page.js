@@ -348,7 +348,7 @@ function QuotationsPageContent() {
                       className={`px-2 py-1 rounded-lg border text-xs font-semibold cursor-pointer ${
                         statusOptions.find(o => o.value === q.status)?.color || 'bg-gray-100'
                       }`}
-                      disabled={q.status === 'converted'}
+                      //disabled={q.status === 'converted'}
                     >
                       {statusOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>

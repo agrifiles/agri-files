@@ -935,6 +935,56 @@ router.put('/:fileId/bill-date', async (req, res) => {
 });
 
 // ============================================================================
+// PATCH /api/v2/files/:fileId/status - Update file status
+// Valid statuses: Draft, Farmer Login, Supervisor Desk, A.O. Desk, T.A.O. Desk, S.D.O. Desk, Payment Desk, completed
+// ============================================================================
+router.patch('/:fileId/status', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { status } = req.body;
+    const { owner_id } = req.query;
+
+    if (!fileId || !status) {
+      return res.status(400).json({ success: false, error: 'fileId and status required' });
+    }
+
+    const fileIdNum = toNumber(fileId);
+    const ownerIdNum = toNumber(owner_id);
+
+    if (!fileIdNum || !ownerIdNum) {
+      return res.status(400).json({ success: false, error: 'Invalid fileId or owner_id' });
+    }
+
+    // Validate status value
+    const validStatuses = ['Draft', 'Farmer Login', 'Supervisor Desk', 'A.O. Desk', 'T.A.O. Desk', 'S.D.O. Desk', 'Payment Desk', 'completed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    const updateRes = await pool.query(
+      'UPDATE files SET status = $1 WHERE id = $2 AND owner_id = $3 RETURNING *',
+      [status, fileIdNum, ownerIdNum]
+    );
+
+    if (updateRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'File not found or unauthorized' });
+    }
+
+    const file = updateRes.rows[0];
+    console.log(`✅ Updated file ${fileIdNum} status to "${status}"`);
+
+    return res.json({
+      success: true,
+      file,
+      message: `Status updated to ${status}`
+    });
+  } catch (err) {
+    console.error('Error updating file status:', err.message);
+    return res.status(500).json({ success: false, error: 'Server error: ' + err.message });
+  }
+});
+
+// ============================================================================
 // POST /api/v2/files/:fileId/delete - Delete file and associated bills
 // Validates owner_id before deletion
 // ============================================================================

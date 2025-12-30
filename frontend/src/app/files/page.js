@@ -30,6 +30,18 @@ function FilesPageContent() {
   const [editingDate, setEditingDate] = useState("");
   const [isUpdatingDate, setIsUpdatingDate] = useState(false);
 
+  // Status options for dropdown
+  const statusOptions = [
+    { value: 'Draft', label: 'Draft', color: 'bg-gray-100 text-gray-700' },
+    { value: 'Farmer Login', label: 'Farmer Login', color: 'bg-blue-100 text-blue-700' },
+    { value: 'Supervisor Desk', label: 'Supervisor Desk', color: 'bg-yellow-100 text-yellow-700' },
+    { value: 'A.O. Desk', label: 'A.O. Desk', color: 'bg-orange-100 text-orange-700' },
+    { value: 'T.A.O. Desk', label: 'T.A.O. Desk', color: 'bg-red-100 text-red-700' },
+    { value: 'S.D.O. Desk', label: 'S.D.O. Desk', color: 'bg-pink-100 text-pink-700' },
+    { value: 'Payment Desk', label: 'Payment Desk', color: 'bg-purple-100 text-purple-700' },
+    { value: 'completed', label: 'Completed', color: 'bg-green-100 text-green-700' }
+  ];
+
   // Helper to get financial year from a date (April to March)
   const getFinancialYear = (dateStr) => {
     if (!dateStr) return null;
@@ -396,6 +408,41 @@ function FilesPageContent() {
     }
   };
 
+  // Update status for a file
+  const updateStatus = async (fileId, newStatus) => {
+    try {
+      const res = await fetch(`${API}/api/v2/files/${fileId}/status?owner_id=${ownerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Update local state
+        setAllFiles(prevFiles =>
+          prevFiles.map(f =>
+            (f.id ?? f.file_id) === fileId
+              ? { ...f, status: newStatus }
+              : f
+          )
+        );
+
+        setFiles(prevFiles =>
+          prevFiles.map(f =>
+            (f.id ?? f.file_id) === fileId
+              ? { ...f, status: newStatus }
+              : f
+          )
+        );
+      } else {
+        alert('Failed to update status: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Update status error:', err);
+      alert('Error updating status');
+    }
+  };
+
   // Calculate insights
   const getInsights = () => {
     const totalFiles = allFiles.length;
@@ -411,41 +458,55 @@ function FilesPageContent() {
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     }).length;
 
-    // Get latest file date
-    let latestDate = null;
-    if (allFiles.length > 0) {
-      const dates = allFiles
-        .map(f => f.file_date ?? f.fileDate)
-        .filter(d => d)
-        .map(d => new Date(d))
-        .filter(d => !isNaN(d.getTime()))
-        .sort((a, b) => b.getTime() - a.getTime());
-      if (dates.length > 0) latestDate = dates[0];
-    }
-
-    // Files by last 3 months
-    const filesByMonth = {};
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    for (let i = 0; i < 3; i++) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const monthKey = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-      filesByMonth[monthKey] = 0;
-    }
-
-    allFiles.forEach(f => {
-      const fileDate = f.file_date ?? f.fileDate;
-      if (!fileDate) return;
-      const date = new Date(fileDate);
-      if (isNaN(date.getTime())) return;
-      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-      if (filesByMonth[monthKey] !== undefined) {
-        filesByMonth[monthKey]++;
+    // Files by status (count only non-zero)
+    const statusCounts = {};
+    statusOptions.forEach(opt => {
+      const count = allFiles.filter(f => (f.status || 'Draft') === opt.value).length;
+      if (count > 0) {
+        statusCounts[opt.value] = { count, label: opt.label, color: opt.color };
       }
     });
 
-    return { totalFiles, filesThisMonth, latestDate, filesByMonth };
+    // Files by last 4 months (using bill_date)
+    const filesByMonth = {};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    console.log('🗓️ === INITIALIZING MONTHS ===');
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(1); // Set to 1st to avoid day overflow when changing month
+      d.setMonth(d.getMonth() - i);
+      const monthKey = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      filesByMonth[monthKey] = 0;
+      console.log(`  Month ${i}: ${monthKey}`);
+    }
+    console.log('📊 filesByMonth initialized:', filesByMonth);
+
+    console.log('📁 === PROCESSING FILES ===');
+    allFiles.forEach((f, idx) => {
+      // Use SAME fallback chain as table display: bill_date → billDate → file_date → fileDate
+      const billDate = f.bill_date ?? f.billDate ?? f.file_date ?? f.fileDate;
+      if (!billDate) {
+        console.log(`  [${idx}] NO DATE - skipped`);
+        return;
+      }
+      const date = new Date(billDate);
+      if (isNaN(date.getTime())) {
+        console.log(`  [${idx}] INVALID DATE: ${billDate} - skipped`);
+        return;
+      }
+      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      console.log(`  [${idx}] ${monthKey} (${billDate})`);
+      if (filesByMonth[monthKey] !== undefined) {
+        filesByMonth[monthKey]++;
+        console.log(`    ✅ Counted! Total for ${monthKey}: ${filesByMonth[monthKey]}`);
+      } else {
+        console.log(`    ⚠️ Month not in range: ${monthKey}`);
+      }
+    });
+    console.log('📊 Final filesByMonth:', filesByMonth);
+
+    return { totalFiles, filesThisMonth, statusCounts, filesByMonth };
   };
 
   const insights = getInsights();
@@ -466,67 +527,73 @@ function FilesPageContent() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-4 mb-6">
         {/* Total Files Card */}
         <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-blue-500">
-          <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t.totalFiles}</div>
-              <div className="text-3xl md:text-4xl font-bold text-gray-800">{insights.totalFiles}</div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t.totalFiles}</div>
+              <div className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">{insights.totalFiles}</div>
+              <div className="text-xs text-gray-500 font-medium">{t.allTime}</div>
             </div>
-            <div className="text-3xl md:text-4xl">📁</div>
+            <div className="text-4xl md:text-5xl">📁</div>
           </div>
-          <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-300 rounded-full"></div>
-          <div className="text-xs text-gray-500 mt-2 font-medium">{t.allTime}</div>
+          <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-300 rounded-full mb-3"></div>
+          {/* <div className="text-xs text-gray-600">
+            <div className="flex justify-between mb-1">
+              <span>{t.thisMonth || 'This Month'}:</span>
+              <span className="font-semibold text-blue-600">{insights.filesThisMonth}</span>
+            </div>
+          </div> */}
         </div>
 
-        {/* Files This Month Card */}
-        <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-emerald-500">
+        {/* Status Summary Card - 2x Width */}
+        <div className="col-span-2 bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-amber-500">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t.thisMonth}</div>
-              <div className="text-3xl md:text-4xl font-bold text-gray-800">{insights.filesThisMonth}</div>
-            </div>
-            <div className="text-3xl md:text-4xl">📅</div>
-          </div>
-          <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full"></div>
-          <div className="text-xs text-gray-500 mt-2 font-medium">
-            {new Date().toLocaleDateString('en-IN', { month: 'short' })}
-          </div>
-        </div>
-
-        {/* Latest File Date Card */}
-        <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-amber-500">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{t.latestFile}</div>
-              <div className="text-3xl md:text-4xl font-bold text-gray-800">
-                {insights.latestDate ? insights.latestDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '-'}
-              </div>
-            </div>
-            <div className="text-3xl md:text-4xl">⚡</div>
-          </div>
-          <div className="h-1 bg-gradient-to-r from-amber-500 to-amber-300 rounded-full"></div>
-          <div className="text-xs text-gray-500 mt-2 font-medium">
-            {insights.latestDate ? insights.latestDate.getFullYear() : t.noFiles}
-          </div>
-        </div>
-
-        {/* Quick Stats Card */}
-        <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-violet-500">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t.byMonth}</div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t.status || 'Status'}</div>
             </div>
             <div className="text-3xl md:text-4xl">📊</div>
           </div>
-          <div className="space-y-1.5 text-xs">
-            {Object.entries(insights.filesByMonth).slice(0, 2).map(([month, count]) => (
-              <div key={month} className="flex justify-between items-center text-gray-700">
-                <span className="text-gray-600 font-medium">{month}</span>
-                <span className="font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded">{count}</span>
+          <div className="flex justify-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {Object.entries(insights.statusCounts).map(([statusVal, statusInfo], idx) => (
+                <div key={statusVal} style={{animationDelay: `${idx * 100}ms`}} className={`p-2 rounded text-center text-xs ${statusInfo.color} border border-current border-opacity-20 animate-fadeInUp opacity-0 animation-fill-forwards`}>
+                  <div className="font-medium text-gray-700 mb-0.5 text-xl md:text-2xl font-bold">{statusInfo.count}</div>
+                  <div className="text-xs font-semibold">{statusInfo.label}</div>
+                </div>
+              ))}
+              {Object.keys(insights.statusCounts).length === 0 && (
+                <div className="col-span-2 md:col-span-4 text-gray-500 text-center py-2 text-xs">No status data</div>
+              )}
+            </div>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-amber-500 to-amber-300 rounded-full mt-2"></div>
+        </div>
+
+        {/* Quick Stats Card - Files by Month */}
+        {/* <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-violet-500">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t.byMonth}</div>
+            </div>
+            <div className="text-4xl md:text-5xl">📊</div>
+          </div>
+          <div className="space-y-2">
+            {Object.entries(insights.filesByMonth).map(([month, count]) => (
+              <div key={month} className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 font-medium">{month}</span>
+                <div className="flex items-center gap-2 flex-1 ml-3">
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-violet-500 to-violet-300 rounded-full transition-all duration-300"
+                      style={{width: insights.totalFiles > 0 ? `${(count / Math.max(...Object.values(insights.filesByMonth), 1)) * 100}%` : '0%'}}
+                    ></div>
+                  </div>
+                  <span className="font-bold text-violet-600 bg-violet-50 px-2.5 py-1 rounded text-sm min-w-10 text-center">{count}</span>
+                </div>
               </div>
             ))}
           </div>
-          <div className="h-1 bg-gradient-to-r from-violet-500 to-violet-300 rounded-full mt-2"></div>
-        </div>
+          <div className="h-1 bg-gradient-to-r from-violet-500 to-violet-300 rounded-full mt-4"></div>
+        </div> */}
       </div>
 
       {/* Financial Year Filter */}
@@ -558,6 +625,7 @@ function FilesPageContent() {
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.mobile}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.fileDate}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.billNo}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">{t.status || 'Status'}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.actions}</th>
             </tr>
           </thead>
@@ -568,7 +636,7 @@ function FilesPageContent() {
             {/* Show loading inside table body */}
             {loading && (
               <tr>
-                <td colSpan="7" className="py-12 text-center">
+                <td colSpan="8" className="py-12 text-center">
                   <Loader message="Loading files..." size="md" />
                 </td>
               </tr>
@@ -577,7 +645,7 @@ function FilesPageContent() {
             {/* No files found */}
             {!loading && files.length === 0 && (
               <tr>
-                <td colSpan="7" className="py-8 text-center text-gray-500">
+                <td colSpan="8" className="py-8 text-center text-gray-500">
                   No files found.
                 </td>
               </tr>
@@ -718,6 +786,23 @@ function FilesPageContent() {
                         ✏️ {billNo}
                       </span>
                     )}
+                  </td>
+
+                  {/* Status Dropdown Cell */}
+                  <td className="block md:table-cell px-4 py-2 text-sm before:content-['Status:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">
+                    <select
+                      value={f.status || 'Draft'}
+                      onChange={(e) => updateStatus(id, e.target.value)}
+                      className={`px-2 py-1 rounded-lg border text-xs font-semibold cursor-pointer ${
+                        statusOptions.find(o => o.value === f.status)?.color || 'bg-gray-100'
+                      }`}
+                    >
+                      {statusOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </td>
 
                   <td className="block md:table-cell px-4 py-3">
