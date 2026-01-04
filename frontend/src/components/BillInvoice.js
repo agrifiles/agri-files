@@ -166,7 +166,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           </div>
           <div className="text-right leading-tight">
             <div className="font-bold text-[9px] mb-1" style={{ color: "#8B6F47" }}>AUTHORISED DEALER FOR-</div>
-            <div className="font-bold text-[13px] mb-1" style={{ color: "#5D4037" }}>{fileData?.company || "____________________"}</div>
+            <div className="font-bold text-[13px] mb-1" style={{ color: "#5D4037" }}>{fileData?.company || "_________"}</div>
             <div className="font-bold text-[11px]" style={{ color: "#334155" }}>राज्य : {userData?.gst_state }</div>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           <div className="font-black text-2xl tracking-widest mb-0.5" style={{ color: "#5D4037" }}>{billType}</div>
           <div className="text-[8px] font-semibold" style={{ color: "#8B6F47" }}>{billHeader}</div>
                     <div className="text-[12px] font-semibold" style={{ color: "black" }}>Under Jurisdication of : {userData?.taluka}</div>
-              <div className="font-bold text-[14px]" style={{ color: "red" }}>संच प्रकार : {fileData?.dripline_product || bill?.dripline_product || "____________________"}</div>
+              <div className="font-bold text-[14px]" style={{ color: "red" }}>संच प्रकार : {fileData?.dripline_product || bill?.dripline_product || "_________"}</div>
 
         </div>
 
@@ -186,7 +186,7 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           <div className="grid grid-cols-3 gap-3 mb-1">
                         <div className="col-span-1">
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>ग्राहकाचे नाव</div>
-              <div className="border-b border-\[#8B6F47\] py-0.5 text-[15px] font-semibold" style={{ color: "#334155" }}>{fileData?.farmer_name || bill.farmer_name || "____________________"}</div>
+              <div className="border-b border-\[#8B6F47\] py-0.5 text-[15px] font-semibold" style={{ color: "#334155" }}>{fileData?.farmer_name || bill.farmer_name || "_________"}</div>
             </div>
                         <div>
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}> दिनांक</div>
@@ -204,17 +204,17 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
           <div className="grid grid-cols-6 gap-3 mb-1">
                                     <div  className="col-span-2">
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>गाव</div>
-              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.village || "____________________"}</div>
+              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.village || "_________"}</div>
             </div>
 
     
             <div className="col-span-2">
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>मोबाइल नंबर</div>
-              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.mobile || bill.farmer_mobile || "____________________"}</div>
+              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.mobile || bill.farmer_mobile || "_________"}</div>
             </div>
                     <div className="">
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>शेतकरी ओळख क्रमांक </div>
-              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.farmer_id || "____________________"}</div>
+              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.farmer_id || "_________"}</div>
             </div>
             
             <div  >
@@ -228,15 +228,15 @@ export default function BillInvoice({ bill, fileData, userData, id = "bill-conte
 
             <div>
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>तालुका</div>
-              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.taluka || "____________________"}</div>
+              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.taluka || "_________"}</div>
             </div>
              <div>
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>पीकाचे नाव</div>
-              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.crop_name || bill?.crop_name || "____________________"}</div>
+              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.crop_name || bill?.crop_name || "_________"}</div>
             </div>
                         <div>
               <div className="font-bold text-[11px]" style={{ color: "#334155" }}>अर्ज क्रमांक</div>
-              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.application_id || "____________________"}</div>
+              <div className="border-b border-\[#8B6F47\] py-0.5 text-[14px] font-semibold" style={{ color: "#334155" }}>{fileData?.application_id || "_________"}</div>
             </div>
             
           </div>

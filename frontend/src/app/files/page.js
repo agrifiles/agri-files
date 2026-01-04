@@ -19,6 +19,8 @@ function FilesPageContent() {
   const [ownerId, setOwnerId] = useState(null);    // local user id
   const [selectedFY, setSelectedFY] = useState('all'); // Financial year filter
   const [fyOptions, setFyOptions] = useState([]);      // Available financial years
+  const [selectedFileType, setSelectedFileType] = useState('all'); // File type filter
+  const [fileTypeOptions, setFileTypeOptions] = useState([]);      // Available file types
 
   // Bill number edit state
   const [editingBillFileId, setEditingBillFileId] = useState(null);
@@ -41,7 +43,7 @@ function FilesPageContent() {
     { value: 'Payment Desk', label: 'Payment Desk', color: 'bg-purple-100 text-purple-700' },
     { value: 'completed', label: 'Completed', color: 'bg-green-100 text-green-700' }
   ];
-
+console.log('files homepage:', files);
   // Helper to get financial year from a date (April to March)
   const getFinancialYear = (dateStr) => {
     if (!dateStr) return null;
@@ -164,6 +166,23 @@ function FilesPageContent() {
     });
   };
 
+  // Helper to get file type icon
+  const getFileTypeInitial = (fileType) => {
+    if (!fileType) return 'D';
+    return fileType.charAt(0).toUpperCase();
+  };
+
+  const getFileTypeColor = (fileType) => {
+    const colors = {
+      'MAHADBT': { bg: 'rgb(255, 152, 0)', text: 'text-white', badge: 'rgb(255, 152, 0)' },      // Vibrant Orange
+      'POCRA': { bg: 'rgb(33, 150, 243)', text: 'text-white', badge: 'rgb(33, 150, 243)' },     // Bright Blue
+      'PMKSY': { bg: 'rgb(76, 175, 80)', text: 'text-white', badge: 'rgb(76, 175, 80)' },       // Fresh Green
+      'PM-KISAN': { bg: 'rgb(156, 39, 176)', text: 'text-white', badge: 'rgb(156, 39, 176)' },  // Deep Purple
+      'default': { bg: 'rgb(158, 158, 158)', text: 'text-white', badge: 'rgb(158, 158, 158)' }  // Gray
+    };
+    return colors[fileType] || colors['default'];
+  };
+
   // Helper to format date to readable format
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -207,6 +226,24 @@ function FilesPageContent() {
     }
   };
 
+  // Generate unique file type options from files
+  const generateFileTypeOptions = (filesList) => {
+    const typeSet = new Set();
+    filesList.forEach(f => {
+      if (f.file_type && f.file_type !== 'null') {
+        typeSet.add(f.file_type);
+      }
+    });
+    const sorted = Array.from(typeSet).sort();
+    return sorted;
+  };
+
+  // Filter files based on selected file type
+  const filterFilesByType = (filesList, fileType) => {
+    if (fileType === 'all') return filesList;
+    return filesList.filter(f => f.file_type === fileType);
+  };
+
   // Read user from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -237,9 +274,12 @@ function FilesPageContent() {
 
       setAllFiles(filesList);
       setFyOptions(generateFYOptions(filesList));
+      setFileTypeOptions(generateFileTypeOptions(filesList));
       
-      // Apply current filter
-      setFiles(filterFilesByFY(filesList, selectedFY));
+      // Apply current filters
+      let filtered = filterFilesByFY(filesList, selectedFY);
+      filtered = filterFilesByType(filtered, selectedFileType);
+      setFiles(filtered);
     } catch (err) {
       console.error("LOAD ERROR", err);
       alert("Error loading files");
@@ -252,12 +292,14 @@ function FilesPageContent() {
     if (ownerId) loadData();
   }, [ownerId]);
 
-  // Apply filter when selectedFY changes (local filtering, no API call)
+  // Apply filter when selectedFY or selectedFileType changes (local filtering, no API call)
   useEffect(() => {
     if (allFiles.length > 0) {
-      setFiles(filterFilesByFY(allFiles, selectedFY));
+      let filtered = filterFilesByFY(allFiles, selectedFY);
+      filtered = filterFilesByType(filtered, selectedFileType);
+      setFiles(filtered);
     }
-  }, [selectedFY, allFiles]);
+  }, [selectedFY, selectedFileType]);
 
   // Edit file → go to /new?id=123
   const editFile = (fileId) => {
@@ -506,7 +548,17 @@ function FilesPageContent() {
     });
     console.log('📊 Final filesByMonth:', filesByMonth);
 
-    return { totalFiles, filesThisMonth, statusCounts, filesByMonth };
+    // Files by file type (count all types)
+    const fileTypeCounts = {};
+    fileTypeOptions.forEach(fileType => {
+      const count = allFiles.filter(f => f.file_type === fileType).length;
+      if (count > 0) {
+        const colors = getFileTypeColor(fileType);
+        fileTypeCounts[fileType] = { count, label: fileType, color: colors };
+      }
+    });
+
+    return { totalFiles, filesThisMonth, statusCounts, fileTypeCounts, filesByMonth };
   };
 
   const insights = getInsights();
@@ -568,6 +620,61 @@ function FilesPageContent() {
           <div className="h-1 bg-gradient-to-r from-amber-500 to-amber-300 rounded-full mt-2"></div>
         </div>
 
+        {/* File Type Summary Card - More Attractive */}
+        {Object.keys(insights.fileTypeCounts).length > 0 && (
+          <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-cyan-500">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">File Types</div>
+              </div>
+              <div className="text-3xl md:text-4xl">🏷️</div>
+            </div>
+            <div className="space-y-2">
+              {Object.entries(insights.fileTypeCounts).map(([fileType, typeInfo]) => {
+                const percentage = ((typeInfo.count / insights.totalFiles) * 100).toFixed(0);
+                return (
+                  <div key={fileType} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: typeInfo.color.bg,
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: '14px',
+                      flexShrink: 0,
+                      boxShadow: `0 2px 8px ${typeInfo.color.bg}40`
+                    }}>
+                      {fileType.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-semibold text-gray-700">{fileType}</span>
+                        <span className="text-sm font-bold" style={{color: typeInfo.color.bg}}>{typeInfo.count}</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          style={{
+                            width: `${percentage}%`,
+                            backgroundColor: typeInfo.color.bg,
+                            transition: 'width 0.3s ease'
+                          }}
+                          className="h-full rounded-full"
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">{percentage}% of total</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="h-1 bg-gradient-to-r from-cyan-500 to-cyan-300 rounded-full mt-3"></div>
+          </div>
+        )}
+
         {/* Quick Stats Card - Files by Month */}
         {/* <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 border-l-4 border-l-violet-500">
           <div className="flex items-start justify-between mb-4">
@@ -596,22 +703,91 @@ function FilesPageContent() {
         </div> */}
       </div>
 
-      {/* Financial Year Filter */}
-      <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-        <label className="text-sm font-medium text-gray-700">{t.financialYear}:</label>
-        <select
-          value={selectedFY}
-          onChange={(e) => setSelectedFY(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        >
-          <option value="all">{t.all || 'All'}</option>
-          {fyOptions.map(fy => (
-            <option key={fy} value={fy}>FY {fy}</option>
-          ))}
-        </select>
-        <span className="text-xs text-gray-500">
-          {t.showing} {files.length} {t.of} {allFiles.length} {t.files}
-        </span>
+      {/* Financial Year & File Type Filter */}
+      <div className="mb-4 p-2 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* FY Filter */}
+          <label className="text-xs font-medium text-gray-700">{t.financialYear}:</label>
+          <select
+            value={selectedFY}
+            onChange={(e) => setSelectedFY(e.target.value)}
+            className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          >
+            <option value="all">{t.all || 'All'}</option>
+            {fyOptions.map(fy => (
+              <option key={fy} value={fy}>FY {fy}</option>
+            ))}
+          </select>
+
+          {/* File Type Filter */}
+          {fileTypeOptions.length > 0 && (
+            <>
+              <label className="text-xs font-medium text-gray-700 ml-2">Type:</label>
+              <button
+                onClick={() => setSelectedFileType('all')}
+                style={{
+                  backgroundColor: selectedFileType === 'all' ? 'rgb(76, 175, 80)' : 'white',
+                  color: selectedFileType === 'all' ? 'white' : 'rgb(76, 175, 80)',
+                  border: `1px solid rgb(76, 175, 80)`,
+                }}
+                className="px-2 py-1 rounded text-xs font-medium transition-all hover:shadow-sm flex items-center gap-1"
+              >
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  backgroundColor: selectedFileType === 'all' ? 'white' : 'rgb(76, 175, 80)',
+                  color: selectedFileType === 'all' ? 'rgb(76, 175, 80)' : 'white',
+                  fontWeight: 'bold',
+                  fontSize: '10px'
+                }}>
+                  A
+                </span>
+                <span className="hidden sm:inline">All</span>
+              </button>
+              {fileTypeOptions.map(fileType => {
+                const colors = getFileTypeColor(fileType);
+                const isSelected = selectedFileType === fileType;
+                return (
+                <button
+                  key={fileType}
+                  onClick={() => setSelectedFileType(fileType)}
+                  style={{
+                    backgroundColor: isSelected ? colors.bg : 'white',
+                    color: isSelected ? 'white' : colors.bg,
+                    border: `1px solid ${colors.bg}`,
+                  }}
+                  className="px-2 py-1 rounded text-xs font-medium transition-all hover:shadow-sm flex items-center gap-1"
+                >
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    backgroundColor: isSelected ? 'white' : colors.bg,
+                    color: isSelected ? colors.bg : 'white',
+                    fontWeight: 'bold',
+                    fontSize: '10px'
+                  }}>
+                    {getFileTypeInitial(fileType)}
+                  </span>
+                  <span className="hidden sm:inline">{fileType}</span>
+                </button>
+              );
+              })}
+            </>
+          )}
+
+          {/* File Count */}
+          <span className="text-xs text-gray-600 font-medium ml-auto">
+            {t.showing} {files.length} {t.of} {allFiles.length} {t.files}
+          </span>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200">
@@ -621,6 +797,7 @@ function FilesPageContent() {
           <thead className="bg-gradient-to-r from-green-800 to-green-600 text-white hidden md:table-header-group">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.srNo}</th>
+              <th className="px-4 py-3 text-center text-sm font-semibold w-12">Type</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.farmer}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.mobile}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">{t.fileDate}</th>
@@ -636,7 +813,7 @@ function FilesPageContent() {
             {/* Show loading inside table body */}
             {loading && (
               <tr>
-                <td colSpan="8" className="py-12 text-center">
+                <td colSpan="9" className="py-12 text-center">
                   <Loader message="Loading files..." size="md" />
                 </td>
               </tr>
@@ -645,7 +822,7 @@ function FilesPageContent() {
             {/* No files found */}
             {!loading && files.length === 0 && (
               <tr>
-                <td colSpan="8" className="py-8 text-center text-gray-500">
+                <td colSpan="9" className="py-8 text-center text-gray-500">
                   No files found.
                 </td>
               </tr>
@@ -687,6 +864,22 @@ function FilesPageContent() {
                   }`}
                 >
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Sr_No:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{i + 1}</td>
+                  <td className="block md:table-cell px-4 py-2 text-sm text-center" title={f.file_type || 'Unknown'}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      backgroundColor: getFileTypeColor(f.file_type).bg,
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: '14px'
+                    }}>
+                      {getFileTypeInitial(f.file_type)}
+                    </span>
+                  </td>
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Farmer:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{farmerName}</td>
                   <td className="block md:table-cell px-4 py-2 text-sm text-gray-700 before:content-['Mobile:'] before:font-bold before:text-gray-600 before:mr-2 md:before:content-none">{mobile}</td>
                   

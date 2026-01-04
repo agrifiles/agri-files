@@ -4,7 +4,7 @@
  * AppendixForm - Static Agricultural Form (परिशिष्ट - ३)
  * Displays the agricultural product details form as per the template
  */
-export default function AppendixForm({ userData, billData, fileData = {} }) {
+export default function AppendixForm({ userData, billData, fileData , fileName = {} }) {
   // Ensure userData is an object even if null or undefined
   const user = userData || {};
   console.log('Rendering AppendixForm with userData:', userData, 'billData:', billData, 'fileData:', fileData);
@@ -28,11 +28,24 @@ export default function AppendixForm({ userData, billData, fileData = {} }) {
   const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
 
   return (
-    <div className="w-full bg-white min-h-screen p-8" style={{ pageBreakBefore: 'always', pageBreakInside: 'avoid' }}>
+    <div 
+      className="w-full bg-white"
+      style={{
+        width: "100%",
+        height: "auto",
+        margin: "0",
+        fontSize: "11px",
+        padding: "5mm",
+        position: "relative",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       {/* Header Section */}
       <div className="mb-1">
         <h1 className="text-center text-xl font-bold mb-2">परिशिष्ट - ३</h1>
-        <p className="text-center text-sm font-semibold mb-4">नानाजी देशमुख कृषि संजीवनी प्रकल्प तुषार सिंचन संच - मोका तपसाणी परिशिष्ट</p>
+        <p className="text-center text-sm font-semibold mb-4">{fileName} {fileData.dripline_product|| '__________'} सिंचन संच - मोका तपसाणी परिशिष्ट</p>
       </div>
 
       {/* Info Section */}
@@ -114,7 +127,7 @@ export default function AppendixForm({ userData, billData, fileData = {} }) {
                 <p className="text-xs font-semibold">देयक क्रमांक व रक्कम</p>
               </td>
               <td colSpan="5" className="border-gray-300 p-2">
-                <p className="text-sm">{billData.bill_no} :  {fileData.file_date ? new Date(fileData.file_date).toLocaleDateString('en-GB') : '__________'}</p>
+                <p className="text-sm">{billData?.bill_no} :  {fileData.file_date ? new Date(fileData.file_date).toLocaleDateString('en-GB') : '__________'}</p>
               </td>
             </tr>
           </tbody>

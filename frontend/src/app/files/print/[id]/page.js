@@ -232,6 +232,24 @@ function FilePrintPageContent({ params }) {
       `;
     }
 
+    // Fix appendix form content styling for print
+    const appendixContent = clonedFile.querySelector('#file-appendix-content');
+    if (appendixContent) {
+      appendixContent.style.cssText = `
+        width: 100%;
+        min-height: auto;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        font-size: 11px;
+        position: relative;
+        box-sizing: border-box;
+        background: white;
+        page-break-inside: auto;
+        page-break-after: always;
+      `;
+    }
+
     // Override the file-content container
     clonedFile.style.cssText = `
       margin: 0 auto;
@@ -357,6 +375,20 @@ function FilePrintPageContent({ params }) {
         padding: 5mm !important;
         box-sizing: border-box !important;
         display: block !important;
+      }
+
+      #file-appendix-content {
+        width: 100% !important;
+        min-height: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        display: block !important;
+        page-break-inside: auto !important;
+        page-break-after: always !important;
+        border: none !important;
+        box-shadow: none !important;
       }
 
       /* Prevent splitting of important sections in bill */
@@ -506,7 +538,12 @@ function FilePrintPageContent({ params }) {
       </div>
     );
   }
-
+   let fileName = 'NA';
+  if(file.file_type === 'POCRA' ){
+   fileName = 'नानाजी देशमुख कृषी संजवणी प्रकल्प';}
+  else{
+     fileName = 'प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत केंद्र पुरस्कृत सिंचन योजना';
+    } 
   return (
     <div className="bg-gray-100 min-h-screen" style={{ backgroundColor: "#f5f5f5", padding: "20px 0" }}>
       <div id="file-content" className="w-screen px-6">
@@ -528,7 +565,7 @@ function FilePrintPageContent({ params }) {
         >
           {/* Header Row */}
                       <div className='text-center' >
-                          <h1 className="text-4xl font-black mb-1">नानाजी देशमुख कृषी संजवणी प्रकल्प</h1>
+                          <h1 className="text-4xl font-black mb-1">{fileName}</h1>
                            <h2 className="text-lg  mt-5 font-black">सन {toDevanagariDigits(file.fy_year || '')}</h2>
               {/* <h1 className="text-xl font-black mb-1">केंद्र पुरस्कृत सिंचन योजना</h1>
               <h5 className="text-sm font-semibold mb-2">प्रति थेंब अधिक पीक (PER DROP MORE CROP)</h5> */}
@@ -691,7 +728,7 @@ function FilePrintPageContent({ params }) {
         >
           {/* Header Row */}
                       <div className='text-center' >
-                          <h1 className="text-xl font-black mb-1">प्रधानमंत्री कृषी सिंचाई योजने अंतर्गत</h1>
+                          <h1 className="text-xl font-black mb-1"> {fileName}</h1>
               <h1 className="text-xl font-black mb-1">केंद्र पुरस्कृत सिंचन योजना</h1>
               <h5 className="text-sm font-semibold mb-2">प्रति थेंब अधिक पीक (PER DROP MORE CROP)</h5>
               <hr className="border-black my-2" />
@@ -1418,11 +1455,32 @@ function FilePrintPageContent({ params }) {
             </div>
           </div>
         )}
-
-
         {/* Appendix Form (परिशिष्ट - ३) - Only for POCRA file type */}
-        {file?.file_type === 'POCRA' && (
         <div 
+          id="file-appendix-content"
+          className="mx-auto bg-white shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            minHeight: "297mm",
+            height: "auto",
+            margin: "15px auto",
+            padding: "0",
+            position: "relative",
+            boxSizing: "border-box",
+          }}
+        >
+            <AppendixForm 
+              userData={userData}
+              fileData={file}
+              billData={billData}
+              fileName={fileName}
+            />
+        </div>
+      
+     
+        {/* {file?.file_type === 'POCRA' && (
+        <div 
+          id="file-appendix-content"
           className="sheet mx-auto bg-white shadow-lg border-4 border-black"
           style={{
             width: "210mm",
@@ -1434,15 +1492,14 @@ function FilePrintPageContent({ params }) {
             boxSizing: "border-box",
           }}
         >
-          <div style={{ padding: "20px" }}>
             <AppendixForm 
               userData={userData}
               fileData={file}
               billData={billData}
+              fileName={fileName}
             />
-          </div>
         </div>
-        )}
+        )} */}
 
         {/* Quotation Invoice Section */}
         <div 
