@@ -4,6 +4,7 @@ import { API_BASE, getCurrentUser, formatBillNo } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import BillInvoice from '@/components/BillInvoice';
+import AppendixForm from '@/components/AppendixForm';
 
 function BillPrintContent({ params }) {
     const router = useRouter();
@@ -202,6 +203,13 @@ function BillPrintContent({ params }) {
     >
       {/* A4 Page with shadow for screen preview - autoHeight for multi-page bills */}
       <div style={{ margin: "20px auto", boxShadow: "0 0 10px rgba(0,0,0,0.2)", width: "210mm" }}>
+        {/* Appendix Form (परिशिष्ट - ३) - Before Bill Invoice */}
+        <AppendixForm 
+          userData={userData}
+          fileData={fileData}
+        />
+        
+        {/* Bill Invoice */}
         <BillInvoice 
           bill={bill} 
           fileData={fileData} 

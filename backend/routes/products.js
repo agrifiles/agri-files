@@ -12,6 +12,7 @@ router.post('/save', async (req, res) => {
       batchNo,
       cmlNo,
       size,
+      class: productClass,
       qty,
       govRate,
       companyRate,
@@ -33,10 +34,10 @@ router.post('/save', async (req, res) => {
       // 🔁 Update existing product (spare1, spare2, spare3 stay unchanged)
       const query = `
         UPDATE products SET
-          description_of_good=$1, hsn_code=$2, batch_no=$3, cml_no=$4, size=$5,
-          qty=$6, gov_rate=$7, company_rate=$8, selling_rate=$9, unit_of_measure=$10,
-          sgst=$11, cgst=$12, bis=$13, updated_at=NOW()
-        WHERE product_id=$14 AND is_deleted=FALSE
+          description_of_good=$1, hsn_code=$2, batch_no=$3, cml_no=$4, size=$5, class=$6,
+          qty=$7, gov_rate=$8, company_rate=$9, selling_rate=$10, unit_of_measure=$11,
+          sgst=$12, cgst=$13, bis=$14, updated_at=NOW()
+        WHERE product_id=$15 AND is_deleted=FALSE
       `;
       const values = [
         description_of_good || '',
@@ -44,6 +45,7 @@ router.post('/save', async (req, res) => {
         batchNo || null,
         cmlNo || null,
         size || null,
+        productClass || null,
         qty || null,
         govRate || null,
         companyRate || null,
@@ -61,11 +63,11 @@ router.post('/save', async (req, res) => {
       // Add new product (store spare1, spare2, spare3)
       const query = `
         INSERT INTO products (
-          description_of_good, hsn_code, batch_no, cml_no, size,
+          description_of_good, hsn_code, batch_no, cml_no, size, class,
           qty, gov_rate, company_rate, selling_rate, unit_of_measure,
           sgst, cgst, bis, spare1, spare2, spare3
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING product_id
       `;
       const values = [
@@ -74,6 +76,7 @@ router.post('/save', async (req, res) => {
         batchNo,
         cmlNo,
         size,
+        productClass,
         qty,
         govRate,
         companyRate,
@@ -227,11 +230,11 @@ router.post("/copy-standard-products", async (req, res) => {
     for (const product of standardProducts.rows) {
       const query = `
         INSERT INTO products (
-          description_of_good, hsn_code, batch_no, cml_no, size,
+          description_of_good, hsn_code, batch_no, cml_no, size, class,
           qty, gov_rate, company_rate, selling_rate, unit_of_measure,
           sgst, cgst, bis, spare1, spare2, spare3
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING product_id
       `;
       
@@ -241,6 +244,7 @@ router.post("/copy-standard-products", async (req, res) => {
         product.batch_no,
         product.cml_no,
         product.size,
+        product.class,
         product.qty,
         product.gov_rate,
         product.company_rate,

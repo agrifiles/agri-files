@@ -7,6 +7,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { getCurrentUser } from '@/lib/utils';
 import BillInvoice from '@/components/BillInvoice';
 import QuotationInvoice from '@/components/QuotationInvoice';
+import AppendixForm from '@/components/AppendixForm';
 
 // Dynamic import for farm map canvas to avoid SSR issues
 const FarmMapCanvas = dynamic(() => import('./FarmMapCanvas'), { ssr: false });
@@ -1418,6 +1419,30 @@ function FilePrintPageContent({ params }) {
           </div>
         )}
 
+
+        {/* Appendix Form (परिशिष्ट - ३) - Only for POCRA file type */}
+        {file?.file_type === 'POCRA' && (
+        <div 
+          className="sheet mx-auto bg-white shadow-lg border-4 border-black"
+          style={{
+            width: "210mm",
+            minHeight: "297mm",
+            height: "auto",
+            margin: "15px auto",
+            padding: "0",
+            position: "relative",
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ padding: "20px" }}>
+            <AppendixForm 
+              userData={userData}
+              fileData={file}
+              billData={billData}
+            />
+          </div>
+        </div>
+        )}
 
         {/* Quotation Invoice Section */}
         <div 

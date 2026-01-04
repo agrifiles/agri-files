@@ -14,6 +14,7 @@ function HomePageContent() {
       const [linkedCompanies, setLinkedCompanies] = useState([]);
       const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [copyToOtherCompanies, setCopyToOtherCompanies] = useState(false);
+  const [selectedClassFilter, setSelectedClassFilter] = useState('all');
   
   // Products state
   const [products, setProducts] = useState([]);
@@ -36,6 +37,7 @@ function HomePageContent() {
     sgst: '',
     cgst: '',
     bis: '',
+    class: '',
     spare2: null,
     spare3: null,  // Add slot number to initial state
   });
@@ -233,6 +235,7 @@ function HomePageContent() {
       sgst: '',
       cgst: '',
       bis: '',
+      class: '',
       spare2: selectedCompanyId,
       spare3: null,  // Reset slot number
     });
@@ -289,6 +292,7 @@ function HomePageContent() {
       sgst: p.sgst ?? '',
       cgst: p.cgst ?? '',
       bis: p.bis ?? '',
+      class: p.class ?? '',
       spare2: p.spare2 || selectedCompanyId,
       spare3: p.spare3,  // IMPORTANT: Preserve the slot number from product
     });
@@ -337,6 +341,7 @@ function HomePageContent() {
           batchNo: form.batchNo,
           cmlNo: form.cmlNo,
           size: form.size,
+          class: form.class,
           
           // Pricing & Taxes
           qty: form.qty,
@@ -382,6 +387,7 @@ function HomePageContent() {
             batchNo: companyFields.batchNo || form.batchNo,
             cmlNo: companyFields.cmlNo || form.cmlNo,
             size: companyFields.size || form.size,
+            class: companyFields.class || form.class,
             
             // Pricing & Taxes - use company-specific or fallback to base
             qty: companyFields.qty || form.qty,
@@ -431,6 +437,7 @@ function HomePageContent() {
           batchNo: form.batchNo,
           cmlNo: form.cmlNo,
           size: form.size,
+          class: form.class,
           
           // Pricing & Taxes
           qty: form.qty,
@@ -504,8 +511,13 @@ function HomePageContent() {
         // Handle type mismatch: convert both to string for comparison
         const pCompanyId = String(p.spare2);
         const selectedId = String(selectedCompanyId);
-        const matches = pCompanyId === selectedId;
-        return matches;
+        const companyMatches = pCompanyId === selectedId;
+        
+        // Apply class filter
+        if (selectedClassFilter === 'all') {
+          return companyMatches;
+        }
+        return companyMatches && (p.class === selectedClassFilter);
       })
     : products;
 
@@ -592,6 +604,65 @@ function HomePageContent() {
               </div>
             )}
 
+            {/* Class Filter Section */}
+            {linkedCompanies.length > 0 && (
+              <div className="mb-4 sm:mb-6 bg-white rounded-xl sm:rounded-2xl shadow-lg border-2 border-purple-200 p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-bold text-purple-700 mb-3 sm:mb-4">🏷️ Filter by Class</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedClassFilter('all')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 text-left transition-all text-xs sm:text-sm font-semibold ${
+                      selectedClassFilter === 'all'
+                        ? 'border-purple-600 bg-purple-50 shadow-lg text-purple-700'
+                        : 'border-gray-300 bg-white hover:border-purple-400 text-gray-700'
+                    }`}
+                  >
+                    All Products
+                  </button>
+                  <button
+                    onClick={() => setSelectedClassFilter('ठिबक')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 text-left transition-all text-xs sm:text-sm font-semibold ${
+                      selectedClassFilter === 'ठिबक'
+                        ? 'border-purple-600 bg-purple-50 shadow-lg text-purple-700'
+                        : 'border-gray-300 bg-white hover:border-purple-400 text-gray-700'
+                    }`}
+                  >
+                    ठिबक
+                  </button>
+                  <button
+                    onClick={() => setSelectedClassFilter('तुषार')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 text-left transition-all text-xs sm:text-sm font-semibold ${
+                      selectedClassFilter === 'तुषार'
+                        ? 'border-purple-600 bg-purple-50 shadow-lg text-purple-700'
+                        : 'border-gray-300 bg-white hover:border-purple-400 text-gray-700'
+                    }`}
+                  >
+                    तुषार
+                  </button>
+                  <button
+                    onClick={() => setSelectedClassFilter('मायक्रो स्प्रिंकलर')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 text-left transition-all text-xs sm:text-sm font-semibold ${
+                      selectedClassFilter === 'मायक्रो स्प्रिंकलर'
+                        ? 'border-purple-600 bg-purple-50 shadow-lg text-purple-700'
+                        : 'border-gray-300 bg-white hover:border-purple-400 text-gray-700'
+                    }`}
+                  >
+                    मायक्रो स्प्रिंकलर
+                  </button>
+                  <button
+                    onClick={() => setSelectedClassFilter('other')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 text-left transition-all text-xs sm:text-sm font-semibold ${
+                      selectedClassFilter === 'other'
+                        ? 'border-purple-600 bg-purple-50 shadow-lg text-purple-700'
+                        : 'border-gray-300 bg-white hover:border-purple-400 text-gray-700'
+                    }`}
+                  >
+                    Other
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Left side – Product Table (Desktop) & Cards (Mobile) */}
               <div className="lg:col-span-2">
@@ -603,6 +674,7 @@ function HomePageContent() {
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">#</th>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.description}</th>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.cmlNo}</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.class}</th>
 
                         {/* <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold">{t.qty}</th> */}
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold">{t.unit}</th>
@@ -629,6 +701,15 @@ function HomePageContent() {
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-700">{i + 1}</td>
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700">{p.description_of_good}</td>
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-center text-gray-700">{p.cml_no}</td>
+                            <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-center">
+                              {p.class ? (
+                                <span className="inline-block bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-purple-200">
+                                  {p.class}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 italic">—</span>
+                              )}
+                            </td>
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-center text-gray-700">{p.unit_of_measure}</td>
                             <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-800">₹{p.selling_rate}</td>
 
@@ -701,6 +782,11 @@ function HomePageContent() {
                             {shortCompanyName && (
                               <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-200  ">
                                 {shortCompanyName}
+                              </span>
+                            )}
+                            {p.class && (
+                              <span className="text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-200">
+                                {p.class}
                               </span>
                             )}
                           </div>
@@ -849,6 +935,22 @@ function HomePageContent() {
                               onChange={handleChange} 
                               className="border-2 border-green-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
                             />
+                          </div>
+
+                          <div className="flex flex-col">
+                            <label className="font-semibold text-xs text-gray-700 mb-1">{t.class}</label>
+                            <select 
+                              name="class" 
+                              value={form.class} 
+                              onChange={handleChange} 
+                              className="border-2 border-green-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                            >
+                              <option value="">Select Class</option>
+                              <option value="ठिबक">ठिबक</option>
+                              <option value="तुषार">तुषार</option>
+                              <option value="मायक्रो स्प्रिंकलर">मायक्रो स्प्रिंकलर</option>
+                              <option value="other">Other</option>
+                            </select>
                           </div>
                         </div>
                       </div>
@@ -1040,6 +1142,20 @@ function HomePageContent() {
                                           placeholder="Size"
                                           className="border border-blue-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" 
                                         />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <label className="font-semibold text-xs text-gray-600 mb-1">{t.class}</label>
+                                        <select 
+                                          value={companySpecificFields[String(company.company_id)]?.class || ''}
+                                          onChange={(e) => handleCompanySpecificChange(company.company_id, 'class', e.target.value)}
+                                          className="border border-blue-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                                        >
+                                          <option value="">Select Class</option>
+                                          <option value="ठिबक">ठिबक</option>
+                                          <option value="तुषार">तुषार</option>
+                                          <option value="मायक्रो स्प्रिंकलर">मायक्रो स्प्रिंकलर</option>
+                                          <option value="other">Other</option>
+                                        </select>
                                       </div>
                                     </div>
                                   </div>

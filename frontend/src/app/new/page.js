@@ -3286,53 +3286,7 @@ const submitFormAndPrint = async (e) => {
       <p className="text-sm text-gray-500 mb-4">All available products are shown below. Enter quantity to include them in the bill. Items with qty=0 will not be saved.</p>
 
 
-      {/* Fitting / Installation & Accessories Charges Section Add Fitting / Installation & Accessories Charges */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={enableFittingCharges}
-              onChange={(e) => setEnableFittingCharges(e.target.checked)}
-              className="w-4 h-4"
-            />
-            <span className="font-semibold text-gray-700 text-sm md:text-base">फिटिंग / इन्स्टॉलेशन आणि अक्सेसरीज शुल्क जोडा टक्केवारी (%)</span>
-          </label>
 
-          {enableFittingCharges && (
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Charges %:</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
-                  value={fittingChargesPercent}
-                  onChange={(e) => setFittingChargesPercent(Number(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">GST %:</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
-                  value={fittingChargesGst}
-                  onChange={(e) => setFittingChargesGst(Number(e.target.value) || 0)}
-                  placeholder="5"
-                />
-              </div>
-              <span className="text-sm text-gray-600">
-                ≈ ₹{enableFittingCharges && fittingChargesPercent > 0 ? ((fittingChargesPercent / 100) * computeBillTotals().taxable).toFixed(2) : '0.00'}
-                {fittingChargesGst > 0 && ` + GST ₹${(((fittingChargesGst / 100) * (fittingChargesPercent / 100) * computeBillTotals().taxable) || 0).toFixed(2)}`}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
       {/* Global GST % Shortcut - Apply same GST to all items */}
       <div className="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -3553,7 +3507,53 @@ const submitFormAndPrint = async (e) => {
           </div>
         ))}
       </div>
+      {/* Fitting / Installation & Accessories Charges Section Add Fitting / Installation & Accessories Charges */}
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={enableFittingCharges}
+              onChange={(e) => setEnableFittingCharges(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="font-semibold text-gray-700 text-sm md:text-base">फिटिंग / इन्स्टॉलेशन आणि अक्सेसरीज शुल्क जोडा टक्केवारी (%)</span>
+          </label>
 
+          {enableFittingCharges && (
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Charges %:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+                  value={fittingChargesPercent}
+                  onChange={(e) => setFittingChargesPercent(Number(e.target.value) || 0)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">GST %:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+                  value={fittingChargesGst}
+                  onChange={(e) => setFittingChargesGst(Number(e.target.value) || 0)}
+                  placeholder="5"
+                />
+              </div>
+              <span className="text-sm text-gray-600">
+                ≈ ₹{enableFittingCharges && fittingChargesPercent > 0 ? ((fittingChargesPercent / 100) * computeBillTotals().taxable).toFixed(2) : '0.00'}
+                {fittingChargesGst > 0 && ` + GST ₹${(((fittingChargesGst / 100) * (fittingChargesPercent / 100) * computeBillTotals().taxable) || 0).toFixed(2)}`}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
       {/* Bill Totals - Mobile & Desktop */}
       <div className="mt-4 bg-gray-50 p-4 rounded-lg">
         <div className="grid grid-cols-2 md:flex md:justify-end gap-4 md:gap-8">
